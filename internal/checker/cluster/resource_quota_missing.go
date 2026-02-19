@@ -12,20 +12,30 @@ import (
 // ResourceQuotaMissingChecker detects namespaces without a ResourceQuota defined.
 type ResourceQuotaMissingChecker struct{}
 
+// Name returns the kebab-case identifier for this check.
 func (c *ResourceQuotaMissingChecker) Name() string { return "resource-quota-missing" }
+
+// Description returns a human-readable summary of what this check detects.
 func (c *ResourceQuotaMissingChecker) Description() string {
 	return "Detects namespaces without ResourceQuota; a namespace can consume unlimited cluster resources."
 }
+
+// Categories returns the security categories this check belongs to.
 func (c *ResourceQuotaMissingChecker) Categories() []checker.Category {
 	return []checker.Category{checker.CategoryClusterConfig}
 }
+
+// SupportedModes returns the scan modes (manifest, live, or both) that support this check.
 func (c *ResourceQuotaMissingChecker) SupportedModes() []checker.ScanMode {
 	return []checker.ScanMode{checker.ScanModeLive, checker.ScanModeManifest}
 }
+
+// RequiredResources returns the Kubernetes GVRs this check needs to operate.
 func (c *ResourceQuotaMissingChecker) RequiredResources() []schema.GroupVersionResource {
 	return []schema.GroupVersionResource{NamespaceGVR, ResourceQuotaGVR}
 }
 
+// Run executes the check against cached resources and returns any findings.
 func (c *ResourceQuotaMissingChecker) Run(ctx context.Context, resources *checker.ResourceCache) ([]checker.Finding, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("resource-quota-missing check: %w", err)

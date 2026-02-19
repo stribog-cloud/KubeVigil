@@ -73,16 +73,51 @@ type jsonScanResult struct {
 }
 
 type jsonSummary struct {
-	PostureScore     int               `json:"posture_score"`
-	TotalFindings    int               `json:"total_findings"`
-	Critical         int               `json:"critical"`
-	High             int               `json:"high"`
-	Medium           int               `json:"medium"`
-	Low              int               `json:"low"`
-	Info             int               `json:"info"`
-	UniqueResources  int               `json:"unique_resources"`
-	UniqueNamespaces int               `json:"unique_namespaces"`
-	CheckCoverage    jsonCheckCoverage `json:"check_coverage"`
+	PostureScore      int                  `json:"posture_score"`
+	AppPostureScore   int                  `json:"app_posture_score"`
+	InfraPostureScore int                  `json:"infra_posture_score"`
+	TotalFindings     int                  `json:"total_findings"`
+	Critical          int                  `json:"critical"`
+	High              int                  `json:"high"`
+	Medium            int                  `json:"medium"`
+	Low               int                  `json:"low"`
+	Info              int                  `json:"info"`
+	UniqueResources   int                  `json:"unique_resources"`
+	UniqueNamespaces  int                  `json:"unique_namespaces"`
+	CheckCoverage     jsonCheckCoverage    `json:"check_coverage"`
+	PassedChecks      []string             `json:"passed_checks"`
+	TopRisks          []checker.Finding    `json:"top_risks"`
+	CheckAggregates   []jsonCheckAggregate `json:"check_aggregates"`
+	TierBreakdown     jsonTierBreakdown    `json:"tier_breakdown"`
+}
+
+// jsonCheckAggregate summarises findings for a single check in JSON output.
+type jsonCheckAggregate struct {
+	Checker      string `json:"checker"`
+	Severity     string `json:"severity"`
+	Count        int    `json:"count"`
+	Resources    int    `json:"resources"`
+	Namespaces   int    `json:"namespaces"`
+	AppCount     int    `json:"app_count"`
+	InfraCount   int    `json:"infra_count"`
+	ClusterCount int    `json:"cluster_count"`
+}
+
+// jsonTierBreakdown groups findings by deployment tier.
+type jsonTierBreakdown struct {
+	App     jsonTierStats `json:"app"`
+	Infra   jsonTierStats `json:"infra"`
+	Cluster jsonTierStats `json:"cluster"`
+}
+
+// jsonTierStats holds severity counts for a deployment tier.
+type jsonTierStats struct {
+	Namespaces int `json:"namespaces"`
+	Critical   int `json:"critical"`
+	High       int `json:"high"`
+	Medium     int `json:"medium"`
+	Low        int `json:"low"`
+	Info       int `json:"info"`
 }
 
 type jsonCheckCoverage struct {
@@ -94,22 +129,77 @@ type jsonCheckCoverage struct {
 }
 
 func newJSONSummary(s *ExecutiveSummary) jsonSummary {
+	// Ensure slices are never nil so JSON outputs [] instead of null.
+	passedChecks := s.PassedChecks
+	if passedChecks == nil {
+		passedChecks = []string{}
+	}
+
+	topRisks := s.TopRisks
+	if topRisks == nil {
+		topRisks = []checker.Finding{}
+	}
+
+	aggregates := make([]jsonCheckAggregate, 0, len(s.CheckAggregates))
+	for _, agg := range s.CheckAggregates {
+		aggregates = append(aggregates, jsonCheckAggregate{
+			Checker:      agg.Checker,
+			Severity:     agg.Severity.String(),
+			Count:        agg.Count,
+			Resources:    agg.Resources,
+			Namespaces:   agg.Namespaces,
+			AppCount:     agg.AppCount,
+			InfraCount:   agg.InfraCount,
+			ClusterCount: agg.ClusterCount,
+		})
+	}
+
 	return jsonSummary{
-		PostureScore:     s.PostureScore,
-		TotalFindings:    s.SeverityCounts[checker.SeverityCritical] + s.SeverityCounts[checker.SeverityHigh] + s.SeverityCounts[checker.SeverityMedium] + s.SeverityCounts[checker.SeverityLow] + s.SeverityCounts[checker.SeverityInfo],
-		Critical:         s.SeverityCounts[checker.SeverityCritical],
-		High:             s.SeverityCounts[checker.SeverityHigh],
-		Medium:           s.SeverityCounts[checker.SeverityMedium],
-		Low:              s.SeverityCounts[checker.SeverityLow],
-		Info:             s.SeverityCounts[checker.SeverityInfo],
-		UniqueResources:  s.UniqueResources,
-		UniqueNamespaces: s.UniqueNamespaces,
+		PostureScore:      s.PostureScore,
+		AppPostureScore:   s.AppPostureScore,
+		InfraPostureScore: s.InfraPostureScore,
+		TotalFindings:     s.SeverityCounts[checker.SeverityCritical] + s.SeverityCounts[checker.SeverityHigh] + s.SeverityCounts[checker.SeverityMedium] + s.SeverityCounts[checker.SeverityLow] + s.SeverityCounts[checker.SeverityInfo],
+		Critical:          s.SeverityCounts[checker.SeverityCritical],
+		High:              s.SeverityCounts[checker.SeverityHigh],
+		Medium:            s.SeverityCounts[checker.SeverityMedium],
+		Low:               s.SeverityCounts[checker.SeverityLow],
+		Info:              s.SeverityCounts[checker.SeverityInfo],
+		UniqueResources:   s.UniqueResources,
+		UniqueNamespaces:  s.UniqueNamespaces,
 		CheckCoverage: jsonCheckCoverage{
 			TotalRun:     s.CheckCoverage.TotalRun,
 			WithFindings: s.CheckCoverage.WithFindings,
 			Clean:        s.CheckCoverage.Clean,
 			Skipped:      s.CheckCoverage.Skipped,
 			Errored:      s.CheckCoverage.Errored,
+		},
+		PassedChecks:    passedChecks,
+		TopRisks:        topRisks,
+		CheckAggregates: aggregates,
+		TierBreakdown: jsonTierBreakdown{
+			App: jsonTierStats{
+				Namespaces: s.AppStats.Count,
+				Critical:   s.AppStats.SeverityCounts[checker.SeverityCritical],
+				High:       s.AppStats.SeverityCounts[checker.SeverityHigh],
+				Medium:     s.AppStats.SeverityCounts[checker.SeverityMedium],
+				Low:        s.AppStats.SeverityCounts[checker.SeverityLow],
+				Info:       s.AppStats.SeverityCounts[checker.SeverityInfo],
+			},
+			Infra: jsonTierStats{
+				Namespaces: s.InfraStats.Count,
+				Critical:   s.InfraStats.SeverityCounts[checker.SeverityCritical],
+				High:       s.InfraStats.SeverityCounts[checker.SeverityHigh],
+				Medium:     s.InfraStats.SeverityCounts[checker.SeverityMedium],
+				Low:        s.InfraStats.SeverityCounts[checker.SeverityLow],
+				Info:       s.InfraStats.SeverityCounts[checker.SeverityInfo],
+			},
+			Cluster: jsonTierStats{
+				Critical: s.ClusterScopedCounts[checker.SeverityCritical],
+				High:     s.ClusterScopedCounts[checker.SeverityHigh],
+				Medium:   s.ClusterScopedCounts[checker.SeverityMedium],
+				Low:      s.ClusterScopedCounts[checker.SeverityLow],
+				Info:     s.ClusterScopedCounts[checker.SeverityInfo],
+			},
 		},
 	}
 }

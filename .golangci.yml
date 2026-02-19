@@ -1,46 +1,58 @@
+version: "2"
 run:
-  timeout: 5m
-  go: "1.22"
-
+  go: "1.25"
 linters:
   enable:
-    - errcheck
-    - govet
-    - staticcheck
-    - unused
-    - gosimple
     - gocritic
-    - gofmt
-    - goimports
     - misspell
     - revive
-
-linters-settings:
-  goimports:
-    local-prefixes: github.com/stribog-cloud/kubevigil
-  revive:
+  settings:
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+    revive:
+      rules:
+        - name: exported
+          arguments:
+            - checkPrivateReceivers
+        - name: blank-imports
+        - name: context-as-argument
+        - name: error-return
+        - name: error-strings
+        - name: increment-decrement
+        - name: var-declaration
+        - name: range
+        - name: receiver-naming
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
     rules:
-      - name: exported
-        arguments:
-          - checkPrivateReceivers
-      - name: blank-imports
-      - name: context-as-argument
-      - name: error-return
-      - name: error-strings
-      - name: increment-decrement
-      - name: var-declaration
-      - name: range
-      - name: receiver-naming
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - style
-      - performance
-
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gocritic
-        - revive
-        - errcheck
+      - linters:
+          - errcheck
+          - gocritic
+          - revive
+        path: _test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/stribog-cloud/kubevigil
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

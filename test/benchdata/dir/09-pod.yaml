@@ -1,0 +1,58 @@
+# Debug pod: everything open
+apiVersion: v1
+kind: Pod
+metadata:
+  name: debug-pod
+  namespace: app-ns
+  labels:
+    app: debug
+spec:
+  hostNetwork: true
+  hostPID: true
+  hostIPC: true
+  shareProcessNamespace: true
+  containers:
+    - name: debug
+      image: ubuntu:latest
+      command: ["sleep", "infinity"]
+      securityContext:
+        privileged: true
+        runAsUser: 0
+        capabilities:
+          add: ["ALL"]
+      volumeMounts:
+        - name: host-fs
+          mountPath: /host
+  volumes:
+    - name: host-fs
+      hostPath:
+        path: /
+---
+# Init container with privilege escalation
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app-with-init
+  namespace: app-ns
+  labels:
+    app: app-with-init
+spec:
+  initContainers:
+    - name: init-perms
+      image: busybox:latest
+      command: ["chmod", "-R", "777", "/data"]
+      securityContext:
+        runAsUser: 0
+        privileged: true
+      volumeMounts:
+        - name: data
+          mountPath: /data
+  containers:
+    - name: app
+      image: myapp:v1.2
+      volumeMounts:
+        - name: data
+          mountPath: /data
+  volumes:
+    - name: data
+      emptyDir: {}

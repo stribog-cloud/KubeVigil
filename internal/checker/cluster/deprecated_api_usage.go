@@ -12,13 +12,20 @@ import (
 // DeprecatedAPIUsageChecker detects resources using deprecated API versions.
 type DeprecatedAPIUsageChecker struct{}
 
+// Name returns the kebab-case identifier for this check.
 func (c *DeprecatedAPIUsageChecker) Name() string { return "deprecated-api-usage" }
+
+// Description returns a human-readable summary of what this check detects.
 func (c *DeprecatedAPIUsageChecker) Description() string {
 	return "Detects resources using deprecated or removed API versions."
 }
+
+// Categories returns the security categories this check belongs to.
 func (c *DeprecatedAPIUsageChecker) Categories() []checker.Category {
 	return []checker.Category{checker.CategoryClusterConfig}
 }
+
+// SupportedModes returns the scan modes (manifest, live, or both) that support this check.
 func (c *DeprecatedAPIUsageChecker) SupportedModes() []checker.ScanMode {
 	return []checker.ScanMode{checker.ScanModeLive, checker.ScanModeManifest}
 }
@@ -28,10 +35,12 @@ var deprecatedGVRs = []schema.GroupVersionResource{
 	{Group: "policy", Version: "v1beta1", Resource: "podsecuritypolicies"},
 }
 
+// RequiredResources returns the Kubernetes GVRs this check needs to operate.
 func (c *DeprecatedAPIUsageChecker) RequiredResources() []schema.GroupVersionResource {
 	return deprecatedGVRs
 }
 
+// Run executes the check against cached resources and returns any findings.
 func (c *DeprecatedAPIUsageChecker) Run(ctx context.Context, resources *checker.ResourceCache) ([]checker.Finding, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("deprecated-api-usage check: %w", err)

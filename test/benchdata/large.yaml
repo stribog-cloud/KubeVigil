@@ -1,0 +1,1598 @@
+# KubeVigil Benchmark: large.yaml
+# 55+ resources across 6 namespaces, exercising all 12 checker categories:
+#   workload, image, rbac, secrets, psa, network, scheduling, storage,
+#   cloud, cluster, crd, supply_chain
+---
+# === Namespaces (6 total, none with PSA labels -> triggers psa-labels-missing) ===
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: frontend
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: backend
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: batch
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: staging
+---
+# === WORKLOAD: Deployments (15) ===
+# Deployment 1: privileged, hostNetwork, hostPort, latest tag, run as root, no caps drop
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-gateway
+  namespace: frontend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web-gateway
+  template:
+    metadata:
+      labels:
+        app: web-gateway
+    spec:
+      hostNetwork: true
+      serviceAccountName: default
+      automountServiceAccountToken: true
+      containers:
+        - name: gateway
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+              hostPort: 80
+          securityContext:
+            privileged: true
+            allowPrivilegeEscalation: true
+            runAsUser: 0
+---
+# Deployment 2: no resource limits, no seccomp, no readOnlyRootFilesystem, secrets in env
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-server
+  namespace: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-server
+  template:
+    metadata:
+      labels:
+        app: api-server
+    spec:
+      containers:
+        - name: api
+          image: myregistry.io/api
+          ports:
+            - containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: true
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-creds
+                  key: password
+---
+# Deployment 3: hostPID, hostIPC, shareProcessNamespace, docker socket mount, dangerous caps
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: debug-tools
+  namespace: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: debug-tools
+  template:
+    metadata:
+      labels:
+        app: debug-tools
+    spec:
+      hostPID: true
+      hostIPC: true
+      shareProcessNamespace: true
+      containers:
+        - name: debug
+          image: busybox:latest
+          command: ["sleep", "infinity"]
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN", "SYS_PTRACE", "NET_RAW"]
+          volumeMounts:
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+            - name: host-root
+              mountPath: /host
+      volumes:
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+        - name: host-root
+          hostPath:
+            path: /
+---
+# Deployment 4: no security context, image without tag, default SA
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: legacy-app
+  namespace: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: legacy-app
+  template:
+    metadata:
+      labels:
+        app: legacy-app
+    spec:
+      serviceAccountName: default
+      containers:
+        - name: legacy
+          image: legacy-app
+          ports:
+            - containerPort: 3000
+---
+# Deployment 5: dangerous capabilities, high resource limits ratio
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: network-scanner
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: network-scanner
+  template:
+    metadata:
+      labels:
+        app: network-scanner
+    spec:
+      containers:
+        - name: scanner
+          image: scanner:v1.0
+          securityContext:
+            runAsUser: 65534
+            runAsGroup: 0
+            capabilities:
+              add: ["NET_RAW", "NET_ADMIN", "SYS_TIME"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 10000m
+              memory: 64Gi
+---
+# Deployment 6: SELinux spc_t, procMount Unmasked
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kernel-inspector
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kernel-inspector
+  template:
+    metadata:
+      labels:
+        app: kernel-inspector
+    spec:
+      containers:
+        - name: inspector
+          image: inspector:v2.3.1
+          securityContext:
+            seLinuxOptions:
+              type: spc_t
+            procMount: Unmasked
+            readOnlyRootFilesystem: false
+            allowPrivilegeEscalation: true
+---
+# Deployment 7: unsafe sysctls, tolerate-all taints, run as root
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tuned-worker
+  namespace: backend
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: tuned-worker
+  template:
+    metadata:
+      labels:
+        app: tuned-worker
+    spec:
+      securityContext:
+        sysctls:
+          - name: kernel.shm_rmid_forced
+            value: "1"
+          - name: kernel.msgmax
+            value: "65536"
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: worker
+          image: worker:v1.0
+          securityContext:
+            runAsUser: 0
+---
+# Deployment 8: no runtime class, emptyDir without size limit
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-trainer
+  namespace: batch
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ml-trainer
+  template:
+    metadata:
+      labels:
+        app: ml-trainer
+    spec:
+      containers:
+        - name: trainer
+          image: tensorflow/tensorflow:latest
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: true
+          volumeMounts:
+            - name: scratch
+              mountPath: /scratch
+      volumes:
+        - name: scratch
+          emptyDir: {}
+---
+# Deployment 9: no probes, no lifecycle hooks (supply_chain)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: probe-less-app
+  namespace: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: probe-less
+  template:
+    metadata:
+      labels:
+        app: probe-less
+    spec:
+      containers:
+        - name: app
+          image: myregistry.io/app:v3.1.0
+          ports:
+            - containerPort: 8080
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: true
+---
+# Deployment 10: containerd socket mount (supply_chain container-runtime-socket)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: container-manager
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: container-manager
+  template:
+    metadata:
+      labels:
+        app: container-manager
+    spec:
+      containers:
+        - name: manager
+          image: manager:v1.0
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: containerd-sock
+              mountPath: /run/containerd/containerd.sock
+      volumes:
+        - name: containerd-sock
+          hostPath:
+            path: /run/containerd/containerd.sock
+---
+# Deployment 11: imagePullPolicy Never with latest tag
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bad-pull-policy
+  namespace: batch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bad-pull
+  template:
+    metadata:
+      labels:
+        app: bad-pull
+    spec:
+      containers:
+        - name: app
+          image: internal-registry.local/app:latest
+          imagePullPolicy: Never
+          securityContext:
+            runAsUser: 0
+---
+# Deployment 12: multi-container with mixed issues
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sidecar-app
+  namespace: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sidecar-app
+  template:
+    metadata:
+      labels:
+        app: sidecar-app
+    spec:
+      containers:
+        - name: app
+          image: myregistry.io/webapp:latest
+          ports:
+            - containerPort: 8080
+          securityContext:
+            runAsUser: 0
+        - name: envoy
+          image: envoyproxy/envoy:latest
+          ports:
+            - containerPort: 15001
+          securityContext:
+            allowPrivilegeEscalation: true
+            capabilities:
+              add: ["NET_BIND_SERVICE"]
+        - name: log-shipper
+          image: fluent/fluent-bit:latest
+          securityContext:
+            runAsUser: 0
+---
+# Deployment 13: batch processor with default SA
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: batch-processor
+  namespace: batch
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: batch-processor
+  template:
+    metadata:
+      labels:
+        app: batch-processor
+    spec:
+      serviceAccountName: default
+      containers:
+        - name: processor
+          image: processor:latest
+          securityContext:
+            allowPrivilegeEscalation: true
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 10Gi
+---
+# Deployment 14: grafana with secret in env
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:latest
+          ports:
+            - containerPort: 3000
+          securityContext:
+            runAsUser: 0
+          env:
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-secret
+                  key: admin-password
+---
+# Deployment 15: staging app with no hardening
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: staging-app
+  namespace: staging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: staging-app
+  template:
+    metadata:
+      labels:
+        app: staging-app
+    spec:
+      containers:
+        - name: app
+          image: myregistry.io/staging:latest
+          ports:
+            - containerPort: 8080
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: true
+---
+# === WORKLOAD: StatefulSets (4) ===
+# StatefulSet 1: postgres with root user
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-primary
+  namespace: data
+spec:
+  serviceName: postgres
+  replicas: 3
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:latest
+          ports:
+            - containerPort: 5432
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: true
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pg-secret
+                  key: password
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: pgdata
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 100Gi
+---
+# StatefulSet 2: redis with default SA
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-cluster
+  namespace: data
+spec:
+  serviceName: redis
+  replicas: 6
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      serviceAccountName: default
+      containers:
+        - name: redis
+          image: redis
+          ports:
+            - containerPort: 6379
+          securityContext:
+            allowPrivilegeEscalation: true
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 20Gi
+---
+# StatefulSet 3: elasticsearch with hostPath
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch
+  namespace: monitoring
+spec:
+  serviceName: elasticsearch
+  replicas: 3
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      containers:
+        - name: elasticsearch
+          image: elasticsearch:8.11
+          ports:
+            - containerPort: 9200
+            - containerPort: 9300
+          securityContext:
+            runAsUser: 0
+            capabilities:
+              add: ["SYS_RESOURCE"]
+          volumeMounts:
+            - name: es-data
+              mountPath: /usr/share/elasticsearch/data
+      volumes:
+        - name: es-data
+          hostPath:
+            path: /var/data/elasticsearch
+  volumeClaimTemplates:
+    - metadata:
+        name: es-snapshots
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 200Gi
+---
+# StatefulSet 4: kafka with no security
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+  namespace: data
+spec:
+  serviceName: kafka
+  replicas: 3
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+    spec:
+      containers:
+        - name: kafka
+          image: confluentinc/cp-kafka:7.5.0
+          ports:
+            - containerPort: 9092
+  volumeClaimTemplates:
+    - metadata:
+        name: kafka-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 100Gi
+---
+# === WORKLOAD: DaemonSets (3) ===
+# DaemonSet 1: node-exporter with full host access
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-exporter
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: node-exporter
+  template:
+    metadata:
+      labels:
+        app: node-exporter
+    spec:
+      hostNetwork: true
+      hostPID: true
+      containers:
+        - name: exporter
+          image: prom/node-exporter:latest
+          ports:
+            - containerPort: 9100
+              hostPort: 9100
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: proc
+              mountPath: /host/proc
+              readOnly: true
+            - name: sys
+              mountPath: /host/sys
+              readOnly: true
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: sys
+          hostPath:
+            path: /sys
+---
+# DaemonSet 2: fluent-bit with control-plane toleration
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluent-bit
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: fluent-bit
+  template:
+    metadata:
+      labels:
+        app: fluent-bit
+    spec:
+      hostIPC: true
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: fluent-bit
+          image: fluent/fluent-bit
+          securityContext:
+            runAsUser: 0
+            capabilities:
+              add: ["DAC_OVERRIDE"]
+          volumeMounts:
+            - name: varlog
+              mountPath: /var/log
+      volumes:
+        - name: varlog
+          hostPath:
+            path: /var/log
+---
+# DaemonSet 3: CNI plugin with host network
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: calico-node
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: calico-node
+  template:
+    metadata:
+      labels:
+        app: calico-node
+    spec:
+      hostNetwork: true
+      containers:
+        - name: calico
+          image: calico/node:v3.26
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: cni-bin
+              mountPath: /host/opt/cni/bin
+            - name: cni-conf
+              mountPath: /host/etc/cni/net.d
+      volumes:
+        - name: cni-bin
+          hostPath:
+            path: /opt/cni/bin
+        - name: cni-conf
+          hostPath:
+            path: /etc/cni/net.d
+---
+# === WORKLOAD: Jobs (3) ===
+# Job 1: migration with root
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migrate-v42
+  namespace: data
+spec:
+  template:
+    metadata:
+      labels:
+        app: db-migrate
+    spec:
+      serviceAccountName: default
+      containers:
+        - name: migrate
+          image: myregistry.io/migrate:latest
+          command: ["./migrate", "--up"]
+          securityContext:
+            runAsUser: 0
+      restartPolicy: Never
+  backoffLimit: 3
+---
+# Job 2: backup with privileged
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: full-backup
+  namespace: data
+spec:
+  template:
+    metadata:
+      labels:
+        app: full-backup
+    spec:
+      containers:
+        - name: backup
+          image: backup-tool:latest
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: host-data
+              mountPath: /source
+      volumes:
+        - name: host-data
+          hostPath:
+            path: /var/data
+      restartPolicy: Never
+  backoffLimit: 1
+---
+# Job 3: report generation with caps
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: generate-report
+  namespace: batch
+spec:
+  template:
+    metadata:
+      labels:
+        app: generate-report
+    spec:
+      containers:
+        - name: report
+          image: report-gen
+          command: ["./generate"]
+          securityContext:
+            allowPrivilegeEscalation: true
+            capabilities:
+              add: ["NET_RAW"]
+      restartPolicy: Never
+  backoffLimit: 0
+---
+# === WORKLOAD: CronJobs (3) ===
+# CronJob 1: nightly DB backup
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nightly-db-backup
+  namespace: data
+spec:
+  schedule: "0 2 * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: nightly-db-backup
+        spec:
+          containers:
+            - name: backup
+              image: pg-backup:latest
+              command: ["pg_dumpall"]
+              securityContext:
+                runAsUser: 0
+                capabilities:
+                  add: ["DAC_OVERRIDE"]
+          restartPolicy: OnFailure
+---
+# CronJob 2: log cleanup with hostPath
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: log-cleanup
+  namespace: monitoring
+spec:
+  schedule: "0 4 * * 0"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: log-cleanup
+        spec:
+          containers:
+            - name: cleanup
+              image: busybox:latest
+              command: ["find", "/logs", "-mtime", "+30", "-delete"]
+              securityContext:
+                allowPrivilegeEscalation: true
+              volumeMounts:
+                - name: logs
+                  mountPath: /logs
+          volumes:
+            - name: logs
+              hostPath:
+                path: /var/log
+          restartPolicy: OnFailure
+---
+# CronJob 3: cert renewal with root
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cert-renew
+  namespace: frontend
+spec:
+  schedule: "0 0 1 * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: cert-renew
+        spec:
+          serviceAccountName: default
+          containers:
+            - name: certbot
+              image: certbot/certbot:latest
+              command: ["certbot", "renew"]
+              securityContext:
+                runAsUser: 0
+          restartPolicy: OnFailure
+---
+# === WORKLOAD: Standalone Pods (3) ===
+# Pod 1: everything open
+apiVersion: v1
+kind: Pod
+metadata:
+  name: debug-pod
+  namespace: backend
+  labels:
+    app: debug
+spec:
+  hostNetwork: true
+  hostPID: true
+  hostIPC: true
+  shareProcessNamespace: true
+  containers:
+    - name: debug
+      image: ubuntu:latest
+      command: ["sleep", "infinity"]
+      securityContext:
+        privileged: true
+        runAsUser: 0
+        capabilities:
+          add: ["ALL"]
+      volumeMounts:
+        - name: host-fs
+          mountPath: /host
+  volumes:
+    - name: host-fs
+      hostPath:
+        path: /
+---
+# Pod 2: network scanning tool
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nmap-scanner
+  namespace: monitoring
+  labels:
+    app: nmap
+spec:
+  containers:
+    - name: nmap
+      image: nmap
+      command: ["sleep", "infinity"]
+      securityContext:
+        capabilities:
+          add: ["NET_RAW", "NET_ADMIN"]
+---
+# Pod 3: init container with privilege escalation
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app-with-init
+  namespace: frontend
+  labels:
+    app: app-with-init
+spec:
+  initContainers:
+    - name: init-perms
+      image: busybox:latest
+      command: ["chmod", "-R", "777", "/data"]
+      securityContext:
+        runAsUser: 0
+        privileged: true
+      volumeMounts:
+        - name: data
+          mountPath: /data
+  containers:
+    - name: app
+      image: myapp:v1.2
+      volumeMounts:
+        - name: data
+          mountPath: /data
+  volumes:
+    - name: data
+      emptyDir: {}
+---
+# === NETWORK: Services (8) ===
+# Service 1: LoadBalancer
+apiVersion: v1
+kind: Service
+metadata:
+  name: public-api
+  namespace: frontend
+spec:
+  type: LoadBalancer
+  selector:
+    app: web-gateway
+  ports:
+    - port: 80
+      targetPort: 80
+    - port: 443
+      targetPort: 443
+---
+# Service 2: NodePort
+apiVersion: v1
+kind: Service
+metadata:
+  name: debug-service
+  namespace: backend
+spec:
+  type: NodePort
+  selector:
+    app: debug-tools
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080
+---
+# Service 3: ExternalIPs
+apiVersion: v1
+kind: Service
+metadata:
+  name: legacy-external
+  namespace: frontend
+spec:
+  type: ClusterIP
+  externalIPs:
+    - 203.0.113.10
+    - 203.0.113.11
+  selector:
+    app: legacy-app
+  ports:
+    - port: 3000
+      targetPort: 3000
+---
+# Service 4: internal database
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-svc
+  namespace: data
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+# Service 5: redis
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-svc
+  namespace: data
+spec:
+  type: ClusterIP
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+---
+# Service 6: monitoring NodePort
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-nodeport
+  namespace: monitoring
+spec:
+  type: NodePort
+  selector:
+    app: prometheus
+  ports:
+    - port: 9090
+      targetPort: 9090
+      nodePort: 30090
+---
+# Service 7: grafana LoadBalancer
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-lb
+  namespace: monitoring
+spec:
+  type: LoadBalancer
+  selector:
+    app: grafana
+  ports:
+    - port: 80
+      targetPort: 3000
+---
+# Service 8: elasticsearch NodePort
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch-nodeport
+  namespace: monitoring
+spec:
+  type: NodePort
+  selector:
+    app: elasticsearch
+  ports:
+    - port: 9200
+      targetPort: 9200
+      nodePort: 30920
+---
+# === NETWORK: Ingresses (3, no TLS, wildcard host, no class) ===
+# Ingress 1: no TLS, no ingress class
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-ingress
+  namespace: frontend
+spec:
+  rules:
+    - host: app.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: public-api
+                port:
+                  number: 80
+---
+# Ingress 2: wildcard host, no TLS
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wildcard-ingress
+  namespace: frontend
+spec:
+  rules:
+    - host: "*.example.com"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: public-api
+                port:
+                  number: 80
+---
+# Ingress 3: API ingress without TLS
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-ingress
+  namespace: backend
+spec:
+  rules:
+    - host: api.example.com
+      http:
+        paths:
+          - path: /v1
+            pathType: Prefix
+            backend:
+              service:
+                name: debug-service
+                port:
+                  number: 8080
+---
+# === NETWORK: NetworkPolicies (2, overly permissive) ===
+# NetworkPolicy 1: allow all ingress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-all-ingress
+  namespace: frontend
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - {}
+---
+# NetworkPolicy 2: unrestricted egress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: unrestricted-egress
+  namespace: backend
+spec:
+  podSelector:
+    matchLabels:
+      app: api-server
+  policyTypes:
+    - Egress
+  egress:
+    - {}
+---
+# === RBAC: ServiceAccounts (4, automount true, cloud IAM) ===
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: frontend-sa
+  namespace: frontend
+automountServiceAccountToken: true
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: backend-sa
+  namespace: backend
+automountServiceAccountToken: true
+---
+# Cloud IAM: GKE binding (triggers cloud-iam-binding checker)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: data-processor-sa
+  namespace: data
+  annotations:
+    iam.gke.io/gcp-service-account: data-processor@my-project.iam.gserviceaccount.com
+automountServiceAccountToken: true
+---
+# Cloud IAM: EKS binding (triggers cloud checkers)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: batch-sa
+  namespace: batch
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/batch-processor
+automountServiceAccountToken: true
+---
+# === RBAC: Roles (4, wildcard verbs, wildcard resources, exec, log, secret access) ===
+# Role 1: wildcard verbs + secret access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: overprivileged-role
+  namespace: backend
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps"]
+    verbs: ["*"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+---
+# Role 2: wildcard resources
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: admin-role
+  namespace: data
+rules:
+  - apiGroups: [""]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+# Role 3: exec + log access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: debug-role
+  namespace: backend
+rules:
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+# Role 4: monitoring with secret + exec access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: monitoring-role
+  namespace: monitoring
+rules:
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+---
+# === RBAC: ClusterRoles (2, wildcard everything, escalation verbs) ===
+# ClusterRole 1: full wildcard
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: super-admin
+rules:
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["*"]
+---
+# ClusterRole 2: secret access + escalation verbs
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: secret-reader
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "clusterroles"]
+    verbs: ["bind", "escalate"]
+---
+# === RBAC: RoleBindings (3) ===
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: backend-admin-binding
+  namespace: backend
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: overprivileged-role
+subjects:
+  - kind: ServiceAccount
+    name: backend-sa
+    namespace: backend
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: debug-binding
+  namespace: backend
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: debug-role
+subjects:
+  - kind: User
+    name: developer@example.com
+    apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: monitoring-binding
+  namespace: monitoring
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: monitoring-role
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: monitoring
+---
+# === RBAC: ClusterRoleBindings (3, cluster-admin, group binding, external subject) ===
+# CRB 1: cluster-admin
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: admin-full-access
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: User
+    name: admin@example.com
+    apiGroup: rbac.authorization.k8s.io
+---
+# CRB 2: group binding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: super-admin-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: super-admin
+subjects:
+  - kind: Group
+    name: platform-team
+    apiGroup: rbac.authorization.k8s.io
+---
+# CRB 3: external subject
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: external-reader-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: secret-reader
+subjects:
+  - kind: User
+    name: external-auditor@partner.com
+    apiGroup: rbac.authorization.k8s.io
+---
+# === SECRETS: Secrets (4, opaque, hardcoded tokens) ===
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-creds
+  namespace: data
+type: Opaque
+data:
+  username: YWRtaW4=
+  password: cDRzc3cwcmQxMjM=
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: api-tokens
+  namespace: backend
+type: Opaque
+data:
+  token: ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LnBheWxvYWQuc2ln
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tls-cert
+  namespace: frontend
+type: kubernetes.io/tls
+data:
+  tls.crt: LS0tLS1CRUdJTi...
+  tls.key: LS0tLS1CRUdJTi...
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-secret
+  namespace: monitoring
+type: Opaque
+data:
+  admin-password: YWRtaW4xMjM=
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: batch-creds
+  namespace: batch
+type: Opaque
+data:
+  aws-access-key: QUtJQUlPU0ZPRE5ON0VYQU1QTEU=
+  aws-secret-key: d0phbHJYVXRuRkVNSS9LN01ERU5HL2JQeFJmaUNZRVhBTVBMRUtFWQ==
+---
+# === SECRETS: ConfigMaps (3, one with sensitive-looking data) ===
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: backend
+data:
+  database_url: "postgres://admin:password123@postgres-svc:5432/mydb"
+  api_endpoint: "https://api.example.com/v1"
+  log_level: "debug"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: frontend
+data:
+  nginx.conf: |
+    server {
+      listen 80;
+      server_name _;
+      location / {
+        proxy_pass http://api-server:8080;
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+    scrape_configs:
+      - job_name: 'kubernetes-nodes'
+        kubernetes_sd_configs:
+          - role: node
+---
+# === STORAGE: PersistentVolumeClaims (3) ===
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-volume
+  namespace: data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backup-volume
+  namespace: batch
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 500Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-data
+  namespace: monitoring
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+---
+# === STORAGE: StorageClass (no encryption) ===
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: standard-unencrypted
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp2
+reclaimPolicy: Delete
+---
+# === SCHEDULING: PriorityClass with system-level value ===
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: custom-system-priority
+value: 1000000000
+globalDefault: false
+description: "Custom priority class using system-level value"
+---
+# === CLUSTER: LimitRange (only frontend, other namespaces lack it) ===
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: frontend-limits
+  namespace: frontend
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+---
+# === CLUSTER: ResourceQuota (only frontend) ===
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: frontend-quota
+  namespace: frontend
+spec:
+  hard:
+    pods: "50"
+    requests.cpu: "10"
+    requests.memory: 20Gi
+    limits.cpu: "20"
+    limits.memory: 40Gi
+---
+# === CRD: CustomResourceDefinition without validation ===
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: widgets.example.com
+spec:
+  group: example.com
+  names:
+    kind: Widget
+    listKind: WidgetList
+    plural: widgets
+    singular: widget
+  scope: Namespaced
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+---
+# === SCHEDULING: PodDisruptionBudget ===
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: frontend-pdb
+  namespace: frontend
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: web-gateway
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: kafka-pdb
+  namespace: data
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: kafka

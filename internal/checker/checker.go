@@ -1,3 +1,8 @@
+// Package checker defines the security check framework used by all KubeVigil checkers.
+//
+// It declares the [Checker] interface, the [Finding] result type, [Severity] levels,
+// [ScanMode] constants, and the [ResourceCache] that supplies Kubernetes objects to checks.
+// Individual checker implementations live in category sub-packages (e.g., workload, rbac, network).
 package checker
 
 import (

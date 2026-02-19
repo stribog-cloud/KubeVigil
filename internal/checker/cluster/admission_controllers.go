@@ -20,20 +20,30 @@ var criticalAdmissionControllers = []string{
 // AdmissionControllersChecker detects critical admission controllers that are disabled.
 type AdmissionControllersChecker struct{}
 
+// Name returns the kebab-case identifier for this check.
 func (c *AdmissionControllersChecker) Name() string { return "admission-controllers" }
+
+// Description returns a human-readable summary of what this check detects.
 func (c *AdmissionControllersChecker) Description() string {
 	return "Detects critical admission controllers that are disabled."
 }
+
+// Categories returns the security categories this check belongs to.
 func (c *AdmissionControllersChecker) Categories() []checker.Category {
 	return []checker.Category{checker.CategoryClusterConfig}
 }
+
+// SupportedModes returns the scan modes (manifest, live, or both) that support this check.
 func (c *AdmissionControllersChecker) SupportedModes() []checker.ScanMode {
 	return []checker.ScanMode{checker.ScanModeLive}
 }
+
+// RequiredResources returns the Kubernetes GVRs this check needs to operate.
 func (c *AdmissionControllersChecker) RequiredResources() []schema.GroupVersionResource {
 	return []schema.GroupVersionResource{ConfigMapGVR}
 }
 
+// Run executes the check against cached resources and returns any findings.
 func (c *AdmissionControllersChecker) Run(ctx context.Context, resources *checker.ResourceCache) ([]checker.Finding, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("admission-controllers check: %w", err)

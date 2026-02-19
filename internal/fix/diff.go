@@ -120,32 +120,44 @@ type hunk struct {
 	lines      []string // diff lines (prefixed with ' ', '-', or '+')
 }
 
+// lcsTable is a flat-allocated LCS table that stores an (m+1)x(n+1) matrix
+// in a single []int slice. This eliminates m+1 separate row allocations
+// compared to the [][]int approach, significantly reducing GC pressure.
+type lcsTable struct {
+	data []int
+	cols int // number of columns (n+1)
+}
+
+// get returns the LCS value at position (i, j).
+func (t lcsTable) get(i, j int) int {
+	return t.data[i*t.cols+j]
+}
+
 // computeLCS builds a longest common subsequence table for two string slices.
-// Returns a 2D table where lcs[i][j] is the LCS length of a[:i] and b[:j].
-func computeLCS(a, b []string) [][]int {
+// Returns a flat-allocated table where lcs.get(i,j) is the LCS length of a[:i] and b[:j].
+func computeLCS(a, b []string) lcsTable {
 	m := len(a)
 	n := len(b)
-	table := make([][]int, m+1)
-	for i := 0; i <= m; i++ {
-		table[i] = make([]int, n+1)
-	}
+	cols := n + 1
+	data := make([]int, (m+1)*cols)
 	for i := 1; i <= m; i++ {
 		for j := 1; j <= n; j++ {
+			idx := i*cols + j
 			switch {
 			case a[i-1] == b[j-1]:
-				table[i][j] = table[i-1][j-1] + 1
-			case table[i-1][j] >= table[i][j-1]:
-				table[i][j] = table[i-1][j]
+				data[idx] = data[(i-1)*cols+j-1] + 1
+			case data[(i-1)*cols+j] >= data[i*cols+j-1]:
+				data[idx] = data[(i-1)*cols+j]
 			default:
-				table[i][j] = table[i][j-1]
+				data[idx] = data[i*cols+j-1]
 			}
 		}
 	}
-	return table
+	return lcsTable{data: data, cols: cols}
 }
 
 // buildEdits traces back through the LCS table to produce a sequence of edit operations.
-func buildEdits(origLines, patchLines []string, lcs [][]int) []editOp {
+func buildEdits(origLines, patchLines []string, lcs lcsTable) []editOp {
 	var edits []editOp
 	i := len(origLines)
 	j := len(patchLines)
@@ -157,7 +169,7 @@ func buildEdits(origLines, patchLines []string, lcs [][]int) []editOp {
 			edits = append(edits, editOp{kind: ' ', origIdx: i - 1, patchIdx: j - 1, text: origLines[i-1]})
 			i--
 			j--
-		case j > 0 && (i == 0 || lcs[i][j-1] >= lcs[i-1][j]):
+		case j > 0 && (i == 0 || lcs.get(i, j-1) >= lcs.get(i-1, j)):
 			edits = append(edits, editOp{kind: '+', patchIdx: j - 1, text: patchLines[j-1]})
 			j--
 		default:

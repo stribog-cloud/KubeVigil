@@ -1,0 +1,48 @@
+# DB migration: run as root, default SA
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migrate
+  namespace: data-ns
+spec:
+  template:
+    metadata:
+      labels:
+        app: db-migrate
+    spec:
+      serviceAccountName: default
+      containers:
+        - name: migrate
+          image: myregistry.io/migrate:latest
+          command: ["./migrate", "--up"]
+          securityContext:
+            runAsUser: 0
+      restartPolicy: Never
+  backoffLimit: 3
+---
+# Backup job: privileged, hostPath
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: full-backup
+  namespace: data-ns
+spec:
+  template:
+    metadata:
+      labels:
+        app: full-backup
+    spec:
+      containers:
+        - name: backup
+          image: backup-tool:latest
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: host-data
+              mountPath: /source
+      volumes:
+        - name: host-data
+          hostPath:
+            path: /var/data
+      restartPolicy: Never
+  backoffLimit: 1

@@ -240,7 +240,7 @@ func runFix(cmd *cobra.Command, args []string) error {
 		BackupDir:  summary.BackupDir,
 		SourcePath: args[0],
 	}
-	reportContent, reportErr := fix.GenerateFixReport(plan, reportOpts)
+	reportContent, reportErr := fix.GenerateFixReport(plan, &reportOpts)
 	if reportErr != nil {
 		fmt.Fprintf(os.Stderr, "Warning: could not generate fix report: %v\n", reportErr)
 	} else {
@@ -249,7 +249,7 @@ func runFix(cmd *cobra.Command, args []string) error {
 			reportPath = filepath.Join(summary.BackupDir, "FIX-REPORT.md")
 		}
 		if reportPath != "" {
-			if writeErr := fix.WriteFixReport(plan, reportOpts, reportPath); writeErr != nil {
+			if writeErr := fix.WriteFixReport(plan, &reportOpts, reportPath); writeErr != nil {
 				fmt.Fprintf(os.Stderr, "Warning: could not write fix report: %v\n", writeErr)
 			} else {
 				fmt.Fprintf(os.Stdout, "Fix report: %s\n", reportPath)
@@ -266,7 +266,7 @@ func runFix(cmd *cobra.Command, args []string) error {
 	if flagFixGitPR {
 		prCfg := fix.DefaultGitPRConfig(plan, reportContent)
 		prCfg.WorkDir = filepath.Dir(args[0])
-		prURL, prErr := fix.CreateGitOpsPR(prCfg)
+		prURL, prErr := fix.CreateGitOpsPR(&prCfg)
 		if prErr != nil {
 			fmt.Fprintf(os.Stderr, "Error creating PR: %v\n", prErr)
 		} else {

@@ -1,0 +1,27 @@
+# Overly permissive: allow all ingress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-all-ingress
+  namespace: app-ns
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - {}
+---
+# Unrestricted egress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: unrestricted-egress
+  namespace: app-ns
+spec:
+  podSelector:
+    matchLabels:
+      app: api-server
+  policyTypes:
+    - Egress
+  egress:
+    - {}

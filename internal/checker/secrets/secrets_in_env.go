@@ -56,7 +56,7 @@ func (c *InEnvChecker) Run(ctx context.Context, cache *checker.ResourceCache) ([
 					continue
 				}
 
-				secretName := envVar.ValueFrom.SecretKeyRef.LocalObjectReference.Name
+				secretName := envVar.ValueFrom.SecretKeyRef.Name
 				secretKey := envVar.ValueFrom.SecretKeyRef.Key
 				fieldPath := containerFieldPath(ct, idx, fmt.Sprintf("env[%d].valueFrom.secretKeyRef", envIdx))
 

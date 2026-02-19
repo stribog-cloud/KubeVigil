@@ -1,3 +1,9 @@
+// Package rbac implements RBAC security checks for Kubernetes roles, bindings, and service accounts.
+//
+// It covers 15 checks spanning role permissions, cluster-admin usage, wildcard access,
+// service account hygiene, and token projection.
+// All checkers implement the [checker.Checker] interface and are registered
+// via [Register].
 package rbac
 
 import "github.com/stribog-cloud/kubevigil/internal/checker"

@@ -14,20 +14,30 @@ import (
 // by checking for ConfigMaps or Pods in kube-system with API server args.
 type APIServerAnonymousChecker struct{}
 
+// Name returns the kebab-case identifier for this check.
 func (c *APIServerAnonymousChecker) Name() string { return "api-server-anonymous" }
+
+// Description returns a human-readable summary of what this check detects.
 func (c *APIServerAnonymousChecker) Description() string {
 	return "Detects API server with anonymous authentication enabled."
 }
+
+// Categories returns the security categories this check belongs to.
 func (c *APIServerAnonymousChecker) Categories() []checker.Category {
 	return []checker.Category{checker.CategoryClusterConfig}
 }
+
+// SupportedModes returns the scan modes (manifest, live, or both) that support this check.
 func (c *APIServerAnonymousChecker) SupportedModes() []checker.ScanMode {
 	return []checker.ScanMode{checker.ScanModeLive}
 }
+
+// RequiredResources returns the Kubernetes GVRs this check needs to operate.
 func (c *APIServerAnonymousChecker) RequiredResources() []schema.GroupVersionResource {
 	return []schema.GroupVersionResource{ConfigMapGVR}
 }
 
+// Run executes the check against cached resources and returns any findings.
 func (c *APIServerAnonymousChecker) Run(ctx context.Context, resources *checker.ResourceCache) ([]checker.Finding, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("api-server-anonymous check: %w", err)

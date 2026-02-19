@@ -13,20 +13,30 @@ import (
 // NamespaceDefaultUsageChecker detects workloads deployed in the default namespace.
 type NamespaceDefaultUsageChecker struct{}
 
+// Name returns the kebab-case identifier for this check.
 func (c *NamespaceDefaultUsageChecker) Name() string { return "namespace-default-usage" }
+
+// Description returns a human-readable summary of what this check detects.
 func (c *NamespaceDefaultUsageChecker) Description() string {
 	return "Detects workloads deployed in the default namespace, which lacks isolation policies."
 }
+
+// Categories returns the security categories this check belongs to.
 func (c *NamespaceDefaultUsageChecker) Categories() []checker.Category {
 	return []checker.Category{checker.CategoryClusterConfig}
 }
+
+// SupportedModes returns the scan modes (manifest, live, or both) that support this check.
 func (c *NamespaceDefaultUsageChecker) SupportedModes() []checker.ScanMode {
 	return []checker.ScanMode{checker.ScanModeLive, checker.ScanModeManifest}
 }
+
+// RequiredResources returns the Kubernetes GVRs this check needs to operate.
 func (c *NamespaceDefaultUsageChecker) RequiredResources() []schema.GroupVersionResource {
 	return workload.GVRs()
 }
 
+// Run executes the check against cached resources and returns any findings.
 func (c *NamespaceDefaultUsageChecker) Run(ctx context.Context, resources *checker.ResourceCache) ([]checker.Finding, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("namespace-default-usage check: %w", err)

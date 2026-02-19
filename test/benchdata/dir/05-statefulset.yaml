@@ -1,0 +1,33 @@
+# Redis cluster: default SA, privilege escalation allowed
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-cluster
+  namespace: data-ns
+spec:
+  serviceName: redis
+  replicas: 6
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      serviceAccountName: default
+      containers:
+        - name: redis
+          image: redis
+          ports:
+            - containerPort: 6379
+          securityContext:
+            allowPrivilegeEscalation: true
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 20Gi
