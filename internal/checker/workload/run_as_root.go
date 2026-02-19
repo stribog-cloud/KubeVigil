@@ -100,7 +100,15 @@ func checkRunAsRoot(info *PodSpecInfo, container *corev1.Container, ct Container
 				"## Learn More\n\n" +
 				"This aligns with CIS Benchmark 5.2.6 and the Pod Security Standards \"Restricted\" profile. " +
 				"Running as non-root is considered a foundational security practice for all container workloads.",
-			FieldPath: containerFieldPath(ct, idx, "securityContext.runAsUser"),
+			FieldPath:    containerFieldPath(ct, idx, "securityContext.runAsUser"),
+			CurrentValue: int64(0),
+			DesiredValue: true,
+			FixHint: &checker.FixHint{
+				Safety:      checker.FixLikelySafe,
+				Description: "Sets runAsNonRoot to true.",
+				Impact:      "Containers that require root will fail to start.",
+				Operation:   checker.FixOpSet,
+			},
 		}, true
 	}
 
@@ -139,7 +147,15 @@ func checkRunAsRoot(info *PodSpecInfo, container *corev1.Container, ct Container
 			"## Learn More\n\n" +
 			"This aligns with CIS Benchmark 5.2.6 and the Pod Security Standards \"Restricted\" profile. " +
 			"The `runAsNonRoot` field acts as a safety net even when images change their default USER.",
-		FieldPath: containerFieldPath(ct, idx, "securityContext.runAsNonRoot"),
+		FieldPath:    containerFieldPath(ct, idx, "securityContext.runAsNonRoot"),
+		CurrentValue: nil,
+		DesiredValue: true,
+		FixHint: &checker.FixHint{
+			Safety:      checker.FixLikelySafe,
+			Description: "Sets runAsNonRoot to true.",
+			Impact:      "Containers that require root will fail to start.",
+			Operation:   checker.FixOpSet,
+		},
 	}, true
 }
 

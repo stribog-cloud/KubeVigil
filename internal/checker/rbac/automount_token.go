@@ -70,7 +70,15 @@ func (c *AutomountTokenChecker) Run(ctx context.Context, resources *checker.Reso
 					"## Learn More\n\n" +
 					"Refer to the Kubernetes documentation on configuring service accounts for pods and " +
 					"CIS Kubernetes Benchmark 5.1.6 for auto-mount token guidance.",
-				FieldPath: ".spec.automountServiceAccountToken",
+				FieldPath:    ".spec.automountServiceAccountToken",
+				CurrentValue: info.Spec.AutomountServiceAccountToken,
+				DesiredValue: false,
+				FixHint: &checker.FixHint{
+					Safety:      checker.FixSafe,
+					Description: "Disables automatic service account token mounting.",
+					Impact:      "Pods that need API access will fail without token.",
+					Operation:   checker.FixOpSet,
+				},
 			})
 		}
 	}

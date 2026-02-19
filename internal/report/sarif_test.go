@@ -103,6 +103,28 @@ func TestSARIFReporter_UniqueRules(t *testing.T) {
 	assert.Len(t, parsed.Runs[0].Results, 3)
 }
 
+func TestSarifLevel_AllSeverities(t *testing.T) {
+	testCases := []struct {
+		name     string
+		severity checker.Severity
+		want     string
+	}{
+		{name: "critical maps to error", severity: checker.SeverityCritical, want: "error"},
+		{name: "high maps to error", severity: checker.SeverityHigh, want: "error"},
+		{name: "medium maps to warning", severity: checker.SeverityMedium, want: "warning"},
+		{name: "low maps to note", severity: checker.SeverityLow, want: "note"},
+		{name: "info maps to note", severity: checker.SeverityInfo, want: "note"},
+		{name: "unknown severity maps to none", severity: checker.Severity(99), want: "none"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := sarifLevel(tc.severity)
+			assert.Equal(t, tc.want, got, "sarifLevel(%v)", tc.severity)
+		})
+	}
+}
+
 func TestSARIFReporter_CancelledContext(t *testing.T) {
 	r := &SARIFReporter{}
 	var buf bytes.Buffer

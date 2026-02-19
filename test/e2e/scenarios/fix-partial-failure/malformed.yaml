@@ -1,0 +1,16 @@
+# KubeVigil E2E — Fix Partial Failure: Malformed YAML
+#
+# This file contains invalid YAML that cannot be parsed.
+# The fixer should skip this file, report an error, and continue
+# processing other files in the directory.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: malformed-deploy
+  namespace: default
+  labels:
+    - this: is: invalid: yaml: nesting
+    app: [broken
+spec:
+  replicas: !!invalid
+  template: {{not_yaml}}

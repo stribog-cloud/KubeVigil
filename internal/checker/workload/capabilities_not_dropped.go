@@ -56,6 +56,13 @@ func (c *CapabilitiesNotDroppedChecker) Run(ctx context.Context, resources *chec
 
 			fieldPath := containerFieldPath(ct, idx, "securityContext.capabilities.drop")
 
+			var currentDropList []string
+			if container.SecurityContext != nil && container.SecurityContext.Capabilities != nil {
+				for _, cap := range container.SecurityContext.Capabilities.Drop {
+					currentDropList = append(currentDropList, string(cap))
+				}
+			}
+
 			findings = append(findings, checker.Finding{
 				Checker:   "capabilities-not-dropped",
 				Severity:  checker.SeverityMedium,
@@ -76,7 +83,15 @@ func (c *CapabilitiesNotDroppedChecker) Run(ctx context.Context, resources *chec
 					"## Learn More\n\n" +
 					"This is required by the Pod Security Standards \"Restricted\" profile and aligns with CIS Benchmark 5.2.7. " +
 					"Kubernetes best practice is to treat capability grants as exceptions that require explicit justification.",
-				FieldPath: fieldPath,
+				FieldPath:    fieldPath,
+				CurrentValue: currentDropList,
+				DesiredValue: []string{"ALL"},
+				FixHint: &checker.FixHint{
+					Safety:      checker.FixLikelySafe,
+					Description: "Drops all capabilities.",
+					Impact:      "Containers needing specific capabilities must explicitly add them back.",
+					Operation:   checker.FixOpSet,
+				},
 			})
 		})
 	}

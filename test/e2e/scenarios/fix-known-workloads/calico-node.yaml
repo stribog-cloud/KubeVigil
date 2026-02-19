@@ -1,0 +1,28 @@
+# KubeVigil E2E — Fix Known Workloads: Calico Node
+#
+# Calico node DaemonSets legitimately need privileged mode and host
+# networking. The fix engine should detect this as a known system workload
+# and skip remediation.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: calico-node
+  namespace: calico-system
+  labels:
+    k8s-app: calico-node
+    kubevigil.stribog.cloud/scenario: fix-known-workloads
+spec:
+  selector:
+    matchLabels:
+      k8s-app: calico-node
+  template:
+    metadata:
+      labels:
+        k8s-app: calico-node
+    spec:
+      hostNetwork: true
+      containers:
+        - name: calico-node
+          image: calico/node:v3.27.0
+          securityContext:
+            privileged: true

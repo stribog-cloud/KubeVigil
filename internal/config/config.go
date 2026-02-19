@@ -34,6 +34,22 @@ type Config struct {
 	Exemptions []Exemption `yaml:"exemptions"`
 	// Policies holds policy configuration for policy-based checks (e.g., image registry allowlists).
 	Policies checker.Policies `yaml:"policies"`
+	// Fix contains fix-specific configuration.
+	Fix FixConfig `yaml:"fix"`
+}
+
+// FixConfig holds configuration for the fix command.
+type FixConfig struct {
+	// AdditionalSystemNamespaces extends the built-in list of system namespaces
+	// protected from auto-fixing. This is additive — it never replaces the defaults.
+	AdditionalSystemNamespaces []string `yaml:"additionalSystemNamespaces"`
+	// BulkThreshold overrides the default confirmation threshold for bulk operations.
+	// When the number of files to modify exceeds this value, interactive confirmation
+	// is required (unless --yes is set). Default: 10.
+	BulkThreshold int `yaml:"bulkThreshold"`
+	// BackupDir sets the default backup directory for fix operations.
+	// CLI flags override this value.
+	BackupDir string `yaml:"backupDir"`
 }
 
 // Settings contains global scan settings.

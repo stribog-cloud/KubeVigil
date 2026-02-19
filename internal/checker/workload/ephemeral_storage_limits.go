@@ -76,7 +76,15 @@ func (c *EphemeralStorageLimitsChecker) Run(ctx context.Context, resources *chec
 					"## Learn More\n\n" +
 					"The kubelet evicts pods that exceed their ephemeral-storage limit. Use LimitRange to set default " +
 					"ephemeral-storage limits at the namespace level to catch containers that omit this setting.",
-				FieldPath: fieldPath,
+				FieldPath:    fieldPath,
+				CurrentValue: nil,
+				DesiredValue: "1Gi",
+				FixHint: &checker.FixHint{
+					Safety:      checker.FixPotentiallyBreaking,
+					Description: "Adds default ephemeral-storage limit.",
+					Impact:      "Containers exceeding limit will be evicted.",
+					Operation:   checker.FixOpSet,
+				},
 			})
 		})
 	}

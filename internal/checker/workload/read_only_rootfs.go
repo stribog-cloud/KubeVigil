@@ -76,7 +76,15 @@ func (c *ReadOnlyRootfsChecker) Run(ctx context.Context, resources *checker.Reso
 						"## Learn More\n\n" +
 						"This aligns with CIS Benchmark 5.2.4 and the defense-in-depth principle. Combined with dropping capabilities " +
 						"and running as non-root, a read-only filesystem forms a strong container hardening baseline.",
-					FieldPath: fieldPath,
+					FieldPath:    fieldPath,
+					CurrentValue: nil,
+					DesiredValue: true,
+					FixHint: &checker.FixHint{
+						Safety:      checker.FixLikelySafe,
+						Description: "Sets readOnlyRootFilesystem to true.",
+						Impact:      "Apps writing to container filesystem need emptyDir volumes.",
+						Operation:   checker.FixOpSet,
+					},
 				})
 			}
 		})

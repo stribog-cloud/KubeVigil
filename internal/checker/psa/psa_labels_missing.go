@@ -74,7 +74,17 @@ func (c *LabelsMissingChecker) Run(ctx context.Context, resources *checker.Resou
 						"## Learn More\n\n"+
 						"See the Kubernetes Pod Security Admission documentation and CIS Kubernetes Benchmark 5.2. "+
 						"The three-tier approach (enforce, audit, warn) allows gradual adoption of stricter profiles.", name),
-				FieldPath: ".metadata.labels",
+				FieldPath:    ".metadata.labels",
+				CurrentValue: nil,
+				DesiredValue: map[string]string{
+					"pod-security.kubernetes.io/enforce": "baseline",
+				},
+				FixHint: &checker.FixHint{
+					Safety:      checker.FixLikelySafe,
+					Description: "Adds Pod Security Admission labels.",
+					Impact:      "New pods violating baseline will be rejected.",
+					Operation:   checker.FixOpMerge,
+				},
 			})
 		}
 	}

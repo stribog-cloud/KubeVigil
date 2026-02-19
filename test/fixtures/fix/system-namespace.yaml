@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: system-component
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: system-component
+  template:
+    metadata:
+      labels:
+        app: system-component
+    spec:
+      containers:
+      - name: main
+        image: registry.k8s.io/system-app:v1.0
+        securityContext:
+          privileged: true

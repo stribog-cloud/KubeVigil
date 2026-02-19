@@ -1,0 +1,26 @@
+# KubeVigil E2E — Fix Partial Failure: Valid Insecure Deployment
+#
+# A valid YAML file with fixable security issues.
+# Used alongside malformed.yaml to test partial failure resilience.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: valid-insecure
+  namespace: default
+  labels:
+    app: valid-insecure
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: valid-insecure
+  template:
+    metadata:
+      labels:
+        app: valid-insecure
+    spec:
+      containers:
+        - name: app
+          image: registry.k8s.io/pause:3.9
+          securityContext:
+            privileged: true

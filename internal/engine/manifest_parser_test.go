@@ -179,6 +179,127 @@ func TestParsePath(t *testing.T) {
 	})
 }
 
+func TestParseYAMLBytes_EdgeCases(t *testing.T) {
+	testCases := []struct {
+		name       string
+		yamlData   []byte
+		wantLen    int
+		wantErrors bool
+	}{
+		{
+			name:       "empty YAML between separators",
+			yamlData:   []byte("---\n---\n"),
+			wantLen:    0,
+			wantErrors: false,
+		},
+		{
+			name:       "invalid YAML content",
+			yamlData:   []byte("this is not valid: yaml: ["),
+			wantLen:    0,
+			wantErrors: true,
+		},
+		{
+			name: "multi-doc mix of valid and invalid",
+			yamlData: []byte(`apiVersion: v1
+kind: Pod
+metadata:
+  name: good-pod
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: nginx:1.25
+---
+this is not valid: yaml: [`),
+			wantLen:    1,
+			wantErrors: true,
+		},
+		{
+			name: "document missing apiVersion",
+			yamlData: []byte(`kind: Pod
+metadata:
+  name: no-api-version
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: nginx:1.25`),
+			wantLen:    0,
+			wantErrors: false, // No error, just silently skipped
+		},
+		{
+			name: "document missing kind",
+			yamlData: []byte(`apiVersion: v1
+metadata:
+  name: no-kind
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: nginx:1.25`),
+			wantLen:    0,
+			wantErrors: false, // No error, just silently skipped
+		},
+		{
+			name: "document missing both apiVersion and kind",
+			yamlData: []byte(`metadata:
+  name: nothing
+  namespace: default`),
+			wantLen:    0,
+			wantErrors: false,
+		},
+		{
+			name:       "only whitespace between separators",
+			yamlData:   []byte("---\n   \n---\n"),
+			wantLen:    0,
+			wantErrors: false,
+		},
+		{
+			name: "valid doc followed by empty doc",
+			yamlData: []byte(`apiVersion: v1
+kind: Pod
+metadata:
+  name: valid-pod
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: nginx:1.25
+---
+`),
+			wantLen:    1,
+			wantErrors: false,
+		},
+		{
+			name: "valid doc with custom GVR is accepted",
+			yamlData: []byte(`apiVersion: custom.io/v1
+kind: MyCustomResource
+metadata:
+  name: custom-thing
+  namespace: default
+spec:
+  foo: bar`),
+			wantLen:    1,
+			wantErrors: false, // GVR is derived from apiVersion/kind
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cache, errs := ParseBytes(tc.yamlData)
+			require.NotNil(t, cache)
+
+			if tc.wantErrors {
+				assert.NotEmpty(t, errs, "expected errors for %s", tc.name)
+			} else {
+				assert.Empty(t, errs, "expected no errors for %s, got: %v", tc.name, errs)
+			}
+
+			assert.Equal(t, tc.wantLen, cache.Len(), "unexpected cache length for %s", tc.name)
+		})
+	}
+}
+
 func TestParseDir_Recursive(t *testing.T) {
 	// Create a temp dir with subdirectories
 	tmpDir := t.TempDir()

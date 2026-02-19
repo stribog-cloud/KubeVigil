@@ -77,7 +77,15 @@ func (c *SeccompProfileChecker) Run(ctx context.Context, resources *checker.Reso
 					"## Learn More\n\n" +
 					"Seccomp profiles are required by the Pod Security Standards \"Restricted\" profile and CIS Benchmark 5.7.2. " +
 					"Use tools like `strace` or the Security Profiles Operator to generate custom profiles for your workloads.",
-				FieldPath: fieldPath,
+				FieldPath:    fieldPath,
+				CurrentValue: nil,
+				DesiredValue: map[string]string{"type": "RuntimeDefault"},
+				FixHint: &checker.FixHint{
+					Safety:      checker.FixLikelySafe,
+					Description: "Adds RuntimeDefault seccomp profile.",
+					Impact:      "Containers using uncommon syscalls may crash.",
+					Operation:   checker.FixOpAdd,
+				},
 			})
 		})
 	}
