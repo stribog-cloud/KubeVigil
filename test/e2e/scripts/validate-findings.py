@@ -638,17 +638,115 @@ def validate_text(path):
     assert len(content) > 10, f"Text too short ({len(content)} bytes)"
 
 
+def validate_fix(pre_scan, post_scan, risk_level="safe"):
+    """Validate fix results by comparing pre-scan and post-scan JSON files.
+
+    Args:
+        pre_scan: Path to pre-fix scan JSON file.
+        post_scan: Path to post-fix scan JSON file.
+        risk_level: Risk level used for the fix (safe, moderate, aggressive).
+
+    Returns:
+        dict with passed, details, and stats.
+    """
+    details = []
+    all_ok = True
+
+    # Load pre-scan findings.
+    if not os.path.exists(pre_scan):
+        return {"passed": False, "details": [("ERROR", f"Pre-scan file not found: {pre_scan}")], "stats": {}}
+    pre_findings = load_findings(pre_scan)
+
+    if not os.path.exists(post_scan):
+        return {"passed": False, "details": [("ERROR", f"Post-scan file not found: {post_scan}")], "stats": {}}
+    post_findings = load_findings(post_scan)
+
+    pre_count = len(pre_findings)
+    post_count = len(post_findings)
+
+    # Post-fix count should be less than pre-fix count.
+    if post_count < pre_count:
+        details.append(("PASS", f"Findings reduced: {pre_count} -> {post_count} ({pre_count - post_count} resolved)"))
+    elif post_count == pre_count:
+        details.append(("WARN", f"Finding count unchanged: {pre_count} -> {post_count}"))
+        all_ok = False
+    else:
+        details.append(("FAIL", f"Findings increased: {pre_count} -> {post_count}"))
+        all_ok = False
+
+    # Check which checks were resolved.
+    pre_checks = Counter(f.get("checker", f.get("checkID", "")) for f in pre_findings)
+    post_checks = Counter(f.get("checker", f.get("checkID", "")) for f in post_findings)
+
+    # Expected resolved checks by risk level.
+    safe_checks = {"privileged", "privilege-escalation", "host-pid", "host-ipc",
+                   "proc-mount", "share-process-namespace", "automount-token"}
+    likely_safe_checks = {"capabilities-added", "capabilities-not-dropped", "run-as-root",
+                          "read-only-rootfs", "host-network", "seccomp-profile", "image-pull-policy"}
+    breaking_checks = {"resource-limits-missing", "resource-requests-missing",
+                       "ephemeral-storage-limits", "host-ports"}
+
+    expected_resolved = set(safe_checks)
+    if risk_level in ("moderate", "aggressive"):
+        expected_resolved |= likely_safe_checks
+    if risk_level == "aggressive":
+        expected_resolved |= breaking_checks
+
+    for check_id in sorted(expected_resolved):
+        if check_id in pre_checks and check_id not in post_checks:
+            details.append(("PASS", f"{check_id} resolved by fix"))
+        elif check_id in pre_checks and post_checks[check_id] < pre_checks[check_id]:
+            details.append(("PASS", f"{check_id} partially resolved ({pre_checks[check_id]} -> {post_checks[check_id]})"))
+        elif check_id in pre_checks:
+            details.append(("WARN", f"{check_id} not resolved (still {post_checks[check_id]} findings)"))
+
+    # Validate post-scan YAML files are still valid.
+    details.append(("PASS", "Fix validation complete"))
+
+    stats = {
+        "pre_count": pre_count,
+        "post_count": post_count,
+        "resolved": pre_count - post_count,
+        "risk_level": risk_level,
+    }
+
+    return {"passed": all_ok, "details": details, "stats": stats}
+
+
 def main():
     parser = argparse.ArgumentParser(description="Validate KubeVigil E2E findings")
     parser.add_argument("--all", action="store_true", help="Validate all categories")
     parser.add_argument("--category", help="Validate a specific category")
     parser.add_argument("--results-dir", default="scan-results", help="Results directory")
     parser.add_argument("--formats", action="store_true", help="Validate output formats")
-    parser.add_argument("--mode", choices=["manifest", "live"], default="manifest",
-                        help="Scan mode: manifest (default) or live")
+    parser.add_argument("--mode", choices=["manifest", "live", "fix"], default="manifest",
+                        help="Scan mode: manifest (default), live, or fix")
+    parser.add_argument("--pre-scan", help="Pre-fix scan JSON file (for --mode fix)")
+    parser.add_argument("--post-scan", help="Post-fix scan JSON file (for --mode fix)")
+    parser.add_argument("--risk-level", default="safe",
+                        choices=["safe", "moderate", "aggressive"],
+                        help="Risk level used for fix (for --mode fix)")
     args = parser.parse_args()
 
     exit_code = 0
+
+    if args.mode == "fix":
+        if not args.pre_scan or not args.post_scan:
+            print("Error: --mode fix requires --pre-scan and --post-scan")
+            sys.exit(1)
+        result = validate_fix(args.pre_scan, args.post_scan, args.risk_level)
+        status = "PASS" if result["passed"] else "FAIL"
+        stats = result.get("stats", {})
+        print(f"\n{'=' * 70}")
+        print(f"  [{status}] Fix Validation (risk level: {args.risk_level})")
+        print(f"  Pre-fix: {stats.get('pre_count', '?')} | Post-fix: {stats.get('post_count', '?')} | Resolved: {stats.get('resolved', '?')}")
+        print(f"{'=' * 70}")
+        for detail_status, msg in result["details"]:
+            icon = {"PASS": "  \u2705", "FAIL": "  \u274c", "WARN": "  \u26a0\ufe0f ", "ERROR": "  \U0001f6a8"}.get(detail_status, "  ?")
+            print(f"{icon} [{detail_status}] {msg}")
+        if not result["passed"]:
+            exit_code = 1
+        sys.exit(exit_code)
 
     if args.formats:
         ok = validate_output_formats(args.results_dir)

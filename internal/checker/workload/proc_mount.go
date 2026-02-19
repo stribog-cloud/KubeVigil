@@ -84,7 +84,15 @@ func (c *ProcMountChecker) Run(ctx context.Context, resources *checker.ResourceC
 					"## Learn More\n\n" +
 					"Unmasked procMount is prohibited by the Pod Security Standards \"Baseline\" profile. The masked paths " +
 					"in /proc prevent information disclosure that could aid in kernel exploitation or container escape.",
-				FieldPath: fieldPath,
+				FieldPath:    fieldPath,
+				CurrentValue: string(*container.SecurityContext.ProcMount),
+				DesiredValue: "Default",
+				FixHint: &checker.FixHint{
+					Safety:      checker.FixSafe,
+					Description: "Sets procMount to Default.",
+					Impact:      "None — Default is the standard setting.",
+					Operation:   checker.FixOpSet,
+				},
 			})
 		})
 	}

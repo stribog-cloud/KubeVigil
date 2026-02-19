@@ -1,0 +1,27 @@
+# KubeVigil E2E — Fix Known Workloads: CoreDNS
+#
+# CoreDNS is a known system workload. The fix engine should detect it
+# by image pattern and skip remediation.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coredns
+  namespace: kube-system
+  labels:
+    k8s-app: kube-dns
+    kubevigil.stribog.cloud/scenario: fix-known-workloads
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      k8s-app: kube-dns
+  template:
+    metadata:
+      labels:
+        k8s-app: kube-dns
+    spec:
+      containers:
+        - name: coredns
+          image: registry.k8s.io/coredns/coredns:v1.11.1
+          securityContext:
+            privileged: false

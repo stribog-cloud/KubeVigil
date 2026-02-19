@@ -1,0 +1,29 @@
+# KubeVigil E2E — Fix Aggressive: Host Ports
+#
+# Triggers potentially-breaking fix strategy:
+#   - host-ports (High → Potentially Breaking fix): hostPort set on container port
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: host-port-deploy
+  namespace: kv-e2e-fix-aggressive
+  labels:
+    app: host-port-deploy
+    kubevigil.stribog.cloud/scenario: fix-aggressive
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: host-port-deploy
+  template:
+    metadata:
+      labels:
+        app: host-port-deploy
+    spec:
+      containers:
+        - name: app
+          image: registry.k8s.io/pause:3.9
+          ports:
+            - containerPort: 8080
+              hostPort: 8080
+              protocol: TCP

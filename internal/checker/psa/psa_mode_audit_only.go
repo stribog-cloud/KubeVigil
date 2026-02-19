@@ -80,7 +80,15 @@ func (c *ModeAuditOnlyChecker) Run(ctx context.Context, resources *checker.Resou
 					"## Learn More\n\n" +
 					"See the Kubernetes Pod Security Admission documentation on modes (enforce, audit, warn). " +
 					"CIS Kubernetes Benchmark 5.2 recommends active enforcement of Pod Security Standards, not just auditing.",
-				FieldPath: ".metadata.labels",
+				FieldPath:    ".metadata.labels",
+				CurrentValue: labels[psaAudit],
+				DesiredValue: "baseline",
+				FixHint: &checker.FixHint{
+					Safety:      checker.FixLikelySafe,
+					Description: "Changes PSA mode from audit to enforce.",
+					Impact:      "Pods violating PSA policy will be rejected.",
+					Operation:   checker.FixOpSet,
+				},
 			})
 		}
 	}

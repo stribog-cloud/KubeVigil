@@ -1,0 +1,37 @@
+# KubeVigil E2E — Fix Safe: Multi-Container Deployment
+#
+# Tests that fixes are applied to EACH container in a multi-container pod.
+# Triggers safe-level fixes:
+#   - privileged (Critical → Safe fix): both containers run privileged
+#   - privilege-escalation (High → Safe fix): missing in both containers
+#   - host-pid (Critical → Safe fix): hostPID: true at pod level
+#   - host-ipc (Critical → Safe fix): hostIPC: true at pod level
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: multi-container-insecure
+  namespace: kv-e2e-fix-safe
+  labels:
+    app: multi-container-insecure
+    kubevigil.stribog.cloud/scenario: fix-safe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: multi-container-insecure
+  template:
+    metadata:
+      labels:
+        app: multi-container-insecure
+    spec:
+      hostPID: true
+      hostIPC: true
+      containers:
+        - name: app
+          image: registry.k8s.io/pause:3.9
+          securityContext:
+            privileged: true
+        - name: sidecar
+          image: registry.k8s.io/pause:3.9
+          securityContext:
+            privileged: true

@@ -78,3 +78,25 @@ func TestIsInfraNamespace(t *testing.T) {
 	assert.False(t, IsInfraNamespace(cfg, "default"))
 	assert.False(t, IsInfraNamespace(cfg, "kube-system")) // system, not infra
 }
+
+func TestNamespaceType_String_AllValues(t *testing.T) {
+	testCases := []struct {
+		name string
+		nt   NamespaceType
+		want string
+	}{
+		{name: "application", nt: NamespaceApplication, want: "application"},
+		{name: "infrastructure", nt: NamespaceInfrastructure, want: "infrastructure"},
+		{name: "system", nt: NamespaceSystem, want: "system"},
+		{name: "cluster-scoped", nt: NamespaceClusterScoped, want: "cluster-scoped"},
+		{name: "unknown value", nt: NamespaceType(99), want: "unknown"},
+		{name: "negative value", nt: NamespaceType(-1), want: "unknown"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.nt.String()
+			assert.Equal(t, tc.want, got, "NamespaceType(%d).String()", tc.nt)
+		})
+	}
+}

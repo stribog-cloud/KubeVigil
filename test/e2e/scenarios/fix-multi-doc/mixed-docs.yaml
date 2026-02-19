@@ -1,0 +1,66 @@
+# KubeVigil E2E — Fix Multi-Document: Mixed Documents
+#
+# Three YAML documents separated by ---:
+#   Doc 1: Insecure Deployment (should be fixed)
+#   Doc 2: Service (no fix needed — not a workload)
+#   Doc 3: Insecure Deployment (should be fixed)
+#
+# Tests that the fixer only modifies affected documents and preserves
+# the multi-document structure and separators.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: insecure-deploy-a
+  namespace: default
+  labels:
+    app: insecure-deploy-a
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: insecure-deploy-a
+  template:
+    metadata:
+      labels:
+        app: insecure-deploy-a
+    spec:
+      containers:
+        - name: app
+          image: registry.k8s.io/pause:3.9
+          securityContext:
+            privileged: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: secure-service
+  namespace: default
+spec:
+  selector:
+    app: insecure-deploy-a
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: insecure-deploy-b
+  namespace: default
+  labels:
+    app: insecure-deploy-b
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: insecure-deploy-b
+  template:
+    metadata:
+      labels:
+        app: insecure-deploy-b
+    spec:
+      containers:
+        - name: app
+          image: registry.k8s.io/pause:3.9
+          securityContext:
+            privileged: true

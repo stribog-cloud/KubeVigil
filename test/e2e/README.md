@@ -28,7 +28,16 @@ test/e2e/
 |   |-- storage/                    # emptyDir, projected volumes, PVC encryption
 |   |-- cluster-hardening/          # Default namespace, quotas, LimitRange, deprecated APIs
 |   |-- mixed/                      # Multi-category real-world scenarios
-|   +-- clean/                      # Fully hardened deployment — zero-finding negative control
+|   |-- clean/                      # Fully hardened deployment — zero-finding negative control
+|   |-- fix-safe/                   # Safe-level fix scenarios (privileged, escalation)
+|   |-- fix-moderate/               # Likely-safe fix scenarios (runAsNonRoot, readOnlyRootfs)
+|   |-- fix-aggressive/             # Potentially-breaking fix scenarios (resource limits)
+|   |-- fix-system-ns/              # System namespace protection (kube-system resources)
+|   |-- fix-known-workloads/        # Known system workloads (Calico, CoreDNS, node-exporter)
+|   |-- fix-multi-doc/              # Multi-document YAML fix tests
+|   |-- fix-comments/               # YAML comment preservation tests
+|   |-- fix-clean/                  # Fully hardened (nothing to fix, exit code 4)
+|   +-- fix-partial-failure/        # Partial failure resilience (malformed + readonly)
 |-- expected/                       # Documentation of expected findings per scenario
 |   +-- README.md                   # Check-by-check expected findings reference
 |-- scan-results/                   # Scan output (gitignored, created at runtime)
@@ -37,6 +46,8 @@ test/e2e/
 |   |-- setup-clusters.sh           # Create Kind clusters (single, multi, HA)
 |   |-- deploy-scenarios.sh         # Deploy scenario manifests to cluster
 |   |-- run-scan.sh                 # Run KubeVigil scans in multiple formats
+|   |-- run-fix.sh                  # Run fix E2E tests (manifest mode)
+|   |-- run-fix-live.sh             # Run fix E2E tests (live Kind cluster)
 |   |-- teardown-clusters.sh        # Destroy Kind clusters
 |   |-- cross-validate.sh           # Run third-party tools for comparison
 |   |-- full-suite.sh               # End-to-end orchestrator (setup → scan → teardown)
@@ -326,7 +337,7 @@ echo "Trivy:     $(jq '.Results | map(.Misconfigurations // [] | length) | add' 
 
 ## Running Bats Tests
 
-The `test/e2e/scripts/tests/` directory contains 75 Bats tests that validate
+The `test/e2e/scripts/tests/` directory contains 93 Bats tests that validate
 the E2E shell scripts and helper library.
 
 ### Prerequisites
@@ -340,7 +351,7 @@ brew install bats-core
 ### Running Bats Tests
 
 ```bash
-# Run all Bats tests (75 tests)
+# Run all Bats tests (93 tests)
 bats test/e2e/scripts/tests/
 
 # Run with verbose output
@@ -361,6 +372,7 @@ bats test/e2e/scripts/tests/helpers.bats
 | `teardown-clusters.bats` | 8 | Cluster deletion, cleanup verification |
 | `full-suite.bats` | 10 | End-to-end orchestration, error handling, partial runs |
 | `cross-validate.bats` | 10 | Third-party tool detection, output capture, comparison |
+| `fix.bats` | 18 | Fix command E2E: dry-run, apply, verify, risk levels, backups, partial failure |
 
 ### Adding New Bats Tests
 
@@ -532,3 +544,65 @@ jobs:
             exit 1
           fi
 ```
+
+---
+
+## Fix Command E2E Tests
+
+Phase 3 introduced the `kubevigil fix` command for auto-remediation. These E2E
+tests validate the full fix workflow end-to-end.
+
+### Fix Scenarios
+
+| Scenario | Purpose | Manifests |
+|----------|---------|-----------|
+| `fix-safe` | Safe-level fixes (privileged, privilege-escalation, host-pid/ipc) | 3 files |
+| `fix-moderate` | Likely-safe fixes (runAsNonRoot, readOnlyRootFilesystem, drop ALL) | 2 files |
+| `fix-aggressive` | Potentially-breaking fixes (resource limits, hostPort removal) | 3 files |
+| `fix-system-ns` | System namespace protection (kube-system resources skipped) | 1 file |
+| `fix-known-workloads` | Known workload detection (Calico, CoreDNS, node-exporter) | 3 files |
+| `fix-multi-doc` | Multi-document YAML handling (3 docs, only 2 modified) | 1 file |
+| `fix-comments` | YAML comment preservation through round-trip patching | 1 file |
+| `fix-clean` | Hardened deployment (exit code 4 — nothing to fix) | 1 file |
+| `fix-partial-failure` | Partial failure resilience (valid + malformed + readonly) | 3 files |
+
+### Running Fix E2E Tests
+
+```bash
+# Bats tests (18 tests, requires built binary)
+make build
+bats test/e2e/scripts/tests/fix.bats
+
+# Manifest-mode E2E (builds binary automatically)
+./test/e2e/scripts/run-fix.sh
+
+# Skip build if binary exists
+./test/e2e/scripts/run-fix.sh --skip-build
+
+# Live cluster E2E (requires Kind)
+./test/e2e/scripts/run-fix-live.sh
+
+# Validate fix results with Python script
+python3 test/e2e/scripts/validate-findings.py \
+  --mode fix --pre-scan /tmp/pre.json --post-scan /tmp/post.json --risk-level safe
+```
+
+### Golden Workflow
+
+The golden E2E workflow validates the core fix promise:
+
+```
+scan → fix --apply --verify → re-scan → reduced findings
+```
+
+Both `run-fix.sh` (Test 8) and `fix.bats` (tests 2, 3, 18) exercise this path.
+
+### Fix Exit Codes
+
+| Code | Meaning | Tested By |
+|------|---------|-----------|
+| 0 | All fixes applied (or dry-run shows changes) | Tests 1, 2, 3 |
+| 1 | Fixes applied but --verify found remaining findings | Test 3 |
+| 3 | Configuration error (CI mode without --yes) | Test 12 |
+| 4 | No fixable findings (clean scenario) | Test 7 |
+| 5 | Partial success (some files failed) | Tests 15, 16 |

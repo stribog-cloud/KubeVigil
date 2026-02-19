@@ -49,3 +49,15 @@ test/e2e/results/
 test/e2e/clusters/*.local.yaml
 test/e2e/third-party/kubernetes-goat/
 test/e2e/third-party/microservices-demo/
+
+# Internal engineering docs (specs, prompts, strategies — not for public repo)
+docs/internal/
+
+# AI agent instructions (local-only)
+CLAUDE.md
+CLAUDE-Phase*.md
+AGENTS.md
+.claude/
+
+
+

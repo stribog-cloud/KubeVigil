@@ -1,0 +1,28 @@
+# KubeVigil E2E — Fix Aggressive: Missing Resource Limits
+#
+# Triggers potentially-breaking fix strategies (require --risk-level aggressive):
+#   - resource-limits-missing (Medium → Potentially Breaking fix): no resource limits
+#   - resource-requests-missing (Medium → Potentially Breaking fix): no resource requests
+#   - ephemeral-storage-limits (Low → Potentially Breaking fix): no ephemeral-storage
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: missing-resources
+  namespace: kv-e2e-fix-aggressive
+  labels:
+    app: missing-resources
+    kubevigil.stribog.cloud/scenario: fix-aggressive
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: missing-resources
+  template:
+    metadata:
+      labels:
+        app: missing-resources
+    spec:
+      containers:
+        - name: app
+          image: registry.k8s.io/pause:3.9
+          # No resources specified at all

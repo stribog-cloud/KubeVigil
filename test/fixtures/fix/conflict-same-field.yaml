@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: conflict-test
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: conflict
+  template:
+    metadata:
+      labels:
+        app: conflict
+    spec:
+      containers:
+      - name: app
+        image: myapp:v1
+        securityContext:
+          privileged: true
+          allowPrivilegeEscalation: true
+          readOnlyRootFilesystem: false

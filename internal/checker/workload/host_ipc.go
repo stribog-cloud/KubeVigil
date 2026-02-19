@@ -72,7 +72,15 @@ func (c *HostIPCChecker) Run(ctx context.Context, resources *checker.ResourceCac
 				"## Learn More\n\n" +
 				"This check aligns with CIS Benchmark 5.2.3 and the Pod Security Standards \"Baseline\" profile. " +
 				"IPC namespace isolation prevents cross-process data leakage between containers and the host.",
-			FieldPath: ".spec.hostIPC",
+			FieldPath:    ".spec.hostIPC",
+			CurrentValue: true,
+			DesiredValue: false,
+			FixHint: &checker.FixHint{
+				Safety:      checker.FixSafe,
+				Description: "Disables host IPC namespace sharing.",
+				Impact:      "None unless container uses shared memory with host.",
+				Operation:   checker.FixOpSet,
+			},
 		})
 	}
 

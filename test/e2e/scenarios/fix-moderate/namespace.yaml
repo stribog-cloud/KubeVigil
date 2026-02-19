@@ -1,0 +1,8 @@
+# KubeVigil E2E — Fix Moderate Scenario Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kv-e2e-fix-moderate
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: fix-moderate

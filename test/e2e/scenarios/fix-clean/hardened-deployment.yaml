@@ -1,0 +1,55 @@
+# KubeVigil E2E — Fix Clean: Fully Hardened Deployment
+#
+# This deployment has all security settings properly configured.
+# Running `kubevigil fix` on this file should find NO fixable findings
+# and exit with code 4 (nothing to do).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hardened-deploy
+  namespace: default
+  labels:
+    app: hardened-deploy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hardened-deploy
+  template:
+    metadata:
+      labels:
+        app: hardened-deploy
+    spec:
+      automountServiceAccountToken: false
+      hostPID: false
+      hostIPC: false
+      hostNetwork: false
+      shareProcessNamespace: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          image: registry.k8s.io/pause:3.9
+          imagePullPolicy: Always
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+              ephemeral-storage: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+              ephemeral-storage: 64Mi
