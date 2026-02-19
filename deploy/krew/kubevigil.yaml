@@ -1,0 +1,56 @@
+apiVersion: krew.googlecontainertools.github.com/v1alpha2
+kind: Plugin
+metadata:
+  name: vigil
+spec:
+  version: v0.3.0
+  homepage: https://github.com/stribog-cloud/KubeVigil
+  shortDescription: Kubernetes Security Posture Management — scan clusters for misconfigurations
+  description: |
+    KubeVigil scans Kubernetes clusters and YAML manifests for security
+    misconfigurations. It runs 110 security checks across 12 categories,
+    maps findings to compliance frameworks (CIS, MITRE ATT&CK, NSA/CISA),
+    and outputs reports in 8 formats. Includes auto-remediation with a
+    five-ring safety model.
+  caveats: |
+    This plugin provides the 'kubectl vigil' command.
+    Usage:
+      kubectl vigil scan                  # Scan live cluster
+      kubectl vigil scan -f ./manifests/  # Scan manifests
+      kubectl vigil fix ./manifests/      # Preview auto-fixes
+  platforms:
+    - selector:
+        matchLabels:
+          os: linux
+          arch: amd64
+      uri: https://github.com/stribog-cloud/KubeVigil/releases/download/v0.3.0/kubevigil_0.3.0_linux_amd64.tar.gz
+      sha256: PLACEHOLDER_LINUX_AMD64
+      bin: kubevigil
+    - selector:
+        matchLabels:
+          os: linux
+          arch: arm64
+      uri: https://github.com/stribog-cloud/KubeVigil/releases/download/v0.3.0/kubevigil_0.3.0_linux_arm64.tar.gz
+      sha256: PLACEHOLDER_LINUX_ARM64
+      bin: kubevigil
+    - selector:
+        matchLabels:
+          os: darwin
+          arch: amd64
+      uri: https://github.com/stribog-cloud/KubeVigil/releases/download/v0.3.0/kubevigil_0.3.0_darwin_amd64.tar.gz
+      sha256: PLACEHOLDER_DARWIN_AMD64
+      bin: kubevigil
+    - selector:
+        matchLabels:
+          os: darwin
+          arch: arm64
+      uri: https://github.com/stribog-cloud/KubeVigil/releases/download/v0.3.0/kubevigil_0.3.0_darwin_arm64.tar.gz
+      sha256: PLACEHOLDER_DARWIN_ARM64
+      bin: kubevigil
+    - selector:
+        matchLabels:
+          os: windows
+          arch: amd64
+      uri: https://github.com/stribog-cloud/KubeVigil/releases/download/v0.3.0/kubevigil_0.3.0_windows_amd64.zip
+      sha256: PLACEHOLDER_WINDOWS_AMD64
+      bin: kubevigil.exe
