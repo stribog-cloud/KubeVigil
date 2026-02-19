@@ -119,3 +119,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - E2E test suite: 11 scan scenarios + 9 fix scenarios via Bats framework
 - Kind cluster validation across 3 cluster configurations (single-node, multi-node, HA)
 - Golden workflow verification: scan → fix → re-scan → zero findings
+
