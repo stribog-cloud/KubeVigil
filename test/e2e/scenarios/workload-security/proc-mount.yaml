@@ -1,0 +1,24 @@
+# KubeVigil E2E — Unmasked Proc Mount
+#
+# Triggers:
+#   - proc-mount (High): Container has procMount set to Unmasked. The checker
+#     (internal/checker/workload/proc_mount.go) flags when
+#     securityContext.procMount == "Unmasked".
+#
+# Note: procMount: Unmasked requires hostUsers: false on K8s 1.35+.
+# The pod will still be accepted for static analysis (manifest mode) by KubeVigil.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unmasked-proc
+  namespace: kv-e2e-workload
+  labels:
+    app: proc-mount-test
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  hostUsers: false
+  containers:
+    - name: unmasked-proc-container
+      image: registry.k8s.io/pause:3.9
+      securityContext:
+        procMount: Unmasked

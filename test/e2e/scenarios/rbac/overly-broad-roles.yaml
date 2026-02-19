@@ -1,0 +1,79 @@
+# E2E Scenario: Overly broad roles and external/cloud subject bindings
+#
+# Triggers:
+#   - rbac-subject-external (Low)  — ClusterRoleBinding subjects
+#     reference external User identities (not ServiceAccounts),
+#     which may indicate stale or unmanaged access.
+#   - cloud-iam-binding    (Medium) — ServiceAccount annotated with
+#     a cloud IAM role (AWS IRSA), linking K8s identity to cloud
+#     permissions. Requires audit to ensure the cloud role follows
+#     least privilege.
+#
+# Additionally, the broad Role demonstrates a pattern where many
+# resource types are granted wide verbs — useful for validating
+# that KubeVigil correctly parses multi-rule Roles.
+---
+# Overly broad namespaced role — many resources, wide verbs
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kv-e2e-overly-broad
+  namespace: kv-e2e-rbac
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps", "secrets", "endpoints", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+# Binding for the broad role so it is considered in-use
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kv-e2e-overly-broad-binding
+  namespace: kv-e2e-rbac
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kv-e2e-overly-broad
+subjects:
+  - kind: ServiceAccount
+    name: kv-e2e-test-sa
+    namespace: kv-e2e-rbac
+---
+# ClusterRoleBinding with an external User subject
+# Triggers: rbac-subject-external (Low)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kv-e2e-external-user-binding
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: User
+    name: contractor@external-corp.com
+    apiGroup: rbac.authorization.k8s.io
+---
+# ServiceAccount with cloud IAM annotation (AWS IRSA)
+# Triggers: cloud-iam-binding (Medium)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kv-e2e-cloud-iam-sa
+  namespace: kv-e2e-rbac
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/kv-e2e-test-role

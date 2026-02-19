@@ -41,13 +41,15 @@ var controlPlaneTaintKeys = map[string]bool{
 
 // getReplicas extracts the spec.replicas field from an unstructured workload resource.
 // Returns 1 as the default if the field is not set (Kubernetes default).
-// Uses NestedFloat64 because JSON numbers are stored as float64 in unstructured objects.
+// Tries int64 first (live cluster data) then float64 (JSON-decoded manifests).
 func getReplicas(obj *unstructured.Unstructured) int64 {
-	replicas, found, err := unstructured.NestedFloat64(obj.Object, "spec", "replicas")
-	if err != nil || !found {
-		return 1
+	if v, ok, err := unstructured.NestedInt64(obj.Object, "spec", "replicas"); err == nil && ok {
+		return v
 	}
-	return int64(replicas)
+	if v, ok, err := unstructured.NestedFloat64(obj.Object, "spec", "replicas"); err == nil && ok {
+		return int64(v)
+	}
+	return 1
 }
 
 // extractHPATargetRef extracts the scaleTargetRef from an HPA.

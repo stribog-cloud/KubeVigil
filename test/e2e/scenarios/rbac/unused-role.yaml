@@ -1,0 +1,25 @@
+# E2E Scenario: Role with no RoleBinding referencing it
+#
+# Triggers:
+#   - rbac-unused-roles (Info) — the role exists but no binding
+#     references it, meaning it grants permissions to nobody.
+#
+# Unused roles are a hygiene issue. They accumulate over time
+# and make auditing harder. They may also indicate incomplete
+# deployments or forgotten cleanup.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kv-e2e-unused-role
+  namespace: kv-e2e-rbac
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list"]
+# NOTE: No RoleBinding references this role — that is intentional.

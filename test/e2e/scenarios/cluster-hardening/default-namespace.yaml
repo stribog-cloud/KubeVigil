@@ -1,0 +1,57 @@
+# E2E Scenario: Workloads deployed in the default namespace
+#
+# Triggers:
+#   - namespace-default-usage (Medium) -- workloads in the "default" namespace
+#     lack isolation policies, RBAC boundaries, and resource quotas.
+#
+# The namespace-default-usage checker uses ExtractPodSpecs and flags any
+# workload whose .metadata.namespace is "default". These resources are
+# intentionally placed in "default" (NOT a kv-e2e-* namespace) so the
+# checker fires.
+#
+# Clean up after testing:
+#   kubectl delete deployment kv-e2e-default-web kv-e2e-default-worker -n default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kv-e2e-default-web
+  namespace: default
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: cluster-hardening
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kv-e2e-default-web
+  template:
+    metadata:
+      labels:
+        app: kv-e2e-default-web
+    spec:
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kv-e2e-default-worker
+  namespace: default
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: cluster-hardening
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kv-e2e-default-worker
+  template:
+    metadata:
+      labels:
+        app: kv-e2e-default-worker
+    spec:
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9

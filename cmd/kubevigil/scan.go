@@ -150,13 +150,7 @@ func runScan(cmd *cobra.Command, _ []string) error {
 
 	// Filter by namespace.
 	if flagNamespace != "" {
-		filtered := make([]checker.Finding, 0, len(result.Findings))
-		for i := range result.Findings {
-			if result.Findings[i].Namespace == flagNamespace || result.Findings[i].Namespace == "" {
-				filtered = append(filtered, result.Findings[i])
-			}
-		}
-		result.Findings = filtered
+		result.Findings = filterByNamespace(result.Findings, flagNamespace)
 	}
 	if flagExcludeNamespace != "" {
 		filtered := make([]checker.Finding, 0, len(result.Findings))
@@ -226,6 +220,18 @@ func runScan(cmd *cobra.Command, _ []string) error {
 		return &exitError{code: 1, err: fmt.Errorf("findings above threshold")}
 	}
 	return nil
+}
+
+// filterByNamespace returns only findings whose Namespace matches the given namespace.
+// Cluster-scoped findings (Namespace == "") are excluded — they do not belong to any namespace.
+func filterByNamespace(findings []checker.Finding, ns string) []checker.Finding {
+	filtered := make([]checker.Finding, 0, len(findings))
+	for i := range findings {
+		if findings[i].Namespace == ns {
+			filtered = append(filtered, findings[i])
+		}
+	}
+	return filtered
 }
 
 // hasFailures returns true if any finding meets or exceeds the fail-on severity.

@@ -1,0 +1,102 @@
+# E2E Scenario: ingress-no-tls (High), ingress-wildcard-host (Medium),
+#                ingress-class-missing (Low)
+#
+# This manifest creates three Ingress resources, each demonstrating a
+# different network security issue:
+#
+# 1. no-tls-ingress — Has rules and a host but NO spec.tls section.
+#    The ingress-no-tls checker fires when TLS is absent.
+#
+# 2. wildcard-host-ingress — Has a rule with host: "*.example.com" (wildcard).
+#    The ingress-wildcard-host checker fires when a rule's host is empty or a wildcard.
+#
+# 3. no-class-ingress — Has neither spec.ingressClassName nor the deprecated
+#    kubernetes.io/ingress.class annotation. The ingress-class-missing checker
+#    fires when neither is present.
+#
+# Note: no-tls-ingress and wildcard-host-ingress also lack an ingressClassName,
+# so ingress-class-missing fires on those as well. no-tls-ingress uses an
+# explicit host, so ingress-wildcard-host does NOT fire on it.
+# wildcard-host-ingress has no TLS, so ingress-no-tls fires on it too.
+#
+# Expected findings:
+#   - ingress-no-tls         (High)   — no-tls-ingress has no TLS configured.
+#   - ingress-no-tls         (High)   — wildcard-host-ingress has no TLS configured.
+#   - ingress-no-tls         (High)   — no-class-ingress has no TLS configured.
+#   - ingress-wildcard-host  (Medium) — wildcard-host-ingress has a wildcard host rule.
+#   - ingress-wildcard-host  (Medium) — no-class-ingress has an empty host rule.
+#   - ingress-class-missing  (Low)    — no-tls-ingress has no ingressClassName.
+#   - ingress-class-missing  (Low)    — wildcard-host-ingress has no ingressClassName.
+#   - ingress-class-missing  (Low)    — no-class-ingress has no ingressClassName.
+#
+# Usage:
+#   kubectl apply -f namespace.yaml  # Create namespace first
+#   kubectl apply -f ingress-issues.yaml
+#   kubevigil scan --namespace kv-e2e-network
+---
+# 1. Ingress with no TLS — serves traffic over unencrypted HTTP.
+#    Triggers: ingress-no-tls, ingress-class-missing
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: no-tls-ingress
+  namespace: kv-e2e-network
+spec:
+  # No ingressClassName — triggers ingress-class-missing
+  # No tls section — triggers ingress-no-tls
+  rules:
+    - host: app.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pause-app
+                port:
+                  number: 80
+---
+# 2. Ingress with wildcard host — matches all incoming requests.
+#    Triggers: ingress-wildcard-host, ingress-no-tls, ingress-class-missing
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wildcard-host-ingress
+  namespace: kv-e2e-network
+spec:
+  # No ingressClassName — triggers ingress-class-missing
+  # No tls section — triggers ingress-no-tls
+  rules:
+    - host: "*.example.com"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pause-app
+                port:
+                  number: 80
+---
+# 3. Ingress without ingressClassName or annotation — may not be handled
+#    by any controller. Also has an empty host (no host field on the rule).
+#    Triggers: ingress-class-missing, ingress-wildcard-host, ingress-no-tls
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: no-class-ingress
+  namespace: kv-e2e-network
+  # No kubernetes.io/ingress.class annotation
+spec:
+  # No ingressClassName field
+  # No tls section
+  rules:
+    - http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: pause-app
+                port:
+                  number: 80

@@ -1,0 +1,33 @@
+# E2E Scenario: external-ips (High)
+#
+# This manifest creates a Service with the externalIPs field set. The
+# external-ips checker detects this because externalIPs enables CVE-2020-8554,
+# a man-in-the-middle attack where an attacker with Service create/update
+# permissions can intercept traffic destined for arbitrary external IPs.
+#
+# Expected findings:
+#   - external-ips (High) — Service "hijack-svc" has externalIPs configured.
+#
+# Usage:
+#   kubectl apply -f namespace.yaml  # Create namespace first
+#   kubectl apply -f external-ip-service.yaml
+#   kubevigil scan --namespace kv-e2e-network
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hijack-svc
+  namespace: kv-e2e-network
+  labels:
+    app: pause-app
+spec:
+  type: ClusterIP
+  externalIPs:
+    - 198.51.100.10
+    - 203.0.113.20
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+  selector:
+    app: pause-app

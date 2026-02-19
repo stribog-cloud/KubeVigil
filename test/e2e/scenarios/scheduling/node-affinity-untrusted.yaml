@@ -1,0 +1,72 @@
+# KubeVigil E2E — Node Affinity Untrusted
+#
+# Triggers:
+#   - node-affinity-untrusted (Medium): Workloads targeting spot/preemptible nodes.
+#     The checker (internal/checker/scheduling/node_affinity_untrusted.go) flags
+#     when nodeSelector or nodeAffinity keys/values contain "spot", "preemptible",
+#     or "ephemeral".
+#
+# Expected findings:
+#   - node-affinity-untrusted (Medium) — spot-selector-deploy has nodeSelector
+#     with "spot" in label value.
+#   - node-affinity-untrusted (Medium) — preemptible-affinity-deploy has
+#     nodeAffinity targeting "preemptible" nodes.
+#
+# Note: These pods will remain Pending (no matching nodes) but KubeVigil
+# analyzes the spec, not scheduling status.
+---
+# 1. Deployment with nodeSelector targeting spot instances.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spot-selector-deploy
+  namespace: kv-e2e-scheduling
+  labels:
+    app: spot-selector
+    kubevigil.stribog.cloud/scenario: scheduling
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spot-selector
+  template:
+    metadata:
+      labels:
+        app: spot-selector
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-spot: "true"
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9
+---
+# 2. Deployment with nodeAffinity targeting preemptible nodes.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: preemptible-affinity-deploy
+  namespace: kv-e2e-scheduling
+  labels:
+    app: preemptible-affinity
+    kubevigil.stribog.cloud/scenario: scheduling
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: preemptible-affinity
+  template:
+    metadata:
+      labels:
+        app: preemptible-affinity
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.azure.com/scalesetpriority
+                    operator: In
+                    values: ["spot"]
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9

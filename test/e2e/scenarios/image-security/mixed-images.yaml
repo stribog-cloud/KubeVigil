@@ -1,0 +1,101 @@
+# KubeVigil E2E — Deployment with init, sidecar, and regular containers
+# using various problematic image patterns.
+#
+# This manifest exercises ALL container types recognized by KubeVigil:
+#   - initContainers (classic init containers)
+#   - initContainers with restartPolicy: Always (K8s 1.28+ native sidecars)
+#   - containers (regular containers)
+#
+# Triggers across container types:
+#   - image-tag-latest  (Medium) — "init-no-tag" (implicit latest),
+#                                   "sidecar-latest" (explicit :latest)
+#   - image-tag-missing (Medium) — "init-no-tag" (no tag, no digest)
+#   - image-no-digest   (Low)   — all five containers lack digest pinning
+#   - image-pull-policy (Medium) — "app-mutable" uses mutable tag nginx:1.25
+#                                   with default IfNotPresent pull policy
+#
+# Does NOT trigger:
+#   - image-registry-allowlist / image-registry-blocklist — all images use
+#     Docker Hub (docker.io) or registry.k8s.io. No registry policy issues
+#     unless a restrictive policy is configured.
+#
+# Expected findings: 9
+#   image-tag-latest:  2 (init-no-tag, sidecar-latest)
+#   image-tag-missing: 1 (init-no-tag)
+#   image-no-digest:   5 (all containers)
+#   image-pull-policy: 1 (app-mutable)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mixed-images-demo
+  namespace: kv-e2e-image
+  labels:
+    app: mixed-images-demo
+    kubevigil.io/scenario: image-security
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mixed-images-demo
+  template:
+    metadata:
+      labels:
+        app: mixed-images-demo
+    spec:
+      terminationGracePeriodSeconds: 0
+
+      # ---- Init Containers ----
+      initContainers:
+        # Classic init container with no tag — triggers image-tag-latest
+        # (implicit latest) and image-tag-missing.
+        - name: init-no-tag
+          image: busybox
+          command: ["sh", "-c", "echo init done"]
+          resources:
+            limits:
+              cpu: "10m"
+              memory: "16Mi"
+
+        # K8s 1.28+ native sidecar (init container with restartPolicy: Always).
+        # Uses explicit :latest tag — triggers image-tag-latest.
+        - name: sidecar-latest
+          image: busybox:latest
+          restartPolicy: Always
+          command: ["sleep", "infinity"]
+          resources:
+            limits:
+              cpu: "10m"
+              memory: "16Mi"
+
+        # Init container with a pinned version tag and Always pull policy.
+        # Triggers only image-no-digest.
+        - name: init-versioned
+          image: busybox:1.36
+          imagePullPolicy: Always
+          command: ["sh", "-c", "echo setup complete"]
+          resources:
+            limits:
+              cpu: "10m"
+              memory: "16Mi"
+
+      # ---- Regular Containers ----
+      containers:
+        # Mutable tag without imagePullPolicy: Always — triggers
+        # image-pull-policy. The default effective policy for a non-latest
+        # tag is IfNotPresent, which risks stale cached images.
+        - name: app-mutable
+          image: nginx:1.25
+          command: ["sleep", "infinity"]
+          resources:
+            limits:
+              cpu: "10m"
+              memory: "16Mi"
+
+        # Specific tag with Always pull policy — triggers image-no-digest only.
+        - name: app-safe-tag
+          image: registry.k8s.io/pause:3.9
+          imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: "10m"
+              memory: "16Mi"

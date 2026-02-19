@@ -1,0 +1,150 @@
+# KubeVigil E2E -- Pod Security Standards: Restricted Profile Violations
+#
+# Scenario: A namespace labelled with PSA audit:restricted (NOT enforce, so
+# the pods are actually admitted), plus workloads that violate the PSS
+# Restricted profile additions beyond Baseline.
+#
+# Triggers:
+#   - psa-restricted-violations (Medium) -- containers run as root
+#     (runAsNonRoot not set), do not drop ALL capabilities, and have
+#     allowPrivilegeEscalation defaulting to true.
+#   - psa-mode-audit-only (Medium) -- co-trigger because the namespace
+#     has audit/warn labels but no enforce label.
+#
+# Note: We use audit+warn mode instead of enforce so that the Kubernetes API
+# server accepts the pods. We are testing KubeVigil's detection, not the
+# cluster's built-in PSA enforcement.
+#
+# Apply:
+#   kubectl apply -f psa-restricted-violations.yaml
+#
+# Clean up:
+#   kubectl delete namespace kv-e2e-psa-restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kv-e2e-psa-restricted
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: psa
+    # Audit + warn only -- no enforce label so pods are admitted.
+    # This also co-triggers: psa-mode-audit-only (Medium)
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+# Deployment 1: All three Restricted violations in one container.
+# The container has no securityContext at all, which means:
+#   - runAsNonRoot is not true (defaults to false)
+#   - allowPrivilegeEscalation is not false (defaults to true)
+#   - capabilities.drop does not include ALL
+#
+# Triggers: psa-restricted-violations (Medium) x3 for the single container:
+#   - .spec.containers[0].securityContext.runAsNonRoot
+#   - .spec.containers[0].securityContext.allowPrivilegeEscalation
+#   - .spec.containers[0].securityContext.capabilities.drop
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: no-security-context-app
+  namespace: kv-e2e-psa-restricted
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    app: no-security-context-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: no-security-context-app
+  template:
+    metadata:
+      labels:
+        app: no-security-context-app
+    spec:
+      # No pod-level securityContext -- runAsNonRoot is not set.
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9
+          # No container securityContext at all.
+          # Triggers: psa-restricted-violations (Medium)
+          #   - runAsNonRoot is not true
+          #   - allowPrivilegeEscalation is not explicitly false
+          #   - capabilities.drop does not include ALL
+---
+# Deployment 2: Partial fix -- runAsNonRoot is set but other fields are not.
+# Demonstrates that fixing one violation does not clear the others.
+#
+# Triggers: psa-restricted-violations (Medium) x2 for the single container:
+#   - .spec.containers[0].securityContext.allowPrivilegeEscalation
+#   - .spec.containers[0].securityContext.capabilities.drop
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: partial-restricted-app
+  namespace: kv-e2e-psa-restricted
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    app: partial-restricted-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: partial-restricted-app
+  template:
+    metadata:
+      labels:
+        app: partial-restricted-app
+    spec:
+      securityContext:
+        # Pod-level runAsNonRoot satisfies that particular check.
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9
+          # Still missing allowPrivilegeEscalation: false and
+          # capabilities.drop: [ALL].
+          # Triggers: psa-restricted-violations (Medium)
+          #   - allowPrivilegeEscalation is not explicitly false
+          #   - capabilities.drop does not include ALL
+---
+# Deployment 3: Explicit root -- runAsNonRoot false and runAsUser 0.
+# Even though some security settings are present, running as root is
+# a Restricted profile violation.
+#
+# Triggers: psa-restricted-violations (Medium) x3 for the single container:
+#   - .spec.containers[0].securityContext.runAsNonRoot
+#   - .spec.containers[0].securityContext.allowPrivilegeEscalation
+#   - .spec.containers[0].securityContext.capabilities.drop
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: explicit-root-app
+  namespace: kv-e2e-psa-restricted
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    app: explicit-root-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: explicit-root-app
+  template:
+    metadata:
+      labels:
+        app: explicit-root-app
+    spec:
+      securityContext:
+        # Explicitly running as root -- violates Restricted profile.
+        runAsUser: 0
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9
+          securityContext:
+            # runAsNonRoot not set to true, so defaults to allowing root.
+            # Triggers: psa-restricted-violations (Medium)
+            #   - runAsNonRoot is not true
+            #   - allowPrivilegeEscalation is not explicitly false
+            #   - capabilities.drop does not include ALL
+            readOnlyRootFilesystem: true

@@ -1,0 +1,14 @@
+# KubeVigil E2E — Workload Security Scenario Namespace
+#
+# This namespace contains all workload-security E2E scenario manifests.
+# Deploy first before applying any other manifests in this directory.
+#
+# Usage:
+#   kubectl apply -f namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kv-e2e-workload
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: workload-security

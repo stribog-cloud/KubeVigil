@@ -1,0 +1,64 @@
+# KubeVigil E2E — Security Context Misconfiguration
+#
+# Triggers:
+#   - privilege-escalation (High): Container does not set
+#     allowPrivilegeEscalation: false. The checker
+#     (internal/checker/workload/privilege_escalation.go) flags when
+#     allowPrivilegeEscalation is nil or true (K8s defaults to true).
+#
+#   - selinux-options (Medium): Container has a dangerous SELinux type
+#     (spc_t or unconfined_t). The checker
+#     (internal/checker/workload/selinux_options.go) checks
+#     securityContext.seLinuxOptions.type against dangerousSELinuxTypes map.
+#
+#   - unsafe-sysctls (High): Pod configures sysctls outside the kubelet's
+#     safe allowlist. The checker
+#     (internal/checker/workload/unsafe_sysctls.go) flags any sysctl not
+#     in the safeSysctls map.
+#
+#   - share-process-namespace (Medium): Pod has shareProcessNamespace: true.
+#     The checker (internal/checker/workload/share_process_namespace.go)
+#     flags when this field is explicitly true.
+---
+# Pod 1: Privilege escalation allowed + dangerous SELinux type
+# Triggers: privilege-escalation (allowPrivilegeEscalation is true)
+# Triggers: selinux-options (type is spc_t)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: priv-escalation-selinux
+  namespace: kv-e2e-workload
+  labels:
+    app: security-context-test
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  containers:
+    - name: escalation-container
+      image: registry.k8s.io/pause:3.9
+      securityContext:
+        allowPrivilegeEscalation: true
+        seLinuxOptions:
+          type: spc_t
+---
+# Pod 2: Unsafe sysctls + shared process namespace
+# Triggers: unsafe-sysctls (net.core.somaxconn is not in safeSysctls)
+# Triggers: share-process-namespace (explicitly true)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unsafe-sysctls-shared-pid
+  namespace: kv-e2e-workload
+  labels:
+    app: security-context-test
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  shareProcessNamespace: true
+  securityContext:
+    sysctls:
+      - name: net.core.somaxconn
+        value: "1024"
+      - name: kernel.msgmax
+        value: "65536"
+  containers:
+    - name: sysctls-container
+      image: registry.k8s.io/pause:3.9

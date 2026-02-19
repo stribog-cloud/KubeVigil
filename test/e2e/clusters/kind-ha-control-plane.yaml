@@ -1,0 +1,55 @@
+# KubeVigil E2E — HA Control-Plane Cluster
+#
+# Purpose: Test checkers that inspect HA-specific cluster properties:
+#   - etcd encryption and health (checks 96, others)
+#   - API server configuration (check 93)
+#   - Component versions across multiple control-plane nodes (check 98)
+#   - Control-plane toleration detection (check 77)
+#   - PriorityClass system-critical scheduling (check 79)
+#
+# Topology: 3 control-plane nodes (stacked etcd) + 2 workers.
+# Kind automatically configures an external load balancer in front
+# of the API servers when multiple control-plane nodes are present.
+#
+# Create:  kind create cluster --config test/e2e/clusters/kind-ha-control-plane.yaml
+# Delete:  kind delete cluster --name kubevigil-e2e-ha
+
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: kubevigil-e2e-ha
+
+nodes:
+  # --- Control plane 1 (primary) -----------------------------------
+  - role: control-plane
+    labels:
+      kubevigil.io/e2e: "true"
+      kubevigil.io/cluster-profile: "ha"
+      kubevigil.io/cp-index: "0"
+
+  # --- Control plane 2 ---------------------------------------------
+  - role: control-plane
+    labels:
+      kubevigil.io/e2e: "true"
+      kubevigil.io/cluster-profile: "ha"
+      kubevigil.io/cp-index: "1"
+
+  # --- Control plane 3 ---------------------------------------------
+  - role: control-plane
+    labels:
+      kubevigil.io/e2e: "true"
+      kubevigil.io/cluster-profile: "ha"
+      kubevigil.io/cp-index: "2"
+
+  # --- Worker 1 ----------------------------------------------------
+  - role: worker
+    labels:
+      kubevigil.io/e2e: "true"
+      kubevigil.io/cluster-profile: "ha"
+      kubevigil.io/node-pool: "general"
+
+  # --- Worker 2 ----------------------------------------------------
+  - role: worker
+    labels:
+      kubevigil.io/e2e: "true"
+      kubevigil.io/cluster-profile: "ha"
+      kubevigil.io/node-pool: "general"

@@ -1,0 +1,46 @@
+# E2E Scenario: network-policy-missing (High)
+#
+# This manifest creates the kv-e2e-network namespace with a simple Deployment
+# but NO NetworkPolicy at all. The network-policy-missing checker fires when a
+# non-system namespace has zero NetworkPolicies, leaving all pods unrestricted.
+#
+# Expected findings:
+#   - network-policy-missing  (High)  — Namespace kv-e2e-network has no NetworkPolicy defined.
+#
+# Additionally, since there is no NetworkPolicy with policyTypes including
+# "Egress", the following checker also fires on this namespace:
+#   - network-policy-egress-unrestricted (Medium) — No egress restrictions.
+#
+# Usage:
+#   kubectl apply -f namespace.yaml
+#   kubevigil scan --namespace kv-e2e-network
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kv-e2e-network
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pause-app
+  namespace: kv-e2e-network
+  labels:
+    app: pause-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pause-app
+  template:
+    metadata:
+      labels:
+        app: pause-app
+    spec:
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9
+          ports:
+            - containerPort: 80

@@ -1,0 +1,48 @@
+# KubeVigil E2E — Image Pull Policy
+#
+# Triggers:
+#   - image-pull-policy (Medium): Container uses a mutable image tag with a
+#     non-Always pull policy. The checker
+#     (internal/checker/image/image_pull_policy.go) determines the effective
+#     pull policy:
+#       - For :latest or no tag: K8s defaults to Always (safe)
+#       - For other tags: K8s defaults to IfNotPresent (flagged)
+#       - If imagePullPolicy is explicitly Always: safe
+#       - If image has a digest (@sha256:...): safe (immutable)
+#
+# To trigger the check, we use a non-latest tag WITHOUT setting
+# imagePullPolicy: Always. Kubernetes defaults to IfNotPresent for
+# tagged (non-latest) images, which is flagged as a mutable tag risk.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pull-policy-issues
+  namespace: kv-e2e-workload
+  labels:
+    app: pull-policy-issues
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pull-policy-issues
+  template:
+    metadata:
+      labels:
+        app: pull-policy-issues
+    spec:
+      containers:
+        # Triggers: image-pull-policy (mutable tag "1.25-alpine" with default
+        # IfNotPresent policy — no imagePullPolicy specified)
+        - name: mutable-tag-default
+          image: nginx:1.25-alpine
+
+        # Triggers: image-pull-policy (mutable tag with explicit IfNotPresent)
+        - name: mutable-tag-explicit
+          image: alpine:3.19
+          imagePullPolicy: IfNotPresent
+
+        # Triggers: image-pull-policy (mutable tag with Never policy)
+        - name: mutable-tag-never
+          image: busybox:1.36
+          imagePullPolicy: Never

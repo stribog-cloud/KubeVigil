@@ -1,0 +1,51 @@
+# KubeVigil E2E — HPA Without Resource Requests
+#
+# An HPA targeting a Deployment whose containers have no resource requests.
+# Percentage-based autoscaling (e.g., 80% CPU) cannot work without requests
+# because the HPA has no baseline to compute utilization against.
+#
+# Triggers:
+#   - hpa-without-requests (Medium): HPA targets a workload with no resource requests
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hpa-target-no-requests
+  namespace: kv-e2e-scheduling
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hpa-target-no-requests
+  template:
+    metadata:
+      labels:
+        app: hpa-target-no-requests
+    spec:
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: hpa-no-requests
+  namespace: kv-e2e-scheduling
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: hpa-target-no-requests
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80

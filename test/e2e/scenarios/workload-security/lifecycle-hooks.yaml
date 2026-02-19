@@ -1,0 +1,52 @@
+# KubeVigil E2E — Lifecycle Hooks with External Calls
+#
+# Triggers:
+#   - lifecycle-hooks (Low): Container has preStop hook making external
+#     network calls. The checker (internal/checker/supply_chain/lifecycle_hooks.go)
+#     flags preStop httpGet hooks and exec hooks containing curl/wget/nc.
+#
+# Expected findings:
+#   - lifecycle-hooks (Low) — lifecycle-httpget pod, container "httpget-hook"
+#     has preStop hook making an HTTP request.
+#   - lifecycle-hooks (Low) — lifecycle-curl pod, container "curl-hook"
+#     has preStop exec hook with curl command.
+---
+# 1. Pod with preStop httpGet hook — always flagged.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: lifecycle-httpget
+  namespace: kv-e2e-workload
+  labels:
+    app: lifecycle-hook-test
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  containers:
+    - name: httpget-hook
+      image: registry.k8s.io/pause:3.9
+      lifecycle:
+        preStop:
+          httpGet:
+            path: /notify
+            port: 8080
+---
+# 2. Pod with preStop exec hook calling curl — flagged for network indicator.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: lifecycle-curl
+  namespace: kv-e2e-workload
+  labels:
+    app: lifecycle-hook-test
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  containers:
+    - name: curl-hook
+      image: registry.k8s.io/pause:3.9
+      lifecycle:
+        preStop:
+          exec:
+            command:
+              - /bin/sh
+              - -c
+              - "curl -s http://monitoring.internal/api/shutdown"

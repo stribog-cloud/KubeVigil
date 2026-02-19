@@ -1,0 +1,35 @@
+# E2E Scenario: service-type-loadbalancer (Medium)
+#
+# This manifest creates a Service of type LoadBalancer. The
+# service-type-loadbalancer checker flags these because they provision cloud
+# load balancers that are often publicly accessible by default, bypassing
+# centralized ingress security controls like WAF, rate limiting, and TLS
+# termination.
+#
+# In a Kind cluster the Service will remain in Pending state (no cloud LB
+# provisioner), but KubeVigil scans the manifest spec, not the status.
+#
+# Expected findings:
+#   - service-type-loadbalancer (Medium) — Service "public-lb" is exposed
+#     as LoadBalancer.
+#
+# Usage:
+#   kubectl apply -f namespace.yaml  # Create namespace first
+#   kubectl apply -f loadbalancer-service.yaml
+#   kubevigil scan --namespace kv-e2e-network
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: public-lb
+  namespace: kv-e2e-network
+  labels:
+    app: pause-app
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 443
+      targetPort: 80
+      protocol: TCP
+  selector:
+    app: pause-app

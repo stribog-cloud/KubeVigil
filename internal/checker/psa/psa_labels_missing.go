@@ -60,7 +60,7 @@ func (c *LabelsMissingChecker) Run(ctx context.Context, resources *checker.Resou
 				Checker:   "psa-labels-missing",
 				Severity:  checker.SeverityMedium,
 				Resource:  name,
-				Namespace: "",
+				Namespace: name,
 				Kind:      "Namespace",
 				Message:   fmt.Sprintf("Namespace %q is missing the %s label; pod security is not enforced.", name, psaEnforce),
 				Remediation: fmt.Sprintf(

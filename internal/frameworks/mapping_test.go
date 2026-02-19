@@ -1,6 +1,7 @@
 package frameworks
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -212,6 +213,57 @@ func TestCISMappingAccuracy(t *testing.T) {
 			for _, notID := range tt.wantNotIDs {
 				assert.False(t, controlIDs[notID], "check %q should NOT map to CIS %s", tt.check, notID)
 			}
+		})
+	}
+}
+
+func TestControlCounts(t *testing.T) {
+	counts := ControlCounts()
+	// All three frameworks should be present.
+	assert.Contains(t, counts, "cis")
+	assert.Contains(t, counts, "mitre")
+	assert.Contains(t, counts, "nsa")
+	// Each should have at least 1 control.
+	for fw, count := range counts {
+		assert.Greater(t, count, 0, "framework %q should have >0 controls", fw)
+	}
+}
+
+func TestAllControlIDs(t *testing.T) {
+	allIDs := AllControlIDs()
+
+	// All three frameworks should be present.
+	assert.Contains(t, allIDs, "cis")
+	assert.Contains(t, allIDs, "mitre")
+	assert.Contains(t, allIDs, "nsa")
+
+	// Each framework has non-empty list and lists are sorted.
+	for fw, ids := range allIDs {
+		t.Run(fw, func(t *testing.T) {
+			assert.NotEmpty(t, ids, "framework %q should have non-empty control IDs", fw)
+			assert.True(t, sort.StringsAreSorted(ids), "framework %q control IDs should be sorted", fw)
+		})
+	}
+}
+
+func TestNormalizeFramework(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"cis", "cis"},
+		{"cis-1.8", "cis"},
+		{"mitre", "mitre"},
+		{"mitre-v14", "mitre"},
+		{"nsa", "nsa"},
+		{"nsa-1.2", "nsa"},
+		{"unknown", "unknown"},
+		{"", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := NormalizeFramework(tt.input)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

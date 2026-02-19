@@ -1,0 +1,42 @@
+# E2E Scenario: Namespace without a ResourceQuota
+#
+# Triggers:
+#   - resource-quota-missing (Low) -- namespace kv-e2e-cluster-no-quota has
+#     no ResourceQuota, so any workload can consume unlimited cluster resources.
+#
+# The resource-quota-missing checker iterates all non-system namespaces and
+# flags those with zero ResourceQuota objects. A deployment is included so
+# the namespace is not empty (closer to a real-world scenario).
+#
+# Clean up after testing:
+#   kubectl delete namespace kv-e2e-cluster-no-quota
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kv-e2e-cluster-no-quota
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: cluster-hardening
+---
+# No ResourceQuota is defined in this namespace -- that is the point.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kv-e2e-unconstrained-app
+  namespace: kv-e2e-cluster-no-quota
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kv-e2e-unconstrained-app
+  template:
+    metadata:
+      labels:
+        app: kv-e2e-unconstrained-app
+    spec:
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9

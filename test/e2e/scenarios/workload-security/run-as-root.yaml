@@ -1,0 +1,71 @@
+# KubeVigil E2E — Run As Root / UID / Group Checks
+#
+# Triggers:
+#   - run-as-root (High): Container runs as UID 0 or lacks runAsNonRoot: true.
+#     The checker (internal/checker/workload/run_as_root.go) flags when:
+#     (a) effective runAsUser is 0, or
+#     (b) neither runAsNonRoot:true nor a non-zero runAsUser is set.
+#
+#   - run-as-high-uid (Low): Container runs with a UID below 10000 (but not 0).
+#     The checker (internal/checker/workload/run_as_high_uid.go) flags when
+#     effective runAsUser is between 1 and 9999 inclusive.
+#
+#   - run-as-group (Medium): Container is missing runAsGroup or has GID 0.
+#     The checker (internal/checker/workload/run_as_group.go) flags when
+#     effective runAsGroup is nil or explicitly 0.
+---
+# Pod 1: Explicitly running as root (UID 0)
+# Triggers: run-as-root (explicit UID 0)
+# Triggers: run-as-group (runAsGroup is 0)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: explicit-root
+  namespace: kv-e2e-workload
+  labels:
+    app: run-as-root-test
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  containers:
+    - name: root-container
+      image: registry.k8s.io/pause:3.9
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+---
+# Pod 2: Missing runAsNonRoot and no runAsUser — defaults to root
+# Triggers: run-as-root (no runAsNonRoot:true, no non-zero runAsUser)
+# Triggers: run-as-group (no runAsGroup set)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: missing-non-root
+  namespace: kv-e2e-workload
+  labels:
+    app: run-as-root-test
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  containers:
+    # No securityContext at all — checker flags this
+    - name: no-security-context
+      image: registry.k8s.io/pause:3.9
+---
+# Pod 3: Low UID (below 10000) with root group
+# Triggers: run-as-high-uid (UID 1000 is below minSafeUID 10000)
+# Triggers: run-as-group (runAsGroup not set, defaults to GID 0)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: low-uid-pod
+  namespace: kv-e2e-workload
+  labels:
+    app: run-as-root-test
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  containers:
+    - name: low-uid-container
+      image: registry.k8s.io/pause:3.9
+      securityContext:
+        runAsUser: 1000
+        runAsNonRoot: true
+        # runAsGroup is intentionally omitted — triggers run-as-group

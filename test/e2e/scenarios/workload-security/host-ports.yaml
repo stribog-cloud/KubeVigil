@@ -1,0 +1,22 @@
+# KubeVigil E2E — Host Port Binding
+#
+# Triggers:
+#   - host-ports (High): Container binds to a host port. The checker
+#     (internal/checker/workload/host_ports.go) flags any container port
+#     where hostPort > 0.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: host-port-pod
+  namespace: kv-e2e-workload
+  labels:
+    app: host-port-test
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  containers:
+    - name: host-port-container
+      image: registry.k8s.io/pause:3.9
+      ports:
+        - containerPort: 8080
+          hostPort: 8080
+          protocol: TCP

@@ -1,0 +1,31 @@
+# KubeVigil E2E — Privileged Container
+#
+# Triggers:
+#   - privileged (Critical): Container runs with privileged: true, granting
+#     full host access including all devices, filesystems, and capabilities.
+#
+# The checker (internal/checker/workload/privileged.go) flags any container
+# where securityContext.privileged is explicitly set to true.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: privileged-container
+  namespace: kv-e2e-workload
+  labels:
+    app: privileged-container
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: privileged-container
+  template:
+    metadata:
+      labels:
+        app: privileged-container
+    spec:
+      containers:
+        - name: privileged-app
+          image: registry.k8s.io/pause:3.9
+          securityContext:
+            privileged: true

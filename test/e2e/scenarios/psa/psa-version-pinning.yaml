@@ -1,0 +1,75 @@
+# KubeVigil E2E -- Pod Security Standards: Version Pinning
+#
+# Scenario: A namespace with PSA labels whose version fields are pinned to
+# a specific Kubernetes release (v1.25) instead of "latest". When the
+# cluster is upgraded, these namespaces will NOT pick up new security
+# restrictions added in later PSS versions.
+#
+# Triggers:
+#   - psa-version-pinning (Low) -- the enforce-version, audit-version,
+#     and warn-version labels are set to "v1.25" rather than "latest".
+#     Each pinned version label generates a separate finding.
+#
+# Apply:
+#   kubectl apply -f psa-version-pinning.yaml
+#
+# Clean up:
+#   kubectl delete namespace kv-e2e-psa-pinned
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kv-e2e-psa-pinned
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: psa
+    # Enforce is set (so psa-labels-missing and psa-mode-audit-only do NOT
+    # fire), but all three version labels are pinned to v1.25.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+    # Pinned version labels -- should be "latest" for automatic upgrades.
+    # Triggers: psa-version-pinning (Low) x3
+    #   - pod-security.kubernetes.io/enforce-version pinned to v1.25
+    #   - pod-security.kubernetes.io/audit-version pinned to v1.25
+    #   - pod-security.kubernetes.io/warn-version pinned to v1.25
+    pod-security.kubernetes.io/enforce-version: v1.25
+    pod-security.kubernetes.io/audit-version: v1.25
+    pod-security.kubernetes.io/warn-version: v1.25
+---
+# A fully compliant deployment in the restricted namespace so it passes
+# PSA enforcement. This workload exists only to confirm the namespace is
+# functional -- the check targets the namespace labels, not the workload.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: compliant-app
+  namespace: kv-e2e-psa-pinned
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    app: compliant-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: compliant-app
+  template:
+    metadata:
+      labels:
+        app: compliant-app
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL

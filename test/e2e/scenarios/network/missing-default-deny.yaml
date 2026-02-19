@@ -1,0 +1,95 @@
+# E2E Scenario: network-policy-default-deny (High)
+#
+# This manifest creates a separate namespace (kv-e2e-network-deny) that has
+# NetworkPolicies present but is missing a default-deny policy.
+#
+# The default-deny checker requires:
+#   - At least one NetworkPolicy exists (otherwise network-policy-missing fires instead)
+#   - No policy with empty podSelector + Ingress policyType + no ingress rules
+#   - No policy with empty podSelector + Egress policyType + no egress rules
+#
+# The policy below targets specific pods (matchLabels: app: web) rather than
+# all pods (podSelector: {}), so it does NOT qualify as a default-deny.
+#
+# Expected findings:
+#   - network-policy-default-deny (High) — Missing default-deny ingress NetworkPolicy
+#   - network-policy-default-deny (High) — Missing default-deny egress NetworkPolicy
+#
+# Usage:
+#   kubectl apply -f missing-default-deny.yaml
+#   kubevigil scan --namespace kv-e2e-network-deny
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kv-e2e-network-deny
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: kv-e2e-network-deny
+  labels:
+    app: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9
+          ports:
+            - containerPort: 80
+---
+# This policy is scoped to app=web pods only. It is NOT a default-deny
+# because it uses a non-empty podSelector. The checker looks for a policy
+# with podSelector: {} (selects ALL pods) and no allow rules.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-web-ingress
+  namespace: kv-e2e-network-deny
+spec:
+  podSelector:
+    matchLabels:
+      app: web
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+      ports:
+        - port: 80
+          protocol: TCP
+---
+# A second policy also scoped to specific pods. Even with two policies,
+# neither is a default-deny because neither has an empty podSelector.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-web-egress
+  namespace: kv-e2e-network-deny
+spec:
+  podSelector:
+    matchLabels:
+      app: web
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: database
+      ports:
+        - port: 5432
+          protocol: TCP

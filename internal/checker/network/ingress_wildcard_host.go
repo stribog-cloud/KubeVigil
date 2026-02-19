@@ -3,6 +3,7 @@ package network
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -93,7 +94,7 @@ func findWildcardRules(ing *unstructured.Unstructured) []int {
 		}
 
 		host, _ := ruleMap["host"].(string)
-		if host == "" || host == "*" {
+		if host == "" || host == "*" || strings.HasPrefix(host, "*.") {
 			indices = append(indices, idx)
 		}
 	}
