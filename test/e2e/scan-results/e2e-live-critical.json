@@ -1,0 +1,1319 @@
+{
+  "version": "1",
+  "tool_version": "82c45af",
+  "scan_result": {
+    "summary": {
+      "posture_score": 88,
+      "total_findings": 38,
+      "critical": 38,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "info": 0,
+      "unique_resources": 29,
+      "unique_namespaces": 3,
+      "check_coverage": {
+        "total_run": 103,
+        "with_findings": 12,
+        "clean": 91,
+        "skipped": 7,
+        "errored": 0
+      }
+    },
+    "findings": [
+      {
+        "checker": "rbac-escalation-verbs",
+        "severity": "Critical",
+        "resource": "admin",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"admin\" grants escalation verb \"impersonate\", allowing RBAC privilege escalation.",
+        "remediation": "## Why This Matters\n\nThe `bind`, `escalate`, and `impersonate` verbs are special RBAC verbs that allow bypassing normal privilege restrictions. `bind` lets a user assign roles they do not hold, `escalate` lets a user grant permissions beyond their own, and `impersonate` lets a user act as another identity. Any of these can lead to full cluster compromise.\n\n## How to Fix\n\nRemove escalation verbs and replace with specific non-escalating verbs:\n\n```yaml\nrules:\n  - apiGroups: [\"rbac.authorization.k8s.io\"]\n    resources: [\"roles\", \"rolebindings\"]\n    verbs: [\"get\", \"list\", \"watch\"]  # Read-only, no bind/escalate\n```\n\nOnly cluster administrators and RBAC management controllers (e.g., the Kubernetes controller manager) should hold these verbs.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.8 on privilege escalation prevention and the Kubernetes RBAC documentation section on escalation prevention restrictions.",
+        "field_path": ".rules[1].verbs",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.1",
+            "title": "Ensure that the cluster-admin role is only used where required"
+          },
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.8",
+            "title": "Limit use of the Bind, Impersonate and Escalate permissions in the Kubernetes cluster"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1068",
+            "title": "Exploitation for Privilege Escalation"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-cluster-admin",
+        "severity": "Critical",
+        "resource": "cluster-admin",
+        "kind": "ClusterRoleBinding",
+        "message": "ClusterRoleBinding \"cluster-admin\" grants cluster-admin privileges. Every cluster-admin binding should be justified and documented.",
+        "remediation": "## Why This Matters\n\nThe `cluster-admin` ClusterRole grants unrestricted access to every resource in every namespace, including the ability to create and modify RBAC rules themselves. A compromised identity with cluster-admin privileges has full control of the entire cluster, making this the highest-value target for attackers.\n\n## How to Fix\n\nReplace cluster-admin bindings with purpose-built ClusterRoles scoped to actual needs:\n\n```yaml\napiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRoleBinding\nmetadata:\n  name: my-admin\nroleRef:\n  kind: ClusterRole\n  name: my-limited-admin-role    # Scoped permissions\n  apiGroup: rbac.authorization.k8s.io\nsubjects:\n  - kind: User\n    name: admin@example.com\n    apiGroup: rbac.authorization.k8s.io\n```\n\nConduct periodic access reviews to ensure cluster-admin bindings remain justified and documented.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.1 on limiting cluster-admin usage and the NSA/CISA Kubernetes Hardening Guide on minimizing administrative privileges.",
+        "field_path": ".roleRef",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.1",
+            "title": "Ensure that the cluster-admin role is only used where required"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-wildcard-apigroups",
+        "severity": "Critical",
+        "resource": "cluster-admin",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"cluster-admin\" grants access to wildcard (*) API groups, allowing operations across all API groups.",
+        "remediation": "## Why This Matters\n\nA wildcard API group (`*`) grants access across every API group in the cluster, including custom resource definitions and any API groups added in the future. This means an attacker inheriting this role can operate on resources the original author never anticipated.\n\n## How to Fix\n\nReplace the wildcard with the specific API groups your workload requires:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]            # Core API (pods, services, secrets)\n    resources: [\"pods\"]\n    verbs: [\"get\", \"list\"]\n  - apiGroups: [\"apps\"]         # Apps API (deployments, statefulsets)\n    resources: [\"deployments\"]\n    verbs: [\"get\", \"list\"]\n```\n\nCommon API groups: `\"\"` (core), `\"apps\"`, `\"batch\"`, `\"networking.k8s.io\"`, `\"rbac.authorization.k8s.io\"`.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.3 and the Kubernetes API groups documentation for a complete list of built-in API groups and their resources.",
+        "field_path": ".rules[0].apiGroups",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.3",
+            "title": "Minimize wildcard use in Roles and ClusterRoles"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-wildcard-resources",
+        "severity": "Critical",
+        "resource": "cluster-admin",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"cluster-admin\" grants access to wildcard (*) resources, allowing operations on all resource types.",
+        "remediation": "## Why This Matters\n\nA wildcard resource (`*`) grants access to every resource type in the specified API group, including Secrets, ConfigMaps, and any future resource types added to the cluster. This far exceeds what any single workload needs and creates a significant blast radius if compromised.\n\n## How to Fix\n\nEnumerate the specific resources your application accesses and restrict the rule:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"pods\", \"services\", \"configmaps\"]\n    verbs: [\"get\", \"list\", \"watch\"]\n```\n\nUse `kubectl auth can-i --list --as=system:serviceaccount:ns:sa` to audit the effective permissions of each service account before and after changes.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.3 on least-privilege RBAC and the Kubernetes RBAC documentation on role aggregation for managing permissions at scale.",
+        "field_path": ".rules[0].resources",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.3",
+            "title": "Minimize wildcard use in Roles and ClusterRoles"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-wildcard-verbs",
+        "severity": "Critical",
+        "resource": "cluster-admin",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"cluster-admin\" grants wildcard (*) verbs, violating least-privilege principle.",
+        "remediation": "## Why This Matters\n\nA wildcard verb (`*`) grants every possible action on the specified resources, including delete, patch, and create. An attacker who assumes this role can modify or destroy resources, exfiltrate data, or escalate privileges far beyond what the workload actually requires.\n\n## How to Fix\n\nReplace the wildcard with the specific verbs your application needs:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"pods\"]\n    verbs: [\"get\", \"list\", \"watch\"]  # Only read access\n  - apiGroups: [\"apps\"]\n    resources: [\"deployments\"]\n    verbs: [\"get\", \"update\"]          # Read + update only\n```\n\nEnable Kubernetes audit logging and review the audit trail to identify which verbs are actually used before tightening permissions.\n\n## Learn More\n\nRefer to CIS Kubernetes Benchmark 5.1.3 and the Kubernetes RBAC documentation for guidance on applying the principle of least privilege to role definitions.",
+        "field_path": ".rules[0].verbs",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.1",
+            "title": "Ensure that the cluster-admin role is only used where required"
+          },
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.3",
+            "title": "Minimize wildcard use in Roles and ClusterRoles"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-escalation-verbs",
+        "severity": "Critical",
+        "resource": "edit",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"edit\" grants escalation verb \"impersonate\", allowing RBAC privilege escalation.",
+        "remediation": "## Why This Matters\n\nThe `bind`, `escalate`, and `impersonate` verbs are special RBAC verbs that allow bypassing normal privilege restrictions. `bind` lets a user assign roles they do not hold, `escalate` lets a user grant permissions beyond their own, and `impersonate` lets a user act as another identity. Any of these can lead to full cluster compromise.\n\n## How to Fix\n\nRemove escalation verbs and replace with specific non-escalating verbs:\n\n```yaml\nrules:\n  - apiGroups: [\"rbac.authorization.k8s.io\"]\n    resources: [\"roles\", \"rolebindings\"]\n    verbs: [\"get\", \"list\", \"watch\"]  # Read-only, no bind/escalate\n```\n\nOnly cluster administrators and RBAC management controllers (e.g., the Kubernetes controller manager) should hold these verbs.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.8 on privilege escalation prevention and the Kubernetes RBAC documentation section on escalation prevention restrictions.",
+        "field_path": ".rules[1].verbs",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.1",
+            "title": "Ensure that the cluster-admin role is only used where required"
+          },
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.8",
+            "title": "Limit use of the Bind, Impersonate and Escalate permissions in the Kubernetes cluster"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1068",
+            "title": "Exploitation for Privilege Escalation"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "secrets-unencrypted",
+        "severity": "Critical",
+        "resource": "etcd",
+        "kind": "Cluster",
+        "message": "Cluster etcd encryption at rest could not be verified. Ensure EncryptionConfiguration is enabled for Secret resources.",
+        "remediation": "## Why This Matters\n\nBy default, Kubernetes stores Secrets as base64-encoded plaintext in etcd. Anyone with direct etcd access or an etcd backup can read every secret in the cluster, including database passwords, API keys, and TLS private keys.\n\n## How to Fix\n\nConfigure encryption at rest via the API server EncryptionConfiguration:\n\n```yaml\napiVersion: apiserver.config.k8s.io/v1\nkind: EncryptionConfiguration\nresources:\n  - resources: [secrets]\n    providers:\n      - aescbc:\n          keys:\n            - name: key1\n              secret: \u003cbase64-encoded-key\u003e\n      - identity: {}\n```\n\nFor managed clusters (EKS, GKE, AKS), enable the cloud-native KMS envelope encryption option. For self-managed clusters, use a KMS provider or the secretbox provider for local encryption.\n\n## Learn More\n\nCIS Kubernetes Benchmark 1.2.29 requires encryption at rest for etcd. See the Kubernetes encrypting data at rest documentation for setup details.",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "1.2.28",
+            "title": "Ensure that the --encryption-provider-config argument is set as appropriate"
+          },
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "1.2.29",
+            "title": "Ensure that encryption providers are appropriately configured"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1552",
+            "title": "Unsecured Credentials"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "5.1",
+            "title": "Secrets management"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "5.2",
+            "title": "Encryption at rest"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-cluster-admin",
+        "severity": "Critical",
+        "resource": "kubeadm:cluster-admins",
+        "kind": "ClusterRoleBinding",
+        "message": "ClusterRoleBinding \"kubeadm:cluster-admins\" grants cluster-admin privileges. Every cluster-admin binding should be justified and documented.",
+        "remediation": "## Why This Matters\n\nThe `cluster-admin` ClusterRole grants unrestricted access to every resource in every namespace, including the ability to create and modify RBAC rules themselves. A compromised identity with cluster-admin privileges has full control of the entire cluster, making this the highest-value target for attackers.\n\n## How to Fix\n\nReplace cluster-admin bindings with purpose-built ClusterRoles scoped to actual needs:\n\n```yaml\napiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRoleBinding\nmetadata:\n  name: my-admin\nroleRef:\n  kind: ClusterRole\n  name: my-limited-admin-role    # Scoped permissions\n  apiGroup: rbac.authorization.k8s.io\nsubjects:\n  - kind: User\n    name: admin@example.com\n    apiGroup: rbac.authorization.k8s.io\n```\n\nConduct periodic access reviews to ensure cluster-admin bindings remain justified and documented.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.1 on limiting cluster-admin usage and the NSA/CISA Kubernetes Hardening Guide on minimizing administrative privileges.",
+        "field_path": ".roleRef",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.1",
+            "title": "Ensure that the cluster-admin role is only used where required"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-cluster-admin",
+        "severity": "Critical",
+        "resource": "kv-e2e-cluster-admin-binding",
+        "kind": "ClusterRoleBinding",
+        "message": "ClusterRoleBinding \"kv-e2e-cluster-admin-binding\" grants cluster-admin privileges. Every cluster-admin binding should be justified and documented.",
+        "remediation": "## Why This Matters\n\nThe `cluster-admin` ClusterRole grants unrestricted access to every resource in every namespace, including the ability to create and modify RBAC rules themselves. A compromised identity with cluster-admin privileges has full control of the entire cluster, making this the highest-value target for attackers.\n\n## How to Fix\n\nReplace cluster-admin bindings with purpose-built ClusterRoles scoped to actual needs:\n\n```yaml\napiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRoleBinding\nmetadata:\n  name: my-admin\nroleRef:\n  kind: ClusterRole\n  name: my-limited-admin-role    # Scoped permissions\n  apiGroup: rbac.authorization.k8s.io\nsubjects:\n  - kind: User\n    name: admin@example.com\n    apiGroup: rbac.authorization.k8s.io\n```\n\nConduct periodic access reviews to ensure cluster-admin bindings remain justified and documented.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.1 on limiting cluster-admin usage and the NSA/CISA Kubernetes Hardening Guide on minimizing administrative privileges.",
+        "field_path": ".roleRef",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.1",
+            "title": "Ensure that the cluster-admin role is only used where required"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-wildcard-apigroups",
+        "severity": "Critical",
+        "resource": "kv-e2e-wildcard-apigroups",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"kv-e2e-wildcard-apigroups\" grants access to wildcard (*) API groups, allowing operations across all API groups.",
+        "remediation": "## Why This Matters\n\nA wildcard API group (`*`) grants access across every API group in the cluster, including custom resource definitions and any API groups added in the future. This means an attacker inheriting this role can operate on resources the original author never anticipated.\n\n## How to Fix\n\nReplace the wildcard with the specific API groups your workload requires:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]            # Core API (pods, services, secrets)\n    resources: [\"pods\"]\n    verbs: [\"get\", \"list\"]\n  - apiGroups: [\"apps\"]         # Apps API (deployments, statefulsets)\n    resources: [\"deployments\"]\n    verbs: [\"get\", \"list\"]\n```\n\nCommon API groups: `\"\"` (core), `\"apps\"`, `\"batch\"`, `\"networking.k8s.io\"`, `\"rbac.authorization.k8s.io\"`.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.3 and the Kubernetes API groups documentation for a complete list of built-in API groups and their resources.",
+        "field_path": ".rules[0].apiGroups",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.3",
+            "title": "Minimize wildcard use in Roles and ClusterRoles"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-wildcard-resources",
+        "severity": "Critical",
+        "resource": "kv-e2e-wildcard-resources",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"kv-e2e-wildcard-resources\" grants access to wildcard (*) resources, allowing operations on all resource types.",
+        "remediation": "## Why This Matters\n\nA wildcard resource (`*`) grants access to every resource type in the specified API group, including Secrets, ConfigMaps, and any future resource types added to the cluster. This far exceeds what any single workload needs and creates a significant blast radius if compromised.\n\n## How to Fix\n\nEnumerate the specific resources your application accesses and restrict the rule:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"pods\", \"services\", \"configmaps\"]\n    verbs: [\"get\", \"list\", \"watch\"]\n```\n\nUse `kubectl auth can-i --list --as=system:serviceaccount:ns:sa` to audit the effective permissions of each service account before and after changes.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.3 on least-privilege RBAC and the Kubernetes RBAC documentation on role aggregation for managing permissions at scale.",
+        "field_path": ".rules[0].resources",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.3",
+            "title": "Minimize wildcard use in Roles and ClusterRoles"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-escalation-verbs",
+        "severity": "Critical",
+        "resource": "system:aggregate-to-edit",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"system:aggregate-to-edit\" grants escalation verb \"impersonate\", allowing RBAC privilege escalation.",
+        "remediation": "## Why This Matters\n\nThe `bind`, `escalate`, and `impersonate` verbs are special RBAC verbs that allow bypassing normal privilege restrictions. `bind` lets a user assign roles they do not hold, `escalate` lets a user grant permissions beyond their own, and `impersonate` lets a user act as another identity. Any of these can lead to full cluster compromise.\n\n## How to Fix\n\nRemove escalation verbs and replace with specific non-escalating verbs:\n\n```yaml\nrules:\n  - apiGroups: [\"rbac.authorization.k8s.io\"]\n    resources: [\"roles\", \"rolebindings\"]\n    verbs: [\"get\", \"list\", \"watch\"]  # Read-only, no bind/escalate\n```\n\nOnly cluster administrators and RBAC management controllers (e.g., the Kubernetes controller manager) should hold these verbs.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.8 on privilege escalation prevention and the Kubernetes RBAC documentation section on escalation prevention restrictions.",
+        "field_path": ".rules[1].verbs",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.1",
+            "title": "Ensure that the cluster-admin role is only used where required"
+          },
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.8",
+            "title": "Limit use of the Bind, Impersonate and Escalate permissions in the Kubernetes cluster"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1068",
+            "title": "Exploitation for Privilege Escalation"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-escalation-verbs",
+        "severity": "Critical",
+        "resource": "system:controller:clusterrole-aggregation-controller",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"system:controller:clusterrole-aggregation-controller\" grants escalation verb \"escalate\", allowing RBAC privilege escalation.",
+        "remediation": "## Why This Matters\n\nThe `bind`, `escalate`, and `impersonate` verbs are special RBAC verbs that allow bypassing normal privilege restrictions. `bind` lets a user assign roles they do not hold, `escalate` lets a user grant permissions beyond their own, and `impersonate` lets a user act as another identity. Any of these can lead to full cluster compromise.\n\n## How to Fix\n\nRemove escalation verbs and replace with specific non-escalating verbs:\n\n```yaml\nrules:\n  - apiGroups: [\"rbac.authorization.k8s.io\"]\n    resources: [\"roles\", \"rolebindings\"]\n    verbs: [\"get\", \"list\", \"watch\"]  # Read-only, no bind/escalate\n```\n\nOnly cluster administrators and RBAC management controllers (e.g., the Kubernetes controller manager) should hold these verbs.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.8 on privilege escalation prevention and the Kubernetes RBAC documentation section on escalation prevention restrictions.",
+        "field_path": ".rules[0].verbs",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.1",
+            "title": "Ensure that the cluster-admin role is only used where required"
+          },
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.8",
+            "title": "Limit use of the Bind, Impersonate and Escalate permissions in the Kubernetes cluster"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1068",
+            "title": "Exploitation for Privilege Escalation"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-wildcard-apigroups",
+        "severity": "Critical",
+        "resource": "system:controller:disruption-controller",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"system:controller:disruption-controller\" grants access to wildcard (*) API groups, allowing operations across all API groups.",
+        "remediation": "## Why This Matters\n\nA wildcard API group (`*`) grants access across every API group in the cluster, including custom resource definitions and any API groups added in the future. This means an attacker inheriting this role can operate on resources the original author never anticipated.\n\n## How to Fix\n\nReplace the wildcard with the specific API groups your workload requires:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]            # Core API (pods, services, secrets)\n    resources: [\"pods\"]\n    verbs: [\"get\", \"list\"]\n  - apiGroups: [\"apps\"]         # Apps API (deployments, statefulsets)\n    resources: [\"deployments\"]\n    verbs: [\"get\", \"list\"]\n```\n\nCommon API groups: `\"\"` (core), `\"apps\"`, `\"batch\"`, `\"networking.k8s.io\"`, `\"rbac.authorization.k8s.io\"`.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.3 and the Kubernetes API groups documentation for a complete list of built-in API groups and their resources.",
+        "field_path": ".rules[7].apiGroups",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.3",
+            "title": "Minimize wildcard use in Roles and ClusterRoles"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-wildcard-apigroups",
+        "severity": "Critical",
+        "resource": "system:controller:generic-garbage-collector",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"system:controller:generic-garbage-collector\" grants access to wildcard (*) API groups, allowing operations across all API groups.",
+        "remediation": "## Why This Matters\n\nA wildcard API group (`*`) grants access across every API group in the cluster, including custom resource definitions and any API groups added in the future. This means an attacker inheriting this role can operate on resources the original author never anticipated.\n\n## How to Fix\n\nReplace the wildcard with the specific API groups your workload requires:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]            # Core API (pods, services, secrets)\n    resources: [\"pods\"]\n    verbs: [\"get\", \"list\"]\n  - apiGroups: [\"apps\"]         # Apps API (deployments, statefulsets)\n    resources: [\"deployments\"]\n    verbs: [\"get\", \"list\"]\n```\n\nCommon API groups: `\"\"` (core), `\"apps\"`, `\"batch\"`, `\"networking.k8s.io\"`, `\"rbac.authorization.k8s.io\"`.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.3 and the Kubernetes API groups documentation for a complete list of built-in API groups and their resources.",
+        "field_path": ".rules[0].apiGroups",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.3",
+            "title": "Minimize wildcard use in Roles and ClusterRoles"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-wildcard-resources",
+        "severity": "Critical",
+        "resource": "system:controller:generic-garbage-collector",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"system:controller:generic-garbage-collector\" grants access to wildcard (*) resources, allowing operations on all resource types.",
+        "remediation": "## Why This Matters\n\nA wildcard resource (`*`) grants access to every resource type in the specified API group, including Secrets, ConfigMaps, and any future resource types added to the cluster. This far exceeds what any single workload needs and creates a significant blast radius if compromised.\n\n## How to Fix\n\nEnumerate the specific resources your application accesses and restrict the rule:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"pods\", \"services\", \"configmaps\"]\n    verbs: [\"get\", \"list\", \"watch\"]\n```\n\nUse `kubectl auth can-i --list --as=system:serviceaccount:ns:sa` to audit the effective permissions of each service account before and after changes.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.3 on least-privilege RBAC and the Kubernetes RBAC documentation on role aggregation for managing permissions at scale.",
+        "field_path": ".rules[0].resources",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.3",
+            "title": "Minimize wildcard use in Roles and ClusterRoles"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-wildcard-apigroups",
+        "severity": "Critical",
+        "resource": "system:controller:horizontal-pod-autoscaler",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"system:controller:horizontal-pod-autoscaler\" grants access to wildcard (*) API groups, allowing operations across all API groups.",
+        "remediation": "## Why This Matters\n\nA wildcard API group (`*`) grants access across every API group in the cluster, including custom resource definitions and any API groups added in the future. This means an attacker inheriting this role can operate on resources the original author never anticipated.\n\n## How to Fix\n\nReplace the wildcard with the specific API groups your workload requires:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]            # Core API (pods, services, secrets)\n    resources: [\"pods\"]\n    verbs: [\"get\", \"list\"]\n  - apiGroups: [\"apps\"]         # Apps API (deployments, statefulsets)\n    resources: [\"deployments\"]\n    verbs: [\"get\", \"list\"]\n```\n\nCommon API groups: `\"\"` (core), `\"apps\"`, `\"batch\"`, `\"networking.k8s.io\"`, `\"rbac.authorization.k8s.io\"`.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.3 and the Kubernetes API groups documentation for a complete list of built-in API groups and their resources.",
+        "field_path": ".rules[2].apiGroups",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.3",
+            "title": "Minimize wildcard use in Roles and ClusterRoles"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-wildcard-resources",
+        "severity": "Critical",
+        "resource": "system:controller:horizontal-pod-autoscaler",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"system:controller:horizontal-pod-autoscaler\" grants access to wildcard (*) resources, allowing operations on all resource types.",
+        "remediation": "## Why This Matters\n\nA wildcard resource (`*`) grants access to every resource type in the specified API group, including Secrets, ConfigMaps, and any future resource types added to the cluster. This far exceeds what any single workload needs and creates a significant blast radius if compromised.\n\n## How to Fix\n\nEnumerate the specific resources your application accesses and restrict the rule:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"pods\", \"services\", \"configmaps\"]\n    verbs: [\"get\", \"list\", \"watch\"]\n```\n\nUse `kubectl auth can-i --list --as=system:serviceaccount:ns:sa` to audit the effective permissions of each service account before and after changes.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.3 on least-privilege RBAC and the Kubernetes RBAC documentation on role aggregation for managing permissions at scale.",
+        "field_path": ".rules[5].resources",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.3",
+            "title": "Minimize wildcard use in Roles and ClusterRoles"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-wildcard-apigroups",
+        "severity": "Critical",
+        "resource": "system:controller:namespace-controller",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"system:controller:namespace-controller\" grants access to wildcard (*) API groups, allowing operations across all API groups.",
+        "remediation": "## Why This Matters\n\nA wildcard API group (`*`) grants access across every API group in the cluster, including custom resource definitions and any API groups added in the future. This means an attacker inheriting this role can operate on resources the original author never anticipated.\n\n## How to Fix\n\nReplace the wildcard with the specific API groups your workload requires:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]            # Core API (pods, services, secrets)\n    resources: [\"pods\"]\n    verbs: [\"get\", \"list\"]\n  - apiGroups: [\"apps\"]         # Apps API (deployments, statefulsets)\n    resources: [\"deployments\"]\n    verbs: [\"get\", \"list\"]\n```\n\nCommon API groups: `\"\"` (core), `\"apps\"`, `\"batch\"`, `\"networking.k8s.io\"`, `\"rbac.authorization.k8s.io\"`.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.3 and the Kubernetes API groups documentation for a complete list of built-in API groups and their resources.",
+        "field_path": ".rules[2].apiGroups",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.3",
+            "title": "Minimize wildcard use in Roles and ClusterRoles"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-wildcard-resources",
+        "severity": "Critical",
+        "resource": "system:controller:namespace-controller",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"system:controller:namespace-controller\" grants access to wildcard (*) resources, allowing operations on all resource types.",
+        "remediation": "## Why This Matters\n\nA wildcard resource (`*`) grants access to every resource type in the specified API group, including Secrets, ConfigMaps, and any future resource types added to the cluster. This far exceeds what any single workload needs and creates a significant blast radius if compromised.\n\n## How to Fix\n\nEnumerate the specific resources your application accesses and restrict the rule:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"pods\", \"services\", \"configmaps\"]\n    verbs: [\"get\", \"list\", \"watch\"]\n```\n\nUse `kubectl auth can-i --list --as=system:serviceaccount:ns:sa` to audit the effective permissions of each service account before and after changes.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.3 on least-privilege RBAC and the Kubernetes RBAC documentation on role aggregation for managing permissions at scale.",
+        "field_path": ".rules[2].resources",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.3",
+            "title": "Minimize wildcard use in Roles and ClusterRoles"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-wildcard-apigroups",
+        "severity": "Critical",
+        "resource": "system:controller:resourcequota-controller",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"system:controller:resourcequota-controller\" grants access to wildcard (*) API groups, allowing operations across all API groups.",
+        "remediation": "## Why This Matters\n\nA wildcard API group (`*`) grants access across every API group in the cluster, including custom resource definitions and any API groups added in the future. This means an attacker inheriting this role can operate on resources the original author never anticipated.\n\n## How to Fix\n\nReplace the wildcard with the specific API groups your workload requires:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]            # Core API (pods, services, secrets)\n    resources: [\"pods\"]\n    verbs: [\"get\", \"list\"]\n  - apiGroups: [\"apps\"]         # Apps API (deployments, statefulsets)\n    resources: [\"deployments\"]\n    verbs: [\"get\", \"list\"]\n```\n\nCommon API groups: `\"\"` (core), `\"apps\"`, `\"batch\"`, `\"networking.k8s.io\"`, `\"rbac.authorization.k8s.io\"`.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.3 and the Kubernetes API groups documentation for a complete list of built-in API groups and their resources.",
+        "field_path": ".rules[0].apiGroups",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.3",
+            "title": "Minimize wildcard use in Roles and ClusterRoles"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-wildcard-resources",
+        "severity": "Critical",
+        "resource": "system:controller:resourcequota-controller",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"system:controller:resourcequota-controller\" grants access to wildcard (*) resources, allowing operations on all resource types.",
+        "remediation": "## Why This Matters\n\nA wildcard resource (`*`) grants access to every resource type in the specified API group, including Secrets, ConfigMaps, and any future resource types added to the cluster. This far exceeds what any single workload needs and creates a significant blast radius if compromised.\n\n## How to Fix\n\nEnumerate the specific resources your application accesses and restrict the rule:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"pods\", \"services\", \"configmaps\"]\n    verbs: [\"get\", \"list\", \"watch\"]\n```\n\nUse `kubectl auth can-i --list --as=system:serviceaccount:ns:sa` to audit the effective permissions of each service account before and after changes.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.3 on least-privilege RBAC and the Kubernetes RBAC documentation on role aggregation for managing permissions at scale.",
+        "field_path": ".rules[0].resources",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.3",
+            "title": "Minimize wildcard use in Roles and ClusterRoles"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-wildcard-apigroups",
+        "severity": "Critical",
+        "resource": "system:kube-controller-manager",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"system:kube-controller-manager\" grants access to wildcard (*) API groups, allowing operations across all API groups.",
+        "remediation": "## Why This Matters\n\nA wildcard API group (`*`) grants access across every API group in the cluster, including custom resource definitions and any API groups added in the future. This means an attacker inheriting this role can operate on resources the original author never anticipated.\n\n## How to Fix\n\nReplace the wildcard with the specific API groups your workload requires:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]            # Core API (pods, services, secrets)\n    resources: [\"pods\"]\n    verbs: [\"get\", \"list\"]\n  - apiGroups: [\"apps\"]         # Apps API (deployments, statefulsets)\n    resources: [\"deployments\"]\n    verbs: [\"get\", \"list\"]\n```\n\nCommon API groups: `\"\"` (core), `\"apps\"`, `\"batch\"`, `\"networking.k8s.io\"`, `\"rbac.authorization.k8s.io\"`.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.3 and the Kubernetes API groups documentation for a complete list of built-in API groups and their resources.",
+        "field_path": ".rules[9].apiGroups",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.3",
+            "title": "Minimize wildcard use in Roles and ClusterRoles"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-wildcard-resources",
+        "severity": "Critical",
+        "resource": "system:kube-controller-manager",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"system:kube-controller-manager\" grants access to wildcard (*) resources, allowing operations on all resource types.",
+        "remediation": "## Why This Matters\n\nA wildcard resource (`*`) grants access to every resource type in the specified API group, including Secrets, ConfigMaps, and any future resource types added to the cluster. This far exceeds what any single workload needs and creates a significant blast radius if compromised.\n\n## How to Fix\n\nEnumerate the specific resources your application accesses and restrict the rule:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"pods\", \"services\", \"configmaps\"]\n    verbs: [\"get\", \"list\", \"watch\"]\n```\n\nUse `kubectl auth can-i --list --as=system:serviceaccount:ns:sa` to audit the effective permissions of each service account before and after changes.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.3 on least-privilege RBAC and the Kubernetes RBAC documentation on role aggregation for managing permissions at scale.",
+        "field_path": ".rules[9].resources",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.3",
+            "title": "Minimize wildcard use in Roles and ClusterRoles"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-wildcard-verbs",
+        "severity": "Critical",
+        "resource": "system:kubelet-api-admin",
+        "kind": "ClusterRole",
+        "message": "ClusterRole \"system:kubelet-api-admin\" grants wildcard (*) verbs, violating least-privilege principle.",
+        "remediation": "## Why This Matters\n\nA wildcard verb (`*`) grants every possible action on the specified resources, including delete, patch, and create. An attacker who assumes this role can modify or destroy resources, exfiltrate data, or escalate privileges far beyond what the workload actually requires.\n\n## How to Fix\n\nReplace the wildcard with the specific verbs your application needs:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"pods\"]\n    verbs: [\"get\", \"list\", \"watch\"]  # Only read access\n  - apiGroups: [\"apps\"]\n    resources: [\"deployments\"]\n    verbs: [\"get\", \"update\"]          # Read + update only\n```\n\nEnable Kubernetes audit logging and review the audit trail to identify which verbs are actually used before tightening permissions.\n\n## Learn More\n\nRefer to CIS Kubernetes Benchmark 5.1.3 and the Kubernetes RBAC documentation for guidance on applying the principle of least privilege to role definitions.",
+        "field_path": ".rules[2].verbs",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.1",
+            "title": "Ensure that the cluster-admin role is only used where required"
+          },
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.3",
+            "title": "Minimize wildcard use in Roles and ClusterRoles"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "host-network",
+        "severity": "Critical",
+        "resource": "host-network-app",
+        "namespace": "kv-e2e-psa-baseline",
+        "kind": "Deployment",
+        "message": "Deployment \"host-network-app\" has hostNetwork enabled, bypassing network policies and exposing the host network.",
+        "remediation": "## Why This Matters\n\nContainers with hostNetwork bypass Kubernetes NetworkPolicies entirely and gain access to all network interfaces on the node, including the node's IP address and loopback. An attacker can use this to sniff traffic from other pods, access node-local services such as the kubelet API on port 10250, or impersonate the node on the network.\n\n## How to Fix\n\nDisable host networking in the pod spec and use Kubernetes Services for exposure:\n\n```yaml\nspec:\n  hostNetwork: false\n```\n\nUse ClusterIP Services, NodePort, LoadBalancer, or Ingress resources to expose your application. Only CNI plugins, kube-proxy, and certain monitoring agents legitimately need host networking.\n\n## Learn More\n\nThis aligns with CIS Benchmark 5.2.4 and the Pod Security Standards \"Baseline\" profile. Network namespace isolation is essential for NetworkPolicy enforcement and cluster network segmentation.",
+        "field_path": ".spec.hostNetwork",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.5",
+            "title": "Minimize the admission of containers wishing to share the host network namespace"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1040",
+            "title": "Network Sniffing"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.3",
+            "title": "Minimized host resource access"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "4.1",
+            "title": "Network separation"
+          }
+        ]
+      },
+      {
+        "checker": "host-pid",
+        "severity": "Critical",
+        "resource": "privileged-app",
+        "namespace": "kv-e2e-psa-baseline",
+        "kind": "Deployment",
+        "message": "Deployment \"privileged-app\" has hostPID enabled, allowing containers to see all host processes.",
+        "remediation": "## Why This Matters\n\nWhen hostPID is enabled, containers share the host's process ID namespace and can see every process running on the node, including processes from other pods and system daemons. An attacker can use this to inspect environment variables containing secrets, send signals to critical processes, or exploit /proc entries to escape the container entirely.\n\n## How to Fix\n\nDisable host PID namespace sharing in the pod spec:\n\n```yaml\nspec:\n  hostPID: false\n```\n\nIf you need process visibility for monitoring or debugging, consider using ephemeral containers or a dedicated monitoring DaemonSet with tightly scoped RBAC instead.\n\n## Learn More\n\nThis check aligns with CIS Benchmark 5.2.2 and the Pod Security Standards \"Baseline\" profile, which prohibits hostPID. Process namespace isolation is a fundamental container security boundary.",
+        "field_path": ".spec.hostPID",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.3",
+            "title": "Minimize the admission of containers wishing to share the host process ID namespace"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1057",
+            "title": "Process Discovery"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.3",
+            "title": "Minimized host resource access"
+          }
+        ]
+      },
+      {
+        "checker": "privileged",
+        "severity": "Critical",
+        "resource": "privileged-app",
+        "namespace": "kv-e2e-psa-baseline",
+        "kind": "Deployment",
+        "container": "pause",
+        "message": "Container \"pause\" is running in privileged mode, granting full host access.",
+        "remediation": "## Why This Matters\n\nA privileged container runs with all Linux capabilities and has direct access to the host's devices, filesystems, and kernel. An attacker who compromises a privileged container can immediately escape to the host node, access secrets from other pods, and pivot across the entire cluster. This is the single most dangerous workload misconfiguration.\n\n## How to Fix\n\nSet `privileged` to `false` in the container's securityContext:\n\n```yaml\nsecurityContext:\n  privileged: false\n  allowPrivilegeEscalation: false\n  capabilities:\n    drop: [\"ALL\"]\n```\n\nIf your container requires specific host access (e.g., network configuration), grant only the individual capabilities it needs via `capabilities.add` instead of enabling full privileged mode.\n\n## Learn More\n\nThis check aligns with CIS Kubernetes Benchmark 5.2.1 and the Pod Security Standards \"Baseline\" profile, which both prohibit privileged containers. See the Kubernetes documentation on Pod Security Standards for details.",
+        "field_path": ".spec.containers[0].securityContext.privileged",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.2",
+            "title": "Minimize the admission of privileged containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.1",
+            "title": "Non-root containers"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "2.1",
+            "title": "Pod security enforcement"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-escalation-verbs",
+        "severity": "Critical",
+        "resource": "kv-e2e-escalation-verbs",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Role",
+        "message": "Role \"kv-e2e-escalation-verbs\" grants escalation verb \"bind\", allowing RBAC privilege escalation.",
+        "remediation": "## Why This Matters\n\nThe `bind`, `escalate`, and `impersonate` verbs are special RBAC verbs that allow bypassing normal privilege restrictions. `bind` lets a user assign roles they do not hold, `escalate` lets a user grant permissions beyond their own, and `impersonate` lets a user act as another identity. Any of these can lead to full cluster compromise.\n\n## How to Fix\n\nRemove escalation verbs and replace with specific non-escalating verbs:\n\n```yaml\nrules:\n  - apiGroups: [\"rbac.authorization.k8s.io\"]\n    resources: [\"roles\", \"rolebindings\"]\n    verbs: [\"get\", \"list\", \"watch\"]  # Read-only, no bind/escalate\n```\n\nOnly cluster administrators and RBAC management controllers (e.g., the Kubernetes controller manager) should hold these verbs.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.8 on privilege escalation prevention and the Kubernetes RBAC documentation section on escalation prevention restrictions.",
+        "field_path": ".rules[0].verbs",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.1",
+            "title": "Ensure that the cluster-admin role is only used where required"
+          },
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.8",
+            "title": "Limit use of the Bind, Impersonate and Escalate permissions in the Kubernetes cluster"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1068",
+            "title": "Exploitation for Privilege Escalation"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-wildcard-verbs",
+        "severity": "Critical",
+        "resource": "kv-e2e-wildcard-verbs",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Role",
+        "message": "Role \"kv-e2e-wildcard-verbs\" grants wildcard (*) verbs, violating least-privilege principle.",
+        "remediation": "## Why This Matters\n\nA wildcard verb (`*`) grants every possible action on the specified resources, including delete, patch, and create. An attacker who assumes this role can modify or destroy resources, exfiltrate data, or escalate privileges far beyond what the workload actually requires.\n\n## How to Fix\n\nReplace the wildcard with the specific verbs your application needs:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"pods\"]\n    verbs: [\"get\", \"list\", \"watch\"]  # Only read access\n  - apiGroups: [\"apps\"]\n    resources: [\"deployments\"]\n    verbs: [\"get\", \"update\"]          # Read + update only\n```\n\nEnable Kubernetes audit logging and review the audit trail to identify which verbs are actually used before tightening permissions.\n\n## Learn More\n\nRefer to CIS Kubernetes Benchmark 5.1.3 and the Kubernetes RBAC documentation for guidance on applying the principle of least privilege to role definitions.",
+        "field_path": ".rules[0].verbs",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.1",
+            "title": "Ensure that the cluster-admin role is only used where required"
+          },
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.3",
+            "title": "Minimize wildcard use in Roles and ClusterRoles"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "host-ipc",
+        "severity": "Critical",
+        "resource": "host-ipc-pod",
+        "namespace": "kv-e2e-workload",
+        "kind": "Pod",
+        "message": "Pod \"host-ipc-pod\" has hostIPC enabled, allowing containers to access host shared memory.",
+        "remediation": "## Why This Matters\n\nWhen hostIPC is enabled, containers can access the host's shared memory segments, semaphores, and message queues. An attacker can exploit this to read sensitive data from other processes, inject malicious code into shared memory segments used by host services, or interfere with inter-process communication between system daemons.\n\n## How to Fix\n\nDisable host IPC namespace sharing in the pod spec:\n\n```yaml\nspec:\n  hostIPC: false\n```\n\nIf your application uses shared memory for inter-container communication, use emptyDir volumes with `medium: Memory` instead, which provides a pod-scoped tmpfs without exposing the host IPC namespace.\n\n## Learn More\n\nThis check aligns with CIS Benchmark 5.2.3 and the Pod Security Standards \"Baseline\" profile. IPC namespace isolation prevents cross-process data leakage between containers and the host.",
+        "field_path": ".spec.hostIPC",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.4",
+            "title": "Minimize the admission of containers wishing to share the host IPC namespace"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.3",
+            "title": "Minimized host resource access"
+          }
+        ]
+      },
+      {
+        "checker": "host-network",
+        "severity": "Critical",
+        "resource": "host-network-pod",
+        "namespace": "kv-e2e-workload",
+        "kind": "Pod",
+        "message": "Pod \"host-network-pod\" has hostNetwork enabled, bypassing network policies and exposing the host network.",
+        "remediation": "## Why This Matters\n\nContainers with hostNetwork bypass Kubernetes NetworkPolicies entirely and gain access to all network interfaces on the node, including the node's IP address and loopback. An attacker can use this to sniff traffic from other pods, access node-local services such as the kubelet API on port 10250, or impersonate the node on the network.\n\n## How to Fix\n\nDisable host networking in the pod spec and use Kubernetes Services for exposure:\n\n```yaml\nspec:\n  hostNetwork: false\n```\n\nUse ClusterIP Services, NodePort, LoadBalancer, or Ingress resources to expose your application. Only CNI plugins, kube-proxy, and certain monitoring agents legitimately need host networking.\n\n## Learn More\n\nThis aligns with CIS Benchmark 5.2.4 and the Pod Security Standards \"Baseline\" profile. Network namespace isolation is essential for NetworkPolicy enforcement and cluster network segmentation.",
+        "field_path": ".spec.hostNetwork",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.5",
+            "title": "Minimize the admission of containers wishing to share the host network namespace"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1040",
+            "title": "Network Sniffing"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.3",
+            "title": "Minimized host resource access"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "4.1",
+            "title": "Network separation"
+          }
+        ]
+      },
+      {
+        "checker": "host-pid",
+        "severity": "Critical",
+        "resource": "host-pid-pod",
+        "namespace": "kv-e2e-workload",
+        "kind": "Pod",
+        "message": "Pod \"host-pid-pod\" has hostPID enabled, allowing containers to see all host processes.",
+        "remediation": "## Why This Matters\n\nWhen hostPID is enabled, containers share the host's process ID namespace and can see every process running on the node, including processes from other pods and system daemons. An attacker can use this to inspect environment variables containing secrets, send signals to critical processes, or exploit /proc entries to escape the container entirely.\n\n## How to Fix\n\nDisable host PID namespace sharing in the pod spec:\n\n```yaml\nspec:\n  hostPID: false\n```\n\nIf you need process visibility for monitoring or debugging, consider using ephemeral containers or a dedicated monitoring DaemonSet with tightly scoped RBAC instead.\n\n## Learn More\n\nThis check aligns with CIS Benchmark 5.2.2 and the Pod Security Standards \"Baseline\" profile, which prohibits hostPID. Process namespace isolation is a fundamental container security boundary.",
+        "field_path": ".spec.hostPID",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.3",
+            "title": "Minimize the admission of containers wishing to share the host process ID namespace"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1057",
+            "title": "Process Discovery"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.3",
+            "title": "Minimized host resource access"
+          }
+        ]
+      },
+      {
+        "checker": "container-runtime-socket",
+        "severity": "Critical",
+        "resource": "hostpath-docker-sock",
+        "namespace": "kv-e2e-workload",
+        "kind": "Pod",
+        "container": "docker-sock-mount",
+        "message": "Container \"docker-sock-mount\" mounts container runtime socket \"/var/run/docker.sock\" via volume \"docker-sock\".",
+        "remediation": "## Why This Matters\n\nMounting the container runtime socket (docker.sock, containerd.sock, crio.sock) gives the container full control over every container on the node. An attacker can create privileged containers, access secrets from other pods, or escape to the host entirely. This is one of the most critical container escape vectors.\n\n## How to Fix\n\nRemove the hostPath volume that mounts the runtime socket:\n\n```yaml\nspec:\n  volumes:\n    # Remove this volume entirely:\n    # - name: docker-sock\n    #   hostPath:\n    #     path: /var/run/docker.sock\n  containers:\n    - name: app\n      volumeMounts: []            # Remove the corresponding mount\n```\n\nIf you need to build container images, use rootless builders like Kaniko or Buildah instead of Docker-in-Docker.\n\n## Learn More\n\nSee MITRE ATT\u0026CK T1611 (Escape to Host) for container escape techniques. The CIS Kubernetes Benchmark and NSA/CISA Hardening Guide both prohibit mounting container runtime sockets.",
+        "field_path": ".spec.volumes[0].hostPath.path",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.12",
+            "title": "Minimize the admission of HostPath volumes"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1610",
+            "title": "Deploy Container"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.3",
+            "title": "Minimized host resource access"
+          }
+        ]
+      },
+      {
+        "checker": "host-path-volumes",
+        "severity": "Critical",
+        "resource": "hostpath-docker-sock",
+        "namespace": "kv-e2e-workload",
+        "kind": "Pod",
+        "message": "Pod \"hostpath-docker-sock\" mounts hostPath \"/var/run/docker.sock\" via volume \"docker-sock\".",
+        "remediation": "## Why This Matters\n\nhostPath volumes give containers direct, unrestricted access to the host node's filesystem. Depending on the path mounted, an attacker can read sensitive host files (/etc/shadow), access container runtime sockets for escape, or modify system binaries. This is one of the most common paths to full node compromise.\n\n## How to Fix\n\nReplace hostPath volumes with safer alternatives:\n\n```yaml\nvolumes:\n  - name: data\n    emptyDir: {}          # Pod-scoped temporary storage\n  - name: persistent\n    persistentVolumeClaim:\n      claimName: my-pvc  # Managed storage\n```\n\nIf host filesystem access is absolutely required (e.g., for log collectors or node monitoring), mount the most restrictive path possible and set `readOnly: true` in the volumeMount.\n\n## Learn More\n\nhostPath volumes are prohibited in the Pod Security Standards \"Baseline\" profile. Refer to CIS Benchmark 5.2.13 and use PersistentVolumeClaims with CSI drivers for production data storage needs.",
+        "field_path": ".spec.volumes[0].hostPath",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.12",
+            "title": "Minimize the admission of HostPath volumes"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1006",
+            "title": "Direct Volume Access"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.3",
+            "title": "Minimized host resource access"
+          }
+        ]
+      },
+      {
+        "checker": "host-path-volumes",
+        "severity": "Critical",
+        "resource": "hostpath-etc",
+        "namespace": "kv-e2e-workload",
+        "kind": "Pod",
+        "message": "Pod \"hostpath-etc\" mounts hostPath \"/etc\" via volume \"host-etc\".",
+        "remediation": "## Why This Matters\n\nhostPath volumes give containers direct, unrestricted access to the host node's filesystem. Depending on the path mounted, an attacker can read sensitive host files (/etc/shadow), access container runtime sockets for escape, or modify system binaries. This is one of the most common paths to full node compromise.\n\n## How to Fix\n\nReplace hostPath volumes with safer alternatives:\n\n```yaml\nvolumes:\n  - name: data\n    emptyDir: {}          # Pod-scoped temporary storage\n  - name: persistent\n    persistentVolumeClaim:\n      claimName: my-pvc  # Managed storage\n```\n\nIf host filesystem access is absolutely required (e.g., for log collectors or node monitoring), mount the most restrictive path possible and set `readOnly: true` in the volumeMount.\n\n## Learn More\n\nhostPath volumes are prohibited in the Pod Security Standards \"Baseline\" profile. Refer to CIS Benchmark 5.2.13 and use PersistentVolumeClaims with CSI drivers for production data storage needs.",
+        "field_path": ".spec.volumes[0].hostPath",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.12",
+            "title": "Minimize the admission of HostPath volumes"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1006",
+            "title": "Direct Volume Access"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.3",
+            "title": "Minimized host resource access"
+          }
+        ]
+      },
+      {
+        "checker": "host-path-volumes",
+        "severity": "Critical",
+        "resource": "hostpath-root",
+        "namespace": "kv-e2e-workload",
+        "kind": "Pod",
+        "message": "Pod \"hostpath-root\" mounts hostPath \"/\" via volume \"host-root\".",
+        "remediation": "## Why This Matters\n\nhostPath volumes give containers direct, unrestricted access to the host node's filesystem. Depending on the path mounted, an attacker can read sensitive host files (/etc/shadow), access container runtime sockets for escape, or modify system binaries. This is one of the most common paths to full node compromise.\n\n## How to Fix\n\nReplace hostPath volumes with safer alternatives:\n\n```yaml\nvolumes:\n  - name: data\n    emptyDir: {}          # Pod-scoped temporary storage\n  - name: persistent\n    persistentVolumeClaim:\n      claimName: my-pvc  # Managed storage\n```\n\nIf host filesystem access is absolutely required (e.g., for log collectors or node monitoring), mount the most restrictive path possible and set `readOnly: true` in the volumeMount.\n\n## Learn More\n\nhostPath volumes are prohibited in the Pod Security Standards \"Baseline\" profile. Refer to CIS Benchmark 5.2.13 and use PersistentVolumeClaims with CSI drivers for production data storage needs.",
+        "field_path": ".spec.volumes[0].hostPath",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.12",
+            "title": "Minimize the admission of HostPath volumes"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1006",
+            "title": "Direct Volume Access"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.3",
+            "title": "Minimized host resource access"
+          }
+        ]
+      },
+      {
+        "checker": "privileged",
+        "severity": "Critical",
+        "resource": "privileged-container",
+        "namespace": "kv-e2e-workload",
+        "kind": "Deployment",
+        "container": "privileged-app",
+        "message": "Container \"privileged-app\" is running in privileged mode, granting full host access.",
+        "remediation": "## Why This Matters\n\nA privileged container runs with all Linux capabilities and has direct access to the host's devices, filesystems, and kernel. An attacker who compromises a privileged container can immediately escape to the host node, access secrets from other pods, and pivot across the entire cluster. This is the single most dangerous workload misconfiguration.\n\n## How to Fix\n\nSet `privileged` to `false` in the container's securityContext:\n\n```yaml\nsecurityContext:\n  privileged: false\n  allowPrivilegeEscalation: false\n  capabilities:\n    drop: [\"ALL\"]\n```\n\nIf your container requires specific host access (e.g., network configuration), grant only the individual capabilities it needs via `capabilities.add` instead of enabling full privileged mode.\n\n## Learn More\n\nThis check aligns with CIS Kubernetes Benchmark 5.2.1 and the Pod Security Standards \"Baseline\" profile, which both prohibit privileged containers. See the Kubernetes documentation on Pod Security Standards for details.",
+        "field_path": ".spec.containers[0].securityContext.privileged",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.2",
+            "title": "Minimize the admission of privileged containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.1",
+            "title": "Non-root containers"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "2.1",
+            "title": "Pod security enforcement"
+          }
+        ]
+      }
+    ],
+    "cluster_info": {
+      "server_version": "v1.35.0",
+      "node_count": 1,
+      "namespace_count": 0,
+      "context_name": "kind-kubevigil-e2e-single"
+    },
+    "scan_meta": {
+      "start_time": "2026-02-17T12:35:00.370177+05:30",
+      "duration": "4.823575708s",
+      "checks_run": 103,
+      "checks_skipped": 7,
+      "checks_errored": 0,
+      "scan_mode": "Live"
+    }
+  }
+}

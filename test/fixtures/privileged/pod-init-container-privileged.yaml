@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: init-privileged-pod
+  namespace: default
+spec:
+  initContainers:
+    - name: init-setup
+      image: busybox:latest
+      securityContext:
+        privileged: true
+  containers:
+    - name: app
+      image: nginx:1.25
+      securityContext:
+        privileged: false

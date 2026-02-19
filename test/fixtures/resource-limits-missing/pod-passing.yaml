@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: limits-set-pod
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: nginx:1.25
+      resources:
+        limits:
+          cpu: "500m"
+          memory: "128Mi"

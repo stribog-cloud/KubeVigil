@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dangerous-caps-pod
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: nginx:1.25
+      securityContext:
+        capabilities:
+          add:
+            - SYS_ADMIN
+            - NET_RAW

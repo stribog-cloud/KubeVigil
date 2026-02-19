@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: real-pod
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: nginx:1.25
+---
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: another-pod
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: redis:7

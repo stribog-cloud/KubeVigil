@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: no-runtime-class-pod
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: nginx:1.25

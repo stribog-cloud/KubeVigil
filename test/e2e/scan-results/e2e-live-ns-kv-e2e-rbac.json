@@ -1,0 +1,1775 @@
+{
+  "version": "1",
+  "tool_version": "82c45af",
+  "scan_result": {
+    "summary": {
+      "posture_score": 80,
+      "total_findings": 54,
+      "critical": 2,
+      "high": 11,
+      "medium": 24,
+      "low": 16,
+      "info": 1,
+      "unique_resources": 10,
+      "unique_namespaces": 1,
+      "check_coverage": {
+        "total_run": 103,
+        "with_findings": 30,
+        "clean": 73,
+        "skipped": 7,
+        "errored": 0
+      }
+    },
+    "findings": [
+      {
+        "checker": "rbac-escalation-verbs",
+        "severity": "Critical",
+        "resource": "kv-e2e-escalation-verbs",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Role",
+        "message": "Role \"kv-e2e-escalation-verbs\" grants escalation verb \"bind\", allowing RBAC privilege escalation.",
+        "remediation": "## Why This Matters\n\nThe `bind`, `escalate`, and `impersonate` verbs are special RBAC verbs that allow bypassing normal privilege restrictions. `bind` lets a user assign roles they do not hold, `escalate` lets a user grant permissions beyond their own, and `impersonate` lets a user act as another identity. Any of these can lead to full cluster compromise.\n\n## How to Fix\n\nRemove escalation verbs and replace with specific non-escalating verbs:\n\n```yaml\nrules:\n  - apiGroups: [\"rbac.authorization.k8s.io\"]\n    resources: [\"roles\", \"rolebindings\"]\n    verbs: [\"get\", \"list\", \"watch\"]  # Read-only, no bind/escalate\n```\n\nOnly cluster administrators and RBAC management controllers (e.g., the Kubernetes controller manager) should hold these verbs.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.8 on privilege escalation prevention and the Kubernetes RBAC documentation section on escalation prevention restrictions.",
+        "field_path": ".rules[0].verbs",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.1",
+            "title": "Ensure that the cluster-admin role is only used where required"
+          },
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.8",
+            "title": "Limit use of the Bind, Impersonate and Escalate permissions in the Kubernetes cluster"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1068",
+            "title": "Exploitation for Privilege Escalation"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-wildcard-verbs",
+        "severity": "Critical",
+        "resource": "kv-e2e-wildcard-verbs",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Role",
+        "message": "Role \"kv-e2e-wildcard-verbs\" grants wildcard (*) verbs, violating least-privilege principle.",
+        "remediation": "## Why This Matters\n\nA wildcard verb (`*`) grants every possible action on the specified resources, including delete, patch, and create. An attacker who assumes this role can modify or destroy resources, exfiltrate data, or escalate privileges far beyond what the workload actually requires.\n\n## How to Fix\n\nReplace the wildcard with the specific verbs your application needs:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"pods\"]\n    verbs: [\"get\", \"list\", \"watch\"]  # Only read access\n  - apiGroups: [\"apps\"]\n    resources: [\"deployments\"]\n    verbs: [\"get\", \"update\"]          # Read + update only\n```\n\nEnable Kubernetes audit logging and review the audit trail to identify which verbs are actually used before tightening permissions.\n\n## Learn More\n\nRefer to CIS Kubernetes Benchmark 5.1.3 and the Kubernetes RBAC documentation for guidance on applying the principle of least privilege to role definitions.",
+        "field_path": ".rules[0].verbs",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.1",
+            "title": "Ensure that the cluster-admin role is only used where required"
+          },
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.3",
+            "title": "Minimize wildcard use in Roles and ClusterRoles"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "automount-token",
+        "severity": "High",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "message": "Pod \"kv-e2e-automount-pod\" auto-mounts a ServiceAccount token. Most workloads do not need Kubernetes API access.",
+        "remediation": "## Why This Matters\n\nWhen a ServiceAccount token is auto-mounted, every container in the pod can call the Kubernetes API. If a container is compromised through a vulnerability or misconfiguration, the attacker gains API access to enumerate resources, read secrets, or escalate privileges.\n\n## How to Fix\n\nDisable auto-mounting at the pod spec level for workloads that do not need API access:\n\n```yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: my-app\nspec:\n  template:\n    spec:\n      automountServiceAccountToken: false\n      containers:\n        - name: app\n          image: my-app:latest\n```\n\nFor workloads that do require API access, use projected tokens with bounded lifetime and audience restrictions instead of the default long-lived token.\n\n## Learn More\n\nRefer to the Kubernetes documentation on configuring service accounts for pods and CIS Kubernetes Benchmark 5.1.6 for auto-mount token guidance.",
+        "field_path": ".spec.automountServiceAccountToken",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.6",
+            "title": "Ensure that Service Account Tokens are only mounted where necessary"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1552.007",
+            "title": "Unsecured Credentials: Container API"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.2",
+            "title": "Service account management"
+          }
+        ]
+      },
+      {
+        "checker": "default-service-account",
+        "severity": "High",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "message": "Pod \"kv-e2e-automount-pod\" uses the default ServiceAccount, which may have unintended permissions.",
+        "remediation": "## Why This Matters\n\nThe default ServiceAccount is shared by every pod in a namespace. If any pod is compromised, the attacker inherits whatever permissions have been granted to the default account via role bindings, enabling lateral movement across all workloads sharing it.\n\n## How to Fix\n\nCreate a dedicated ServiceAccount for each workload and reference it in the pod spec:\n\n```yaml\napiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: my-app\n  namespace: production\nautomountServiceAccountToken: false\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: my-app\nspec:\n  template:\n    spec:\n      serviceAccountName: my-app\n```\n\nGrant only the permissions the workload actually needs via a dedicated Role and RoleBinding.\n\n## Learn More\n\nSee the Kubernetes documentation on managing service accounts and CIS Kubernetes Benchmark 5.1.5 for guidance on ensuring default service accounts are not actively used.",
+        "field_path": ".spec.serviceAccountName",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.5",
+            "title": "Ensure that default service accounts are not actively used"
+          },
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.6",
+            "title": "Ensure that Service Account Tokens are only mounted where necessary"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078.001",
+            "title": "Valid Accounts: Default Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.2",
+            "title": "Service account management"
+          }
+        ]
+      },
+      {
+        "checker": "privilege-escalation",
+        "severity": "High",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" does not set allowPrivilegeEscalation to false, permitting privilege escalation.",
+        "remediation": "## Why This Matters\n\nBy default, Kubernetes allows containers to escalate privileges via setuid/setgid binaries, which let a process gain more permissions than its parent. An attacker can exploit this using setuid binaries already present in the container image (like `su`, `sudo`, or `ping`) to elevate from a low-privilege user to root.\n\n## How to Fix\n\nExplicitly disable privilege escalation in the container's securityContext:\n\n```yaml\nsecurityContext:\n  allowPrivilegeEscalation: false\n  runAsNonRoot: true\n  capabilities:\n    drop: [\"ALL\"]\n```\n\nThis blocks the use of setuid/setgid binaries and prevents the no_new_privs Linux flag from being cleared. The vast majority of application containers do not need privilege escalation.\n\n## Learn More\n\nThis is required by the Pod Security Standards \"Restricted\" profile and CIS Benchmark 5.2.5. Disabling privilege escalation is one of the most impactful single-line security improvements you can make.",
+        "field_path": ".spec.containers[0].securityContext.allowPrivilegeEscalation",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.6",
+            "title": "Minimize the admission of containers with allowPrivilegeEscalation"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1068",
+            "title": "Exploitation for Privilege Escalation"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.1",
+            "title": "Non-root containers"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "2.1",
+            "title": "Pod security enforcement"
+          }
+        ]
+      },
+      {
+        "checker": "run-as-root",
+        "severity": "High",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" does not set runAsNonRoot: true and may run as root.",
+        "remediation": "## Why This Matters\n\nWithout `runAsNonRoot: true`, Kubernetes does not enforce non-root execution and the container may default to running as UID 0 depending on the image's USER directive. If the image defaults to root, the container process gains full privileges, increasing the blast radius of any compromise or container escape.\n\n## How to Fix\n\nEnforce non-root execution in the securityContext:\n\n```yaml\nsecurityContext:\n  runAsNonRoot: true\n  runAsUser: 1000\n  runAsGroup: 1000\n```\n\nWith `runAsNonRoot: true`, Kubernetes will reject the pod at admission time if the container image attempts to run as root. Setting an explicit `runAsUser` provides an additional guarantee.\n\n## Learn More\n\nThis aligns with CIS Benchmark 5.2.6 and the Pod Security Standards \"Restricted\" profile. The `runAsNonRoot` field acts as a safety net even when images change their default USER.",
+        "field_path": ".spec.containers[0].securityContext.runAsNonRoot",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.7",
+            "title": "Minimize the admission of root containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.1",
+            "title": "Non-root containers"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-exec-access",
+        "severity": "High",
+        "resource": "kv-e2e-exec-log-access",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Role",
+        "message": "Role \"kv-e2e-exec-log-access\" grants exec/attach access to pods, equivalent to SSH access.",
+        "remediation": "## Why This Matters\n\nThe `pods/exec` and `pods/attach` sub-resources grant the ability to run arbitrary commands inside running containers, which is functionally equivalent to SSH access. An attacker with exec access can read environment variables, access mounted secrets, install tools, and pivot to other systems on the network.\n\n## How to Fix\n\nRemove exec and attach sub-resources from the role rules:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"pods\"]              # pods only, no sub-resources\n    verbs: [\"get\", \"list\", \"watch\"]\n  # Do NOT include:\n  # resources: [\"pods/exec\", \"pods/attach\"]\n```\n\nIf exec access is required for debugging, restrict it to specific namespaces and enable Kubernetes audit logging to monitor all exec sessions in production.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.3 and MITRE ATT\u0026CK technique T1609 (Container Administration Command) for the exec-based attack vector.",
+        "field_path": ".rules[0].resources",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.1",
+            "title": "Ensure that the cluster-admin role is only used where required"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1609",
+            "title": "Container Administration Command"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "automount-token",
+        "severity": "High",
+        "resource": "kv-e2e-no-projection-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "message": "Pod \"kv-e2e-no-projection-pod\" auto-mounts a ServiceAccount token. Most workloads do not need Kubernetes API access.",
+        "remediation": "## Why This Matters\n\nWhen a ServiceAccount token is auto-mounted, every container in the pod can call the Kubernetes API. If a container is compromised through a vulnerability or misconfiguration, the attacker gains API access to enumerate resources, read secrets, or escalate privileges.\n\n## How to Fix\n\nDisable auto-mounting at the pod spec level for workloads that do not need API access:\n\n```yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: my-app\nspec:\n  template:\n    spec:\n      automountServiceAccountToken: false\n      containers:\n        - name: app\n          image: my-app:latest\n```\n\nFor workloads that do require API access, use projected tokens with bounded lifetime and audience restrictions instead of the default long-lived token.\n\n## Learn More\n\nRefer to the Kubernetes documentation on configuring service accounts for pods and CIS Kubernetes Benchmark 5.1.6 for auto-mount token guidance.",
+        "field_path": ".spec.automountServiceAccountToken",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.6",
+            "title": "Ensure that Service Account Tokens are only mounted where necessary"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1552.007",
+            "title": "Unsecured Credentials: Container API"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.2",
+            "title": "Service account management"
+          }
+        ]
+      },
+      {
+        "checker": "privilege-escalation",
+        "severity": "High",
+        "resource": "kv-e2e-no-projection-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" does not set allowPrivilegeEscalation to false, permitting privilege escalation.",
+        "remediation": "## Why This Matters\n\nBy default, Kubernetes allows containers to escalate privileges via setuid/setgid binaries, which let a process gain more permissions than its parent. An attacker can exploit this using setuid binaries already present in the container image (like `su`, `sudo`, or `ping`) to elevate from a low-privilege user to root.\n\n## How to Fix\n\nExplicitly disable privilege escalation in the container's securityContext:\n\n```yaml\nsecurityContext:\n  allowPrivilegeEscalation: false\n  runAsNonRoot: true\n  capabilities:\n    drop: [\"ALL\"]\n```\n\nThis blocks the use of setuid/setgid binaries and prevents the no_new_privs Linux flag from being cleared. The vast majority of application containers do not need privilege escalation.\n\n## Learn More\n\nThis is required by the Pod Security Standards \"Restricted\" profile and CIS Benchmark 5.2.5. Disabling privilege escalation is one of the most impactful single-line security improvements you can make.",
+        "field_path": ".spec.containers[0].securityContext.allowPrivilegeEscalation",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.6",
+            "title": "Minimize the admission of containers with allowPrivilegeEscalation"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1068",
+            "title": "Exploitation for Privilege Escalation"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.1",
+            "title": "Non-root containers"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "2.1",
+            "title": "Pod security enforcement"
+          }
+        ]
+      },
+      {
+        "checker": "run-as-root",
+        "severity": "High",
+        "resource": "kv-e2e-no-projection-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" does not set runAsNonRoot: true and may run as root.",
+        "remediation": "## Why This Matters\n\nWithout `runAsNonRoot: true`, Kubernetes does not enforce non-root execution and the container may default to running as UID 0 depending on the image's USER directive. If the image defaults to root, the container process gains full privileges, increasing the blast radius of any compromise or container escape.\n\n## How to Fix\n\nEnforce non-root execution in the securityContext:\n\n```yaml\nsecurityContext:\n  runAsNonRoot: true\n  runAsUser: 1000\n  runAsGroup: 1000\n```\n\nWith `runAsNonRoot: true`, Kubernetes will reject the pod at admission time if the container image attempts to run as root. Setting an explicit `runAsUser` provides an additional guarantee.\n\n## Learn More\n\nThis aligns with CIS Benchmark 5.2.6 and the Pod Security Standards \"Restricted\" profile. The `runAsNonRoot` field acts as a safety net even when images change their default USER.",
+        "field_path": ".spec.containers[0].securityContext.runAsNonRoot",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.7",
+            "title": "Minimize the admission of root containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.1",
+            "title": "Non-root containers"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-secret-access",
+        "severity": "High",
+        "resource": "kv-e2e-overly-broad",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Role",
+        "message": "Role \"kv-e2e-overly-broad\" grants read access to Secrets, which may contain credentials and TLS keys.",
+        "remediation": "## Why This Matters\n\nRoles granting read access to Secrets expose every credential in the namespace, including database passwords, TLS private keys, API tokens, and third-party credentials. A compromised workload with this access can exfiltrate all secrets and pivot to external systems.\n\n## How to Fix\n\nRestrict access to only the specific secrets your workload needs using `resourceNames`:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"secrets\"]\n    resourceNames: [\"my-app-tls\", \"my-app-db-creds\"]\n    verbs: [\"get\"]\n```\n\nFor sensitive credentials, consider using an external secrets manager (HashiCorp Vault, AWS Secrets Manager, or GCP Secret Manager) with the External Secrets Operator.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.2 on minimizing access to secrets and MITRE ATT\u0026CK technique T1552 (Unsecured Credentials) for the threat model.",
+        "field_path": ".rules[0].resources",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.2",
+            "title": "Minimize access to secrets"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1552",
+            "title": "Unsecured Credentials"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "5.1",
+            "title": "Secrets management"
+          }
+        ]
+      },
+      {
+        "checker": "network-policy-missing",
+        "severity": "High",
+        "resource": "kv-e2e-rbac",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Namespace",
+        "message": "Namespace \"kv-e2e-rbac\" has no NetworkPolicy defined. All pods are unrestricted.",
+        "remediation": "## Why This Matters\n\nWithout NetworkPolicies, every pod in this namespace can communicate freely with every other pod in the cluster. If an attacker compromises a single pod, they can move laterally to databases, internal APIs, and other sensitive services with no network-level barriers.\n\n## How to Fix\n\nCreate a default-deny NetworkPolicy for the namespace, then add targeted allow rules for legitimate traffic:\n\n```yaml\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: default-deny-all\n  namespace: my-namespace\nspec:\n  podSelector: {}\n  policyTypes:\n    - Ingress\n    - Egress\n```\n\nAfter applying the default-deny, create additional NetworkPolicy resources that whitelist only the specific ingress and egress flows your workloads require.\n\n## Learn More\n\nSee the Kubernetes documentation on NetworkPolicies and CIS Kubernetes Benchmark 5.3.2. A CNI plugin that supports NetworkPolicy (Calico, Cilium, Weave Net) must be installed for policies to take effect.",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.3.2",
+            "title": "Ensure that all Namespaces have Network Policies defined"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1046",
+            "title": "Network Service Discovery"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "4.1",
+            "title": "Network separation"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "4.2",
+            "title": "Network policy enforcement"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-secret-access",
+        "severity": "High",
+        "resource": "kv-e2e-secret-access",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Role",
+        "message": "Role \"kv-e2e-secret-access\" grants read access to Secrets, which may contain credentials and TLS keys.",
+        "remediation": "## Why This Matters\n\nRoles granting read access to Secrets expose every credential in the namespace, including database passwords, TLS private keys, API tokens, and third-party credentials. A compromised workload with this access can exfiltrate all secrets and pivot to external systems.\n\n## How to Fix\n\nRestrict access to only the specific secrets your workload needs using `resourceNames`:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"secrets\"]\n    resourceNames: [\"my-app-tls\", \"my-app-db-creds\"]\n    verbs: [\"get\"]\n```\n\nFor sensitive credentials, consider using an external secrets manager (HashiCorp Vault, AWS Secrets Manager, or GCP Secret Manager) with the External Secrets Operator.\n\n## Learn More\n\nSee CIS Kubernetes Benchmark 5.1.2 on minimizing access to secrets and MITRE ATT\u0026CK technique T1552 (Unsecured Credentials) for the threat model.",
+        "field_path": ".rules[0].resources",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.2",
+            "title": "Minimize access to secrets"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1552",
+            "title": "Unsecured Credentials"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "5.1",
+            "title": "Secrets management"
+          }
+        ]
+      },
+      {
+        "checker": "apparmor-profile",
+        "severity": "Medium",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" does not have an AppArmor profile set.",
+        "remediation": "## Why This Matters\n\nAppArmor provides mandatory access control (MAC) that restricts which files, network resources, and capabilities a container process can access. Without an AppArmor profile, the container operates without these restrictions, allowing an attacker with code execution to access any file the container user can read and make unrestricted network connections.\n\n## How to Fix\n\nApply an AppArmor profile in the container's securityContext (Kubernetes 1.30+):\n\n```yaml\nsecurityContext:\n  appArmorProfile:\n    type: RuntimeDefault\n```\n\nThe RuntimeDefault profile provides sensible restrictions for most applications. For tighter control, create a custom Localhost profile that only allows the specific file and network access your application needs.\n\n## Learn More\n\nAppArmor is available on Debian/Ubuntu-based nodes. RHEL/CentOS nodes use SELinux instead. Both provide MAC enforcement. Refer to CIS Benchmark 5.7.5 and the Kubernetes AppArmor documentation.",
+        "field_path": ".spec.containers[0].securityContext.appArmorProfile",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.6.3",
+            "title": "Apply Security Context to Your Pods and Containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "2.1",
+            "title": "Pod security enforcement"
+          }
+        ]
+      },
+      {
+        "checker": "capabilities-not-dropped",
+        "severity": "Medium",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" does not drop ALL capabilities, leaving it with unnecessary default privileges.",
+        "remediation": "## Why This Matters\n\nBy default, containers receive a set of Linux capabilities including KILL, SETUID, SETGID, and NET_RAW. These defaults are rarely needed by application code and significantly increase the potential damage from a container compromise. Dropping all capabilities follows the principle of least privilege.\n\n## How to Fix\n\nExplicitly drop all capabilities and selectively add back only what your application needs:\n\n```yaml\nsecurityContext:\n  capabilities:\n    drop: [\"ALL\"]\n    add: [\"NET_BIND_SERVICE\"]  # Only if needed\n```\n\nMost web applications, API servers, and background workers run perfectly with all capabilities dropped. Test your application after making this change to confirm no functionality is lost.\n\n## Learn More\n\nThis is required by the Pod Security Standards \"Restricted\" profile and aligns with CIS Benchmark 5.2.7. Kubernetes best practice is to treat capability grants as exceptions that require explicit justification.",
+        "field_path": ".spec.containers[0].securityContext.capabilities.drop",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.8",
+            "title": "Minimize the admission of containers with the NET_RAW capability"
+          },
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.10",
+            "title": "Minimize the admission of containers with capabilities assigned"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1068",
+            "title": "Exploitation for Privilege Escalation"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.1",
+            "title": "Non-root containers"
+          }
+        ]
+      },
+      {
+        "checker": "image-pull-policy",
+        "severity": "Medium",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" uses a mutable image tag with pullPolicy \"IfNotPresent\" (image: nginx:1.25), risking stale images.",
+        "remediation": "## Why This Matters\n\nWhen a mutable image tag is used without `imagePullPolicy: Always`, Kubernetes may serve a cached version of the image from the node. If the tag has been updated in the registry (with a security patch or -- worse -- a compromised layer), the running container will not reflect those changes.\n\n## How to Fix\n\nSet `imagePullPolicy: Always` for any container using a mutable tag:\n\n```yaml\ncontainers:\n  - name: app\n    image: nginx:1.25.3\n    imagePullPolicy: Always   # Forces fresh pull each time\n```\n\nAlternatively, pin images by digest (`image@sha256:...`), which makes the pull policy irrelevant because the content is immutable.\n\n## Learn More\n\nSee the Kubernetes documentation on image pull policies and CIS Kubernetes Benchmark 5.4.2 for pull policy guidance.",
+        "field_path": ".spec.containers[0].imagePullPolicy",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.5.1",
+            "title": "Configure Image Provenance using ImagePolicyWebhook admission controller"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1525",
+            "title": "Implant Internal Image"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.4",
+            "title": "Trusted container images"
+          }
+        ]
+      },
+      {
+        "checker": "projected-volume-security",
+        "severity": "Medium",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "message": "Pod \"kv-e2e-automount-pod\" has projected volume \"kube-api-access-58rdd\" with defaultMode 0644 which is too permissive.",
+        "remediation": "## Why This Matters\n\nProjected volumes with overly permissive file modes allow any process in the pod to read sensitive data such as service account tokens and secrets. If a container is compromised, the attacker can easily harvest these credentials to escalate privileges or move laterally within the cluster.\n\n## How to Fix\n\nReduce the defaultMode to restrict file access:\n\n```yaml\nspec:\n  volumes:\n    - name: kube-api-access-58rdd\n      projected:\n        defaultMode: 0400         # Owner read-only (was too permissive)\n        sources:\n          - serviceAccountToken:\n              path: token\n```\n\nUse 0400 for read-only access or 0600 if the application must write to the mounted files.\n\n## Learn More\n\nSee the Kubernetes Projected Volumes documentation for defaultMode details. The CIS Benchmark recommends file modes of 0600 or lower for sensitive volume mounts to limit exposure within the pod.",
+        "field_path": ".spec.volumes[0].projected.defaultMode",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.4.1",
+            "title": "Prefer using secrets as files over secrets as environment variables"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1552",
+            "title": "Unsecured Credentials"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "5.1",
+            "title": "Secrets management"
+          }
+        ]
+      },
+      {
+        "checker": "psa-restricted-violations",
+        "severity": "Medium",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Pod \"kv-e2e-automount-pod\" container \"app\" violates PSS Restricted: runAsNonRoot is not true.",
+        "remediation": "## Why This Matters\n\nRunning as root inside a container means that any container escape vulnerability immediately grants root access on the host node. Even without an escape, root inside the container can modify sensitive files, install packages, and access capabilities that non-root users cannot.\n\n## How to Fix\n\nSet `runAsNonRoot: true` and specify a non-root user ID in the security context:\n\n```yaml\nsecurityContext:\n  runAsNonRoot: true\n  runAsUser: 1000\n  runAsGroup: 1000\n```\n\nSet this at the pod level to apply to all containers. Ensure your container image supports running as a non-root user (many official images do).\n\n## Learn More\n\nSee the Pod Security Standards Restricted profile and CIS Kubernetes Benchmark 5.2.6. Running as non-root is a fundamental container security best practice.",
+        "field_path": ".spec.containers[0].securityContext.runAsNonRoot",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.1",
+            "title": "Ensure that the cluster has at least one active policy control mechanism in place"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "2.1",
+            "title": "Pod security enforcement"
+          }
+        ]
+      },
+      {
+        "checker": "psa-restricted-violations",
+        "severity": "Medium",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Pod \"kv-e2e-automount-pod\" container \"app\" violates PSS Restricted: allowPrivilegeEscalation is not false.",
+        "remediation": "## Why This Matters\n\nWhen `allowPrivilegeEscalation` is true (the default), processes inside the container can gain more privileges than their parent process. This enables attacks via setuid/setgid binaries, kernel exploits, and other escalation vectors that can lead to container escape.\n\n## How to Fix\n\nExplicitly set `allowPrivilegeEscalation` to false in the container's security context:\n\n```yaml\nsecurityContext:\n  allowPrivilegeEscalation: false\n  runAsNonRoot: true\n  capabilities:\n    drop: [ALL]\n```\n\nThis prevents setuid binaries and other privilege escalation vectors from working inside the container.\n\n## Learn More\n\nSee the Pod Security Standards Restricted profile and CIS Kubernetes Benchmark 5.2.5. Disabling privilege escalation is required for PSS Restricted compliance.",
+        "field_path": ".spec.containers[0].securityContext.allowPrivilegeEscalation",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.1",
+            "title": "Ensure that the cluster has at least one active policy control mechanism in place"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "2.1",
+            "title": "Pod security enforcement"
+          }
+        ]
+      },
+      {
+        "checker": "psa-restricted-violations",
+        "severity": "Medium",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Pod \"kv-e2e-automount-pod\" container \"app\" violates PSS Restricted: capabilities.drop does not include ALL.",
+        "remediation": "## Why This Matters\n\nBy default, containers receive a set of Linux capabilities that may be exploited for privilege escalation. Without explicitly dropping ALL capabilities, containers retain permissions like NET_RAW (enabling packet spoofing) and FOWNER (bypassing file permission checks).\n\n## How to Fix\n\nDrop all capabilities and add back only the specific ones your application requires:\n\n```yaml\nsecurityContext:\n  capabilities:\n    drop: [ALL]\n    add: [NET_BIND_SERVICE]  # Only if binding to ports below 1024\n```\n\nMost applications work correctly with all capabilities dropped. Test your workload first and add back only capabilities that cause failures.\n\n## Learn More\n\nSee the Pod Security Standards Restricted profile and CIS Kubernetes Benchmark 5.2.7. Dropping ALL capabilities is required for PSS Restricted compliance.",
+        "field_path": ".spec.containers[0].securityContext.capabilities.drop",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.1",
+            "title": "Ensure that the cluster has at least one active policy control mechanism in place"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "2.1",
+            "title": "Pod security enforcement"
+          }
+        ]
+      },
+      {
+        "checker": "read-only-rootfs",
+        "severity": "Medium",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" does not have a read-only root filesystem.",
+        "remediation": "## Why This Matters\n\nA writable root filesystem allows an attacker who gains code execution in your container to modify application binaries, install attack tools, plant backdoors, or persist malware across container restarts. Making the filesystem read-only eliminates an entire class of post-exploitation techniques.\n\n## How to Fix\n\nEnable a read-only root filesystem and mount writable volumes only where needed:\n\n```yaml\nsecurityContext:\n  readOnlyRootFilesystem: true\nvolumeMounts:\n  - name: tmp\n    mountPath: /tmp\nvolumes:\n  - name: tmp\n    emptyDir: {}\n```\n\nCommon paths that need write access include /tmp, /var/cache, and /var/run. Mount each as an emptyDir or tmpfs volume rather than making the entire filesystem writable.\n\n## Learn More\n\nThis aligns with CIS Benchmark 5.2.4 and the defense-in-depth principle. Combined with dropping capabilities and running as non-root, a read-only filesystem forms a strong container hardening baseline.",
+        "field_path": ".spec.containers[0].securityContext.readOnlyRootFilesystem",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.6.3",
+            "title": "Apply Security Context to Your Pods and Containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1565.001",
+            "title": "Stored Data Manipulation"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.2",
+            "title": "Immutable container filesystems"
+          }
+        ]
+      },
+      {
+        "checker": "run-as-group",
+        "severity": "Medium",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" does not set runAsGroup; the process will run as GID 0 (root group) by default.",
+        "remediation": "## Why This Matters\n\nWithout an explicit runAsGroup, the container process defaults to GID 0 (the root group). Files and sockets owned by the root group become accessible to the container, including potentially sensitive host files if volumes are mounted. This widens the attack surface unnecessarily.\n\n## How to Fix\n\nSet an explicit non-root group in the securityContext:\n\n```yaml\nsecurityContext:\n  runAsGroup: 1000\n  runAsUser: 1000\n  runAsNonRoot: true\n```\n\nEnsure the container image's application files and directories are readable by the specified GID. You may need to adjust file ownership in your Dockerfile with `chown`.\n\n## Learn More\n\nThis aligns with CIS Benchmark 5.2.6 and the Pod Security Standards \"Restricted\" profile. Always set runAsUser, runAsGroup, and runAsNonRoot together for comprehensive identity control.",
+        "field_path": ".spec.containers[0].securityContext.runAsGroup",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.7",
+            "title": "Minimize the admission of root containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1068",
+            "title": "Exploitation for Privilege Escalation"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.1",
+            "title": "Non-root containers"
+          }
+        ]
+      },
+      {
+        "checker": "seccomp-profile",
+        "severity": "Medium",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" does not have a Seccomp profile set at either the container or pod level.",
+        "remediation": "## Why This Matters\n\nWithout a Seccomp profile, containers can invoke any of the 300+ Linux system calls, leaving the entire kernel attack surface exposed. Kernel vulnerabilities in obscure syscalls are a primary vector for container escapes. Seccomp filtering blocks dangerous syscalls that legitimate applications never use.\n\n## How to Fix\n\nApply a Seccomp profile at the container or pod level:\n\n```yaml\nsecurityContext:\n  seccompProfile:\n    type: RuntimeDefault\n```\n\nThe RuntimeDefault profile blocks approximately 50 dangerous syscalls while allowing normal application behavior. For stricter controls, use a custom Localhost profile tailored to your application's needs. Set the profile at the pod level to apply it to all containers.\n\n## Learn More\n\nSeccomp profiles are required by the Pod Security Standards \"Restricted\" profile and CIS Benchmark 5.7.2. Use tools like `strace` or the Security Profiles Operator to generate custom profiles for your workloads.",
+        "field_path": ".spec.containers[0].securityContext.seccompProfile",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.6.2",
+            "title": "Ensure that the seccomp profile is set to docker/default in your pod definitions"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "2.1",
+            "title": "Pod security enforcement"
+          }
+        ]
+      },
+      {
+        "checker": "cloud-iam-binding",
+        "severity": "Medium",
+        "resource": "kv-e2e-cloud-iam-sa",
+        "namespace": "kv-e2e-rbac",
+        "kind": "ServiceAccount",
+        "message": "ServiceAccount \"kv-e2e-cloud-iam-sa\" has AWS IRSA binding (eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/kv-e2e-test-role). Verify the cloud IAM role follows least-privilege.",
+        "remediation": "## Why This Matters\n\nCloud IAM bindings (AWS IRSA, GCP Workload Identity, Azure Workload Identity) grant pods direct access to cloud provider APIs such as S3, BigQuery, or Key Vault. If the associated cloud IAM role has overly broad permissions, a compromised pod can access, modify, or delete cloud resources far beyond what the workload requires.\n\n## How to Fix\n\nAudit the referenced cloud IAM role and apply least-privilege:\n\n```yaml\napiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: my-app\n  annotations:\n    # AWS — use a role scoped to specific resources:\n    eks.amazonaws.com/role-arn: arn:aws:iam::123:role/my-app-minimal\n    # GCP — use a service account with only needed permissions:\n    iam.gke.io/gcp-service-account: my-app@project.iam.gserviceaccount.com\n```\n\nEnsure the cloud IAM role/policy has no wildcard actions or resources. Use condition keys to restrict access by namespace or service account where supported.\n\n## Learn More\n\nSee the AWS IRSA, GCP Workload Identity, or Azure Workload Identity documentation for provider-specific guidance on scoping cloud IAM permissions for Kubernetes workloads.",
+        "field_path": ".metadata.annotations[eks.amazonaws.com/role-arn]",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.1",
+            "title": "Ensure that the cluster-admin role is only used where required"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078.004",
+            "title": "Valid Accounts: Cloud Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.2",
+            "title": "Service account management"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-log-access",
+        "severity": "Medium",
+        "resource": "kv-e2e-exec-log-access",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Role",
+        "message": "Role \"kv-e2e-exec-log-access\" grants access to pod logs, which may contain sensitive application data.",
+        "remediation": "## Why This Matters\n\nThe `pods/log` sub-resource provides access to container stdout/stderr output. Applications frequently log sensitive data inadvertently, including authentication tokens, database connection strings, API keys, and personally identifiable information (PII). An attacker with log access can harvest these credentials without needing exec access.\n\n## How to Fix\n\nRemove the `pods/log` sub-resource and grant log access only to dedicated monitoring roles:\n\n```yaml\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"pods\"]              # pods only, no sub-resources\n    verbs: [\"get\", \"list\", \"watch\"]\n  # Grant pods/log only to monitoring-specific roles\n```\n\nAdditionally, configure applications to avoid logging sensitive data. Use structured logging libraries that support field redaction.\n\n## Learn More\n\nSee MITRE ATT\u0026CK technique T1530 (Data from Cloud Storage) and the Kubernetes RBAC documentation on sub-resource access control.",
+        "field_path": ".rules[1].resources",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.1",
+            "title": "Ensure that the cluster-admin role is only used where required"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1530",
+            "title": "Data from Cloud Storage"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      },
+      {
+        "checker": "apparmor-profile",
+        "severity": "Medium",
+        "resource": "kv-e2e-no-projection-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" does not have an AppArmor profile set.",
+        "remediation": "## Why This Matters\n\nAppArmor provides mandatory access control (MAC) that restricts which files, network resources, and capabilities a container process can access. Without an AppArmor profile, the container operates without these restrictions, allowing an attacker with code execution to access any file the container user can read and make unrestricted network connections.\n\n## How to Fix\n\nApply an AppArmor profile in the container's securityContext (Kubernetes 1.30+):\n\n```yaml\nsecurityContext:\n  appArmorProfile:\n    type: RuntimeDefault\n```\n\nThe RuntimeDefault profile provides sensible restrictions for most applications. For tighter control, create a custom Localhost profile that only allows the specific file and network access your application needs.\n\n## Learn More\n\nAppArmor is available on Debian/Ubuntu-based nodes. RHEL/CentOS nodes use SELinux instead. Both provide MAC enforcement. Refer to CIS Benchmark 5.7.5 and the Kubernetes AppArmor documentation.",
+        "field_path": ".spec.containers[0].securityContext.appArmorProfile",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.6.3",
+            "title": "Apply Security Context to Your Pods and Containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "2.1",
+            "title": "Pod security enforcement"
+          }
+        ]
+      },
+      {
+        "checker": "capabilities-not-dropped",
+        "severity": "Medium",
+        "resource": "kv-e2e-no-projection-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" does not drop ALL capabilities, leaving it with unnecessary default privileges.",
+        "remediation": "## Why This Matters\n\nBy default, containers receive a set of Linux capabilities including KILL, SETUID, SETGID, and NET_RAW. These defaults are rarely needed by application code and significantly increase the potential damage from a container compromise. Dropping all capabilities follows the principle of least privilege.\n\n## How to Fix\n\nExplicitly drop all capabilities and selectively add back only what your application needs:\n\n```yaml\nsecurityContext:\n  capabilities:\n    drop: [\"ALL\"]\n    add: [\"NET_BIND_SERVICE\"]  # Only if needed\n```\n\nMost web applications, API servers, and background workers run perfectly with all capabilities dropped. Test your application after making this change to confirm no functionality is lost.\n\n## Learn More\n\nThis is required by the Pod Security Standards \"Restricted\" profile and aligns with CIS Benchmark 5.2.7. Kubernetes best practice is to treat capability grants as exceptions that require explicit justification.",
+        "field_path": ".spec.containers[0].securityContext.capabilities.drop",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.8",
+            "title": "Minimize the admission of containers with the NET_RAW capability"
+          },
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.10",
+            "title": "Minimize the admission of containers with capabilities assigned"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1068",
+            "title": "Exploitation for Privilege Escalation"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.1",
+            "title": "Non-root containers"
+          }
+        ]
+      },
+      {
+        "checker": "image-pull-policy",
+        "severity": "Medium",
+        "resource": "kv-e2e-no-projection-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" uses a mutable image tag with pullPolicy \"IfNotPresent\" (image: nginx:1.25), risking stale images.",
+        "remediation": "## Why This Matters\n\nWhen a mutable image tag is used without `imagePullPolicy: Always`, Kubernetes may serve a cached version of the image from the node. If the tag has been updated in the registry (with a security patch or -- worse -- a compromised layer), the running container will not reflect those changes.\n\n## How to Fix\n\nSet `imagePullPolicy: Always` for any container using a mutable tag:\n\n```yaml\ncontainers:\n  - name: app\n    image: nginx:1.25.3\n    imagePullPolicy: Always   # Forces fresh pull each time\n```\n\nAlternatively, pin images by digest (`image@sha256:...`), which makes the pull policy irrelevant because the content is immutable.\n\n## Learn More\n\nSee the Kubernetes documentation on image pull policies and CIS Kubernetes Benchmark 5.4.2 for pull policy guidance.",
+        "field_path": ".spec.containers[0].imagePullPolicy",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.5.1",
+            "title": "Configure Image Provenance using ImagePolicyWebhook admission controller"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1525",
+            "title": "Implant Internal Image"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.4",
+            "title": "Trusted container images"
+          }
+        ]
+      },
+      {
+        "checker": "projected-volume-security",
+        "severity": "Medium",
+        "resource": "kv-e2e-no-projection-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "message": "Pod \"kv-e2e-no-projection-pod\" has projected volume \"kube-api-access-g772k\" with defaultMode 0644 which is too permissive.",
+        "remediation": "## Why This Matters\n\nProjected volumes with overly permissive file modes allow any process in the pod to read sensitive data such as service account tokens and secrets. If a container is compromised, the attacker can easily harvest these credentials to escalate privileges or move laterally within the cluster.\n\n## How to Fix\n\nReduce the defaultMode to restrict file access:\n\n```yaml\nspec:\n  volumes:\n    - name: kube-api-access-g772k\n      projected:\n        defaultMode: 0400         # Owner read-only (was too permissive)\n        sources:\n          - serviceAccountToken:\n              path: token\n```\n\nUse 0400 for read-only access or 0600 if the application must write to the mounted files.\n\n## Learn More\n\nSee the Kubernetes Projected Volumes documentation for defaultMode details. The CIS Benchmark recommends file modes of 0600 or lower for sensitive volume mounts to limit exposure within the pod.",
+        "field_path": ".spec.volumes[0].projected.defaultMode",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.4.1",
+            "title": "Prefer using secrets as files over secrets as environment variables"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1552",
+            "title": "Unsecured Credentials"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "5.1",
+            "title": "Secrets management"
+          }
+        ]
+      },
+      {
+        "checker": "psa-restricted-violations",
+        "severity": "Medium",
+        "resource": "kv-e2e-no-projection-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Pod \"kv-e2e-no-projection-pod\" container \"app\" violates PSS Restricted: runAsNonRoot is not true.",
+        "remediation": "## Why This Matters\n\nRunning as root inside a container means that any container escape vulnerability immediately grants root access on the host node. Even without an escape, root inside the container can modify sensitive files, install packages, and access capabilities that non-root users cannot.\n\n## How to Fix\n\nSet `runAsNonRoot: true` and specify a non-root user ID in the security context:\n\n```yaml\nsecurityContext:\n  runAsNonRoot: true\n  runAsUser: 1000\n  runAsGroup: 1000\n```\n\nSet this at the pod level to apply to all containers. Ensure your container image supports running as a non-root user (many official images do).\n\n## Learn More\n\nSee the Pod Security Standards Restricted profile and CIS Kubernetes Benchmark 5.2.6. Running as non-root is a fundamental container security best practice.",
+        "field_path": ".spec.containers[0].securityContext.runAsNonRoot",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.1",
+            "title": "Ensure that the cluster has at least one active policy control mechanism in place"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "2.1",
+            "title": "Pod security enforcement"
+          }
+        ]
+      },
+      {
+        "checker": "psa-restricted-violations",
+        "severity": "Medium",
+        "resource": "kv-e2e-no-projection-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Pod \"kv-e2e-no-projection-pod\" container \"app\" violates PSS Restricted: allowPrivilegeEscalation is not false.",
+        "remediation": "## Why This Matters\n\nWhen `allowPrivilegeEscalation` is true (the default), processes inside the container can gain more privileges than their parent process. This enables attacks via setuid/setgid binaries, kernel exploits, and other escalation vectors that can lead to container escape.\n\n## How to Fix\n\nExplicitly set `allowPrivilegeEscalation` to false in the container's security context:\n\n```yaml\nsecurityContext:\n  allowPrivilegeEscalation: false\n  runAsNonRoot: true\n  capabilities:\n    drop: [ALL]\n```\n\nThis prevents setuid binaries and other privilege escalation vectors from working inside the container.\n\n## Learn More\n\nSee the Pod Security Standards Restricted profile and CIS Kubernetes Benchmark 5.2.5. Disabling privilege escalation is required for PSS Restricted compliance.",
+        "field_path": ".spec.containers[0].securityContext.allowPrivilegeEscalation",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.1",
+            "title": "Ensure that the cluster has at least one active policy control mechanism in place"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "2.1",
+            "title": "Pod security enforcement"
+          }
+        ]
+      },
+      {
+        "checker": "psa-restricted-violations",
+        "severity": "Medium",
+        "resource": "kv-e2e-no-projection-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Pod \"kv-e2e-no-projection-pod\" container \"app\" violates PSS Restricted: capabilities.drop does not include ALL.",
+        "remediation": "## Why This Matters\n\nBy default, containers receive a set of Linux capabilities that may be exploited for privilege escalation. Without explicitly dropping ALL capabilities, containers retain permissions like NET_RAW (enabling packet spoofing) and FOWNER (bypassing file permission checks).\n\n## How to Fix\n\nDrop all capabilities and add back only the specific ones your application requires:\n\n```yaml\nsecurityContext:\n  capabilities:\n    drop: [ALL]\n    add: [NET_BIND_SERVICE]  # Only if binding to ports below 1024\n```\n\nMost applications work correctly with all capabilities dropped. Test your workload first and add back only capabilities that cause failures.\n\n## Learn More\n\nSee the Pod Security Standards Restricted profile and CIS Kubernetes Benchmark 5.2.7. Dropping ALL capabilities is required for PSS Restricted compliance.",
+        "field_path": ".spec.containers[0].securityContext.capabilities.drop",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.1",
+            "title": "Ensure that the cluster has at least one active policy control mechanism in place"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "2.1",
+            "title": "Pod security enforcement"
+          }
+        ]
+      },
+      {
+        "checker": "read-only-rootfs",
+        "severity": "Medium",
+        "resource": "kv-e2e-no-projection-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" does not have a read-only root filesystem.",
+        "remediation": "## Why This Matters\n\nA writable root filesystem allows an attacker who gains code execution in your container to modify application binaries, install attack tools, plant backdoors, or persist malware across container restarts. Making the filesystem read-only eliminates an entire class of post-exploitation techniques.\n\n## How to Fix\n\nEnable a read-only root filesystem and mount writable volumes only where needed:\n\n```yaml\nsecurityContext:\n  readOnlyRootFilesystem: true\nvolumeMounts:\n  - name: tmp\n    mountPath: /tmp\nvolumes:\n  - name: tmp\n    emptyDir: {}\n```\n\nCommon paths that need write access include /tmp, /var/cache, and /var/run. Mount each as an emptyDir or tmpfs volume rather than making the entire filesystem writable.\n\n## Learn More\n\nThis aligns with CIS Benchmark 5.2.4 and the defense-in-depth principle. Combined with dropping capabilities and running as non-root, a read-only filesystem forms a strong container hardening baseline.",
+        "field_path": ".spec.containers[0].securityContext.readOnlyRootFilesystem",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.6.3",
+            "title": "Apply Security Context to Your Pods and Containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1565.001",
+            "title": "Stored Data Manipulation"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.2",
+            "title": "Immutable container filesystems"
+          }
+        ]
+      },
+      {
+        "checker": "run-as-group",
+        "severity": "Medium",
+        "resource": "kv-e2e-no-projection-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" does not set runAsGroup; the process will run as GID 0 (root group) by default.",
+        "remediation": "## Why This Matters\n\nWithout an explicit runAsGroup, the container process defaults to GID 0 (the root group). Files and sockets owned by the root group become accessible to the container, including potentially sensitive host files if volumes are mounted. This widens the attack surface unnecessarily.\n\n## How to Fix\n\nSet an explicit non-root group in the securityContext:\n\n```yaml\nsecurityContext:\n  runAsGroup: 1000\n  runAsUser: 1000\n  runAsNonRoot: true\n```\n\nEnsure the container image's application files and directories are readable by the specified GID. You may need to adjust file ownership in your Dockerfile with `chown`.\n\n## Learn More\n\nThis aligns with CIS Benchmark 5.2.6 and the Pod Security Standards \"Restricted\" profile. Always set runAsUser, runAsGroup, and runAsNonRoot together for comprehensive identity control.",
+        "field_path": ".spec.containers[0].securityContext.runAsGroup",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.7",
+            "title": "Minimize the admission of root containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1068",
+            "title": "Exploitation for Privilege Escalation"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.1",
+            "title": "Non-root containers"
+          }
+        ]
+      },
+      {
+        "checker": "seccomp-profile",
+        "severity": "Medium",
+        "resource": "kv-e2e-no-projection-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" does not have a Seccomp profile set at either the container or pod level.",
+        "remediation": "## Why This Matters\n\nWithout a Seccomp profile, containers can invoke any of the 300+ Linux system calls, leaving the entire kernel attack surface exposed. Kernel vulnerabilities in obscure syscalls are a primary vector for container escapes. Seccomp filtering blocks dangerous syscalls that legitimate applications never use.\n\n## How to Fix\n\nApply a Seccomp profile at the container or pod level:\n\n```yaml\nsecurityContext:\n  seccompProfile:\n    type: RuntimeDefault\n```\n\nThe RuntimeDefault profile blocks approximately 50 dangerous syscalls while allowing normal application behavior. For stricter controls, use a custom Localhost profile tailored to your application's needs. Set the profile at the pod level to apply it to all containers.\n\n## Learn More\n\nSeccomp profiles are required by the Pod Security Standards \"Restricted\" profile and CIS Benchmark 5.7.2. Use tools like `strace` or the Security Profiles Operator to generate custom profiles for your workloads.",
+        "field_path": ".spec.containers[0].securityContext.seccompProfile",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.6.2",
+            "title": "Ensure that the seccomp profile is set to docker/default in your pod definitions"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "2.1",
+            "title": "Pod security enforcement"
+          }
+        ]
+      },
+      {
+        "checker": "network-policy-egress-unrestricted",
+        "severity": "Medium",
+        "resource": "kv-e2e-rbac",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Namespace",
+        "message": "Namespace \"kv-e2e-rbac\" has no NetworkPolicy with egress restrictions. Pods can reach any external destination.",
+        "remediation": "## Why This Matters\n\nWithout any egress NetworkPolicy in this namespace, pods can freely send traffic to any destination including the public internet. A compromised pod can exfiltrate sensitive data, reach cloud metadata services (e.g., 169.254.169.254), or establish reverse shells to attacker-controlled servers.\n\n## How to Fix\n\nCreate a NetworkPolicy with `Egress` in `policyTypes` to restrict outbound traffic. At minimum, allow DNS resolution:\n\n```yaml\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: restrict-egress\n  namespace: my-namespace\nspec:\n  podSelector: {}\n  policyTypes:\n    - Egress\n  egress:\n    - to:\n        - namespaceSelector: {}\n      ports:\n        - port: 53\n          protocol: UDP\n```\n\nAdd additional egress rules for specific services your workloads need to reach.\n\n## Learn More\n\nSee the Kubernetes NetworkPolicy documentation and CIS Kubernetes Benchmark 5.3.2. Egress controls are a key defense-in-depth measure recommended by the NSA/CISA Kubernetes Hardening Guide.",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.3.2",
+            "title": "Ensure that all Namespaces have Network Policies defined"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1048",
+            "title": "Exfiltration Over Alternative Protocol"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "4.2",
+            "title": "Network policy enforcement"
+          }
+        ]
+      },
+      {
+        "checker": "psa-labels-missing",
+        "severity": "Medium",
+        "resource": "kv-e2e-rbac",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Namespace",
+        "message": "Namespace \"kv-e2e-rbac\" is missing the pod-security.kubernetes.io/enforce label; pod security is not enforced.",
+        "remediation": "## Why This Matters\n\nWithout PSA enforcement labels, any pod configuration is allowed in this namespace, including privileged containers, host namespace access, and root execution. This bypasses Kubernetes' built-in Pod Security Standards and leaves the namespace vulnerable to workloads that could compromise the node.\n\n## How to Fix\n\nAdd Pod Security Admission labels to enforce a security profile on all pods in the namespace:\n\n```yaml\napiVersion: v1\nkind: Namespace\nmetadata:\n  name: kv-e2e-rbac\n  labels:\n    pod-security.kubernetes.io/enforce: baseline\n    pod-security.kubernetes.io/audit: restricted\n    pod-security.kubernetes.io/warn: restricted\n```\n\nStart with `baseline` enforcement to block known privilege escalations, then upgrade to `restricted` after verifying all workloads are compliant.\n\n## Learn More\n\nSee the Kubernetes Pod Security Admission documentation and CIS Kubernetes Benchmark 5.2. The three-tier approach (enforce, audit, warn) allows gradual adoption of stricter profiles.",
+        "field_path": ".metadata.labels",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.1",
+            "title": "Ensure that the cluster has at least one active policy control mechanism in place"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1610",
+            "title": "Deploy Container"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "2.1",
+            "title": "Pod security enforcement"
+          }
+        ]
+      },
+      {
+        "checker": "ephemeral-storage-limits",
+        "severity": "Low",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" is missing ephemeral-storage limits.",
+        "remediation": "## Why This Matters\n\nEphemeral storage includes container logs, emptyDir volumes, and the writable container layer. Without limits, a single container can fill the node's root disk, triggering eviction of all pods on that node and potentially causing a cascading failure across your cluster. This is a common denial-of-service vector.\n\n## How to Fix\n\nSet ephemeral-storage limits alongside your CPU and memory limits:\n\n```yaml\nresources:\n  limits:\n    ephemeral-storage: 1Gi\n  requests:\n    ephemeral-storage: 500Mi\n```\n\nEstimate your application's disk usage from logs, temporary files, and cache data. If your application writes large temporary files, consider using a PersistentVolumeClaim instead of ephemeral storage.\n\n## Learn More\n\nThe kubelet evicts pods that exceed their ephemeral-storage limit. Use LimitRange to set default ephemeral-storage limits at the namespace level to catch containers that omit this setting.",
+        "field_path": ".spec.containers[0].resources.limits.ephemeral-storage",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.6.3",
+            "title": "Apply Security Context to Your Pods and Containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1499",
+            "title": "Endpoint Denial of Service"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.5",
+            "title": "Resource requests and limits"
+          }
+        ]
+      },
+      {
+        "checker": "image-no-digest",
+        "severity": "Low",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" image is not pinned by digest (image: nginx:1.25), allowing tag mutation.",
+        "remediation": "## Why This Matters\n\nImage tags are mutable pointers -- a registry administrator or attacker can re-push a different image under the same tag. Without a digest, you have no cryptographic guarantee that the image you deploy is the one you tested.\n\n## How to Fix\n\nPin images by their SHA-256 content digest for a fully immutable reference:\n\n```yaml\ncontainers:\n  - name: app\n    image: nginx@sha256:a8281ce420348a01ea6e   # Immutable\n```\n\nUse `crane digest nginx:1.25.3` or `skopeo inspect` to resolve a tag to its digest during CI/CD, then commit the pinned reference.\n\n## Learn More\n\nSLSA Level 1+ and NIST SP 800-190 recommend digest pinning for container supply chain integrity. See the Kubernetes images documentation for details.",
+        "field_path": ".spec.containers[0].image",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.5.1",
+            "title": "Configure Image Provenance using ImagePolicyWebhook admission controller"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1525",
+            "title": "Implant Internal Image"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.4",
+            "title": "Trusted container images"
+          }
+        ]
+      },
+      {
+        "checker": "liveness-readiness-probes",
+        "severity": "Low",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" has no liveness probe configured.",
+        "remediation": "## Why This Matters\n\nWithout a liveness probe, Kubernetes cannot detect when a container has become unresponsive or deadlocked. The container continues running and consuming resources while failing to serve traffic. Users experience timeouts and errors until someone manually intervenes.\n\n## How to Fix\n\nAdd a liveness probe that checks the container's health:\n\n```yaml\ncontainers:\n  - name: app\n    livenessProbe:\n      httpGet:\n        path: /healthz\n        port: 8080\n      initialDelaySeconds: 15\n      periodSeconds: 10\n      failureThreshold: 3\n```\n\nUse `httpGet` for HTTP services, `tcpSocket` for TCP services, or `exec` with a custom health check script for non-network workloads.\n\n## Learn More\n\nSee the Kubernetes documentation on container probes. Set initialDelaySeconds high enough for your application to start, and consider adding a startupProbe for slow-starting containers.",
+        "field_path": ".spec.containers[0].livenessProbe",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.6.3",
+            "title": "Apply Security Context to Your Pods and Containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1499",
+            "title": "Endpoint Denial of Service"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.5",
+            "title": "Resource requests and limits"
+          }
+        ]
+      },
+      {
+        "checker": "liveness-readiness-probes",
+        "severity": "Low",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" has no readiness probe configured.",
+        "remediation": "## Why This Matters\n\nWithout a readiness probe, Kubernetes adds the pod to Service endpoints immediately, routing live traffic to containers that may still be initializing or temporarily unable to serve requests. This causes user-facing errors, increased latency, and failed requests during deployments and restarts.\n\n## How to Fix\n\nAdd a readiness probe that validates the container can serve traffic:\n\n```yaml\ncontainers:\n  - name: app\n    readinessProbe:\n      httpGet:\n        path: /ready\n        port: 8080\n      initialDelaySeconds: 5\n      periodSeconds: 10\n      failureThreshold: 3\n```\n\nThe readiness endpoint should check downstream dependencies (database, cache) to confirm the container is truly ready.\n\n## Learn More\n\nSee the Kubernetes documentation on container probes. Readiness probes control Service endpoint membership, so failing probes remove the pod from load balancing without restarting it.",
+        "field_path": ".spec.containers[0].readinessProbe",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.6.3",
+            "title": "Apply Security Context to Your Pods and Containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1499",
+            "title": "Endpoint Denial of Service"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.5",
+            "title": "Resource requests and limits"
+          }
+        ]
+      },
+      {
+        "checker": "priority-class-missing",
+        "severity": "Low",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "message": "Pod \"kv-e2e-automount-pod\" has no PriorityClass set; it will be evicted first during resource pressure.",
+        "remediation": "## Why This Matters\n\nWithout a PriorityClass, pods receive default priority (typically 0) and are among the first to be evicted during resource pressure or node maintenance. This means important application workloads may be killed before less critical ones, leading to unpredictable outages.\n\n## How to Fix\n\nDefine PriorityClasses for your workloads and assign them appropriately:\n\n```yaml\napiVersion: scheduling.k8s.io/v1\nkind: PriorityClass\nmetadata:\n  name: app-medium\nvalue: 100000\n---\n# Reference in your workload:\nspec:\n  priorityClassName: app-medium\n```\n\nCreate a tiered priority scheme (e.g., app-critical: 500000, app-medium: 100000, app-low: 10000) that reflects your workload importance hierarchy.\n\n## Learn More\n\nRefer to the Kubernetes Pod Priority and Preemption documentation. Establishing a consistent priority scheme across namespaces ensures predictable eviction behavior during resource contention.",
+        "field_path": ".spec.priorityClassName",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.6.3",
+            "title": "Apply Security Context to Your Pods and Containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1499",
+            "title": "Endpoint Denial of Service"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.5",
+            "title": "Resource requests and limits"
+          }
+        ]
+      },
+      {
+        "checker": "runtime-class",
+        "severity": "Low",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "message": "Pod \"kv-e2e-automount-pod\" does not specify a RuntimeClass, using the default (unsandboxed) runtime.",
+        "remediation": "## Why This Matters\n\nWithout a RuntimeClass, pods use the default container runtime (typically runc), which shares the host kernel directly with containers. A kernel vulnerability can allow container escape to the host. Sandboxed runtimes like gVisor or Kata Containers add an additional isolation layer that intercepts system calls or runs containers in lightweight VMs.\n\n## How to Fix\n\nSpecify a sandboxed RuntimeClass in the pod spec:\n\n```yaml\nspec:\n  runtimeClassName: gvisor\n```\n\nAvailable RuntimeClasses depend on your cluster configuration. Common options include `gvisor` (user-space kernel), `kata` (micro-VMs), and `firecracker`. Check your cluster's available RuntimeClasses with `kubectl get runtimeclasses`.\n\n## Learn More\n\nSandboxed runtimes are especially important for multi-tenant clusters and workloads processing untrusted input. They add latency overhead, so evaluate performance requirements. See the Kubernetes RuntimeClass documentation.",
+        "field_path": ".spec.runtimeClassName",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.6.3",
+            "title": "Apply Security Context to Your Pods and Containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "2.1",
+            "title": "Pod security enforcement"
+          }
+        ]
+      },
+      {
+        "checker": "topology-spread",
+        "severity": "Low",
+        "resource": "kv-e2e-automount-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "message": "Pod \"kv-e2e-automount-pod\" has no topology spread constraints; all replicas may be scheduled on the same node.",
+        "remediation": "## Why This Matters\n\nWithout topology spread constraints, the scheduler may place all replicas on the same node or in the same availability zone. If that node or zone fails, your entire service goes down despite having multiple replicas. This negates the high-availability benefits of running multiple pods.\n\n## How to Fix\n\nAdd topology spread constraints to distribute replicas across failure domains:\n\n```yaml\nspec:\n  topologySpreadConstraints:\n    - maxSkew: 1\n      topologyKey: kubernetes.io/hostname\n      whenUnsatisfiable: DoNotSchedule\n      labelSelector:\n        matchLabels:\n          app: my-app\n    - maxSkew: 1\n      topologyKey: topology.kubernetes.io/zone\n      whenUnsatisfiable: ScheduleAnyway\n```\n\nUse `kubernetes.io/hostname` for node-level spreading and `topology.kubernetes.io/zone` for zone-level spreading.\n\n## Learn More\n\nSee the Kubernetes Pod Topology Spread Constraints documentation. Combining hostname and zone constraints provides both node-level and zone-level fault tolerance.",
+        "field_path": ".spec.topologySpreadConstraints",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.6.3",
+            "title": "Apply Security Context to Your Pods and Containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1499",
+            "title": "Endpoint Denial of Service"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.5",
+            "title": "Resource requests and limits"
+          }
+        ]
+      },
+      {
+        "checker": "ephemeral-storage-limits",
+        "severity": "Low",
+        "resource": "kv-e2e-no-projection-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" is missing ephemeral-storage limits.",
+        "remediation": "## Why This Matters\n\nEphemeral storage includes container logs, emptyDir volumes, and the writable container layer. Without limits, a single container can fill the node's root disk, triggering eviction of all pods on that node and potentially causing a cascading failure across your cluster. This is a common denial-of-service vector.\n\n## How to Fix\n\nSet ephemeral-storage limits alongside your CPU and memory limits:\n\n```yaml\nresources:\n  limits:\n    ephemeral-storage: 1Gi\n  requests:\n    ephemeral-storage: 500Mi\n```\n\nEstimate your application's disk usage from logs, temporary files, and cache data. If your application writes large temporary files, consider using a PersistentVolumeClaim instead of ephemeral storage.\n\n## Learn More\n\nThe kubelet evicts pods that exceed their ephemeral-storage limit. Use LimitRange to set default ephemeral-storage limits at the namespace level to catch containers that omit this setting.",
+        "field_path": ".spec.containers[0].resources.limits.ephemeral-storage",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.6.3",
+            "title": "Apply Security Context to Your Pods and Containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1499",
+            "title": "Endpoint Denial of Service"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.5",
+            "title": "Resource requests and limits"
+          }
+        ]
+      },
+      {
+        "checker": "image-no-digest",
+        "severity": "Low",
+        "resource": "kv-e2e-no-projection-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" image is not pinned by digest (image: nginx:1.25), allowing tag mutation.",
+        "remediation": "## Why This Matters\n\nImage tags are mutable pointers -- a registry administrator or attacker can re-push a different image under the same tag. Without a digest, you have no cryptographic guarantee that the image you deploy is the one you tested.\n\n## How to Fix\n\nPin images by their SHA-256 content digest for a fully immutable reference:\n\n```yaml\ncontainers:\n  - name: app\n    image: nginx@sha256:a8281ce420348a01ea6e   # Immutable\n```\n\nUse `crane digest nginx:1.25.3` or `skopeo inspect` to resolve a tag to its digest during CI/CD, then commit the pinned reference.\n\n## Learn More\n\nSLSA Level 1+ and NIST SP 800-190 recommend digest pinning for container supply chain integrity. See the Kubernetes images documentation for details.",
+        "field_path": ".spec.containers[0].image",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.5.1",
+            "title": "Configure Image Provenance using ImagePolicyWebhook admission controller"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1525",
+            "title": "Implant Internal Image"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.4",
+            "title": "Trusted container images"
+          }
+        ]
+      },
+      {
+        "checker": "liveness-readiness-probes",
+        "severity": "Low",
+        "resource": "kv-e2e-no-projection-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" has no liveness probe configured.",
+        "remediation": "## Why This Matters\n\nWithout a liveness probe, Kubernetes cannot detect when a container has become unresponsive or deadlocked. The container continues running and consuming resources while failing to serve traffic. Users experience timeouts and errors until someone manually intervenes.\n\n## How to Fix\n\nAdd a liveness probe that checks the container's health:\n\n```yaml\ncontainers:\n  - name: app\n    livenessProbe:\n      httpGet:\n        path: /healthz\n        port: 8080\n      initialDelaySeconds: 15\n      periodSeconds: 10\n      failureThreshold: 3\n```\n\nUse `httpGet` for HTTP services, `tcpSocket` for TCP services, or `exec` with a custom health check script for non-network workloads.\n\n## Learn More\n\nSee the Kubernetes documentation on container probes. Set initialDelaySeconds high enough for your application to start, and consider adding a startupProbe for slow-starting containers.",
+        "field_path": ".spec.containers[0].livenessProbe",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.6.3",
+            "title": "Apply Security Context to Your Pods and Containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1499",
+            "title": "Endpoint Denial of Service"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.5",
+            "title": "Resource requests and limits"
+          }
+        ]
+      },
+      {
+        "checker": "liveness-readiness-probes",
+        "severity": "Low",
+        "resource": "kv-e2e-no-projection-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "container": "app",
+        "message": "Container \"app\" has no readiness probe configured.",
+        "remediation": "## Why This Matters\n\nWithout a readiness probe, Kubernetes adds the pod to Service endpoints immediately, routing live traffic to containers that may still be initializing or temporarily unable to serve requests. This causes user-facing errors, increased latency, and failed requests during deployments and restarts.\n\n## How to Fix\n\nAdd a readiness probe that validates the container can serve traffic:\n\n```yaml\ncontainers:\n  - name: app\n    readinessProbe:\n      httpGet:\n        path: /ready\n        port: 8080\n      initialDelaySeconds: 5\n      periodSeconds: 10\n      failureThreshold: 3\n```\n\nThe readiness endpoint should check downstream dependencies (database, cache) to confirm the container is truly ready.\n\n## Learn More\n\nSee the Kubernetes documentation on container probes. Readiness probes control Service endpoint membership, so failing probes remove the pod from load balancing without restarting it.",
+        "field_path": ".spec.containers[0].readinessProbe",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.6.3",
+            "title": "Apply Security Context to Your Pods and Containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1499",
+            "title": "Endpoint Denial of Service"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.5",
+            "title": "Resource requests and limits"
+          }
+        ]
+      },
+      {
+        "checker": "priority-class-missing",
+        "severity": "Low",
+        "resource": "kv-e2e-no-projection-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "message": "Pod \"kv-e2e-no-projection-pod\" has no PriorityClass set; it will be evicted first during resource pressure.",
+        "remediation": "## Why This Matters\n\nWithout a PriorityClass, pods receive default priority (typically 0) and are among the first to be evicted during resource pressure or node maintenance. This means important application workloads may be killed before less critical ones, leading to unpredictable outages.\n\n## How to Fix\n\nDefine PriorityClasses for your workloads and assign them appropriately:\n\n```yaml\napiVersion: scheduling.k8s.io/v1\nkind: PriorityClass\nmetadata:\n  name: app-medium\nvalue: 100000\n---\n# Reference in your workload:\nspec:\n  priorityClassName: app-medium\n```\n\nCreate a tiered priority scheme (e.g., app-critical: 500000, app-medium: 100000, app-low: 10000) that reflects your workload importance hierarchy.\n\n## Learn More\n\nRefer to the Kubernetes Pod Priority and Preemption documentation. Establishing a consistent priority scheme across namespaces ensures predictable eviction behavior during resource contention.",
+        "field_path": ".spec.priorityClassName",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.6.3",
+            "title": "Apply Security Context to Your Pods and Containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1499",
+            "title": "Endpoint Denial of Service"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.5",
+            "title": "Resource requests and limits"
+          }
+        ]
+      },
+      {
+        "checker": "runtime-class",
+        "severity": "Low",
+        "resource": "kv-e2e-no-projection-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "message": "Pod \"kv-e2e-no-projection-pod\" does not specify a RuntimeClass, using the default (unsandboxed) runtime.",
+        "remediation": "## Why This Matters\n\nWithout a RuntimeClass, pods use the default container runtime (typically runc), which shares the host kernel directly with containers. A kernel vulnerability can allow container escape to the host. Sandboxed runtimes like gVisor or Kata Containers add an additional isolation layer that intercepts system calls or runs containers in lightweight VMs.\n\n## How to Fix\n\nSpecify a sandboxed RuntimeClass in the pod spec:\n\n```yaml\nspec:\n  runtimeClassName: gvisor\n```\n\nAvailable RuntimeClasses depend on your cluster configuration. Common options include `gvisor` (user-space kernel), `kata` (micro-VMs), and `firecracker`. Check your cluster's available RuntimeClasses with `kubectl get runtimeclasses`.\n\n## Learn More\n\nSandboxed runtimes are especially important for multi-tenant clusters and workloads processing untrusted input. They add latency overhead, so evaluate performance requirements. See the Kubernetes RuntimeClass documentation.",
+        "field_path": ".spec.runtimeClassName",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.6.3",
+            "title": "Apply Security Context to Your Pods and Containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "2.1",
+            "title": "Pod security enforcement"
+          }
+        ]
+      },
+      {
+        "checker": "topology-spread",
+        "severity": "Low",
+        "resource": "kv-e2e-no-projection-pod",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Pod",
+        "message": "Pod \"kv-e2e-no-projection-pod\" has no topology spread constraints; all replicas may be scheduled on the same node.",
+        "remediation": "## Why This Matters\n\nWithout topology spread constraints, the scheduler may place all replicas on the same node or in the same availability zone. If that node or zone fails, your entire service goes down despite having multiple replicas. This negates the high-availability benefits of running multiple pods.\n\n## How to Fix\n\nAdd topology spread constraints to distribute replicas across failure domains:\n\n```yaml\nspec:\n  topologySpreadConstraints:\n    - maxSkew: 1\n      topologyKey: kubernetes.io/hostname\n      whenUnsatisfiable: DoNotSchedule\n      labelSelector:\n        matchLabels:\n          app: my-app\n    - maxSkew: 1\n      topologyKey: topology.kubernetes.io/zone\n      whenUnsatisfiable: ScheduleAnyway\n```\n\nUse `kubernetes.io/hostname` for node-level spreading and `topology.kubernetes.io/zone` for zone-level spreading.\n\n## Learn More\n\nSee the Kubernetes Pod Topology Spread Constraints documentation. Combining hostname and zone constraints provides both node-level and zone-level fault tolerance.",
+        "field_path": ".spec.topologySpreadConstraints",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.6.3",
+            "title": "Apply Security Context to Your Pods and Containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1499",
+            "title": "Endpoint Denial of Service"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.5",
+            "title": "Resource requests and limits"
+          }
+        ]
+      },
+      {
+        "checker": "limit-range-missing",
+        "severity": "Low",
+        "resource": "kv-e2e-rbac",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Namespace",
+        "message": "Namespace \"kv-e2e-rbac\" has no LimitRange defined.",
+        "remediation": "## Why This Matters\n\nWithout a LimitRange, any container can be created without resource constraints. A single runaway or malicious pod can consume all node CPU and memory, causing denial of service for other workloads on the same node.\n\n## How to Fix\n\nCreate a LimitRange in the namespace to set default and maximum resource constraints:\n\n```yaml\napiVersion: v1\nkind: LimitRange\nmetadata:\n  name: default-limits\n  namespace: my-app\nspec:\n  limits:\n    - type: Container\n      default:\n        cpu: 500m\n        memory: 256Mi\n      defaultRequest:\n        cpu: 100m\n        memory: 128Mi\n      max:\n        cpu: \"2\"\n        memory: 1Gi\n```\n\nContainers that omit resource requests/limits will inherit these defaults automatically.\n\n## Learn More\n\nCIS Kubernetes Benchmark 5.2.1 recommends LimitRanges for resource governance. See https://kubernetes.io/docs/concepts/policy/limit-range/ for configuration details.",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.6.3",
+            "title": "Apply Security Context to Your Pods and Containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1499",
+            "title": "Endpoint Denial of Service"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.5",
+            "title": "Resource requests and limits"
+          }
+        ]
+      },
+      {
+        "checker": "resource-quota-missing",
+        "severity": "Low",
+        "resource": "kv-e2e-rbac",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Namespace",
+        "message": "Namespace \"kv-e2e-rbac\" has no ResourceQuota defined.",
+        "remediation": "## Why This Matters\n\nWithout a ResourceQuota, a single namespace can consume the entire cluster's CPU, memory, and storage. This creates a noisy-neighbor problem where one team's workloads starve others, and makes capacity planning impossible.\n\n## How to Fix\n\nCreate a ResourceQuota to cap the namespace's total resource consumption:\n\n```yaml\napiVersion: v1\nkind: ResourceQuota\nmetadata:\n  name: compute-quota\n  namespace: my-app\nspec:\n  hard:\n    requests.cpu: \"10\"\n    requests.memory: 20Gi\n    limits.cpu: \"20\"\n    limits.memory: 40Gi\n    pods: \"50\"\n    services: \"10\"\n```\n\nTune quota values based on the namespace's actual workload requirements and cluster capacity.\n\n## Learn More\n\nCIS Kubernetes Benchmark 5.2.2 recommends ResourceQuotas for multi-tenant clusters. See https://kubernetes.io/docs/concepts/policy/resource-quotas/ for quota configuration and enforcement behavior.",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.6.3",
+            "title": "Apply Security Context to Your Pods and Containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1499",
+            "title": "Endpoint Denial of Service"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "1.5",
+            "title": "Resource requests and limits"
+          }
+        ]
+      },
+      {
+        "checker": "rbac-unused-roles",
+        "severity": "Info",
+        "resource": "kv-e2e-unused-role",
+        "namespace": "kv-e2e-rbac",
+        "kind": "Role",
+        "message": "Role \"kv-e2e-unused-role\" has no bindings and may be unused.",
+        "remediation": "## Why This Matters\n\nUnused Roles and ClusterRoles are dormant permissions waiting to be activated. An attacker who can create or modify RoleBindings could bind these unused roles to gain additional privileges. They also create confusion during audits and make it harder to understand the actual RBAC posture.\n\n## How to Fix\n\nVerify the role is truly unused, then remove it:\n\n```bash\n# Check for any bindings referencing this role\nkubectl get rolebindings,clusterrolebindings -A \\\n  -o json | jq '.items[] | select(.roleRef.name==\"unused-role\")'\n\n# Remove the unused role\nkubectl delete clusterrole unused-role\nkubectl delete role unused-role -n my-namespace\n```\n\nImplement a regular RBAC hygiene process to review and clean up unused roles quarterly.\n\n## Learn More\n\nSee the Kubernetes RBAC best practices documentation and CIS Kubernetes Benchmark section 5.1 for guidance on maintaining a clean RBAC configuration.",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.1.1",
+            "title": "Ensure that the cluster-admin role is only used where required"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1078",
+            "title": "Valid Accounts"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "RBAC policies"
+          }
+        ]
+      }
+    ],
+    "cluster_info": {
+      "server_version": "v1.35.0",
+      "node_count": 1,
+      "namespace_count": 0,
+      "context_name": "kind-kubevigil-e2e-single"
+    },
+    "scan_meta": {
+      "start_time": "2026-02-17T12:34:01.92855+05:30",
+      "duration": "4.82421025s",
+      "checks_run": 103,
+      "checks_skipped": 7,
+      "checks_errored": 0,
+      "scan_mode": "Live"
+    }
+  }
+}

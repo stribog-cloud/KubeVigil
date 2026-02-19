@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-one
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: nginx:1.25
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy-one
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: test
+  template:
+    metadata:
+      labels:
+        app: test
+    spec:
+      containers:
+        - name: app
+          image: nginx:1.25
