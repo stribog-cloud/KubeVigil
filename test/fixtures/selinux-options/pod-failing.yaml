@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: selinux-unconfined-pod
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: nginx:1.25
+      securityContext:
+        seLinuxOptions:
+          type: unconfined_t

@@ -1,0 +1,52 @@
+{
+  "version": "1",
+  "scan_result": {
+    "findings": [
+      {
+        "checker": "privileged",
+        "severity": "Critical",
+        "resource": "nginx",
+        "namespace": "default",
+        "kind": "Deployment",
+        "container": "nginx",
+        "message": "Container runs in privileged mode",
+        "remediation": "Set securityContext.privileged to false",
+        "field_path": ".spec.containers[0].securityContext.privileged"
+      },
+      {
+        "checker": "run-as-root",
+        "severity": "High",
+        "resource": "api-server",
+        "namespace": "backend",
+        "kind": "Deployment",
+        "container": "api",
+        "message": "Container runs as root",
+        "remediation": "Set runAsNonRoot: true"
+      },
+      {
+        "checker": "read-only-rootfs",
+        "severity": "Medium",
+        "resource": "worker",
+        "namespace": "default",
+        "kind": "StatefulSet",
+        "container": "worker",
+        "message": "Root filesystem is not read-only",
+        "remediation": "Set readOnlyRootFilesystem: true",
+        "field_path": ".spec.containers[0].securityContext.readOnlyRootFilesystem"
+      }
+    ],
+    "cluster_info": {
+      "server_version": "v1.28.0",
+      "node_count": 3,
+      "context_name": "my-cluster"
+    },
+    "scan_meta": {
+      "start_time": "2024-01-15T10:30:00Z",
+      "duration": "42ms",
+      "checks_run": 25,
+      "checks_skipped": 2,
+      "checks_errored": 0,
+      "scan_mode": "Manifest"
+    }
+  }
+}

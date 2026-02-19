@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: etc-pod
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: nginx:1.25
+      volumeMounts:
+        - name: etc
+          mountPath: /host-etc
+  volumes:
+    - name: etc
+      hostPath:
+        path: /etc

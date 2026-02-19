@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sidecar-privileged-pod
+  namespace: default
+spec:
+  initContainers:
+    - name: envoy
+      image: envoy:1.28
+      restartPolicy: Always
+      securityContext:
+        privileged: true
+  containers:
+    - name: app
+      image: nginx:1.25
+      securityContext:
+        privileged: false
