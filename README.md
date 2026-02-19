@@ -182,7 +182,7 @@ See [Exit Codes](docs/reference/exit-codes.md) for CI/CD usage examples.
 - [x] **Phase 3** — Auto-remediation, 20 fixable checks, YAML round-trip, safety model
 - [x] **Phase 4a** — Distribution (GoReleaser, GitHub Releases, Homebrew, Krew, Docker, install script)
 - [ ] **Phase 4b** — MCP Server (AI assistant integration — scan, query, remediate via Claude/Cursor/Copilot)
-- [ ] **Phase 5** — Feedback, hardening & polish (real-world testing, severity calibration, bug fixes)
+- [ ] **Phase 5** — Feedback, hardening & polish (real-world testing, severity calibration, MCP polish, bug fixes)
 - [ ] **Phase 6** — CI/CD integration (GitHub Action, baseline management, PR decoration)
 - [ ] **Phase 7** — Runtime (admission webhooks, operator mode, Prometheus metrics)
 - [ ] **Phase 8** — Enterprise (multi-cluster, trend analysis, Rego policies)
