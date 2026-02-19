@@ -24,6 +24,9 @@ SARIF for GitHub Security.
 - **Auto-remediation.** `kubevigil fix` patches manifests with comment-preserving
   YAML edits and a five-ring safety model.
 - **CI-ready exit codes.** Clean integration with any CI/CD pipeline.
+- **AI assistant integration.** Built-in MCP server lets Claude, Cursor, and
+  VS Code Copilot scan clusters, query findings, and get remediation guidance
+  through natural conversation.
 
 ## Installation
 
@@ -177,7 +180,8 @@ See [Exit Codes](docs/reference/exit-codes.md) for CI/CD usage examples.
 - [x] **Phase 1** — Core engine, 25 workload checks, text/JSON output, CLI
 - [x] **Phase 2** — 85 additional checks (110 total), 6 new formats, compliance mapping
 - [x] **Phase 3** — Auto-remediation, 20 fixable checks, YAML round-trip, safety model
-- [x] **Phase 4** — Distribution (GoReleaser, GitHub Releases, Homebrew, Krew, Docker, install script)
+- [x] **Phase 4a** — Distribution (GoReleaser, GitHub Releases, Homebrew, Krew, Docker, install script)
+- [ ] **Phase 4b** — MCP Server (AI assistant integration — scan, query, remediate via Claude/Cursor/Copilot)
 - [ ] **Phase 5** — Feedback, hardening & polish (real-world testing, severity calibration, bug fixes)
 - [ ] **Phase 6** — CI/CD integration (GitHub Action, baseline management, PR decoration)
 - [ ] **Phase 7** — Runtime (admission webhooks, operator mode, Prometheus metrics)
