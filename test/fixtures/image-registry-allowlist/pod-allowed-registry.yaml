@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: allowed-registry-pod
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: gcr.io/my-project/app:v1

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hardcoded-secret
+  namespace: default
+type: Opaque
+data:
+  # Base64-encoded JWT token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.sig
+  token: ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LnBheWxvYWQuc2ln

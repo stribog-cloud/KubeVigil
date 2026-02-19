@@ -21,19 +21,23 @@ func NewClient(kubeconfig, context string) (dynamic.Interface, discovery.Discove
 	var cfg *rest.Config
 	var err error
 
-	if kubeconfig == "" {
-		cfg, err = rest.InClusterConfig()
-		if err != nil {
-			return nil, nil, fmt.Errorf("creating in-cluster config: %w", err)
-		}
-	} else {
-		loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfig}
-		overrides := &clientcmd.ConfigOverrides{}
-		if context != "" {
-			overrides.CurrentContext = context
-		}
-		cfg, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, overrides).ClientConfig()
-		if err != nil {
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	if kubeconfig != "" {
+		loadingRules.ExplicitPath = kubeconfig
+	}
+	overrides := &clientcmd.ConfigOverrides{}
+	if context != "" {
+		overrides.CurrentContext = context
+	}
+	cfg, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, overrides).ClientConfig()
+	if err != nil {
+		// Fall back to in-cluster config if kubeconfig loading fails and no explicit path was given.
+		if kubeconfig == "" {
+			cfg, err = rest.InClusterConfig()
+			if err != nil {
+				return nil, nil, fmt.Errorf("creating in-cluster config: %w", err)
+			}
+		} else {
 			return nil, nil, fmt.Errorf("creating kubeconfig client: %w", err)
 		}
 	}

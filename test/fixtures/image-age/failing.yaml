@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stale-image-app
+  namespace: default
+  annotations:
+    kubevigil.io/image-created: "2024-01-01T00:00:00Z"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: app
+          image: old-image:1.0

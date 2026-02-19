@@ -70,15 +70,26 @@ func (c *RunAsHighUIDChecker) Run(ctx context.Context, resources *checker.Resour
 			}
 
 			findings = append(findings, checker.Finding{
-				Checker:     "run-as-high-uid",
-				Severity:    checker.SeverityLow,
-				Resource:    info.ResourceName,
-				Namespace:   info.Namespace,
-				Kind:        info.Kind,
-				Container:   container.Name,
-				Message:     fmt.Sprintf("Container %q runs as UID %d, which is below the recommended minimum of %d.", container.Name, *effectiveUID, minSafeUID),
-				Remediation: fmt.Sprintf("Set securityContext.runAsUser to a UID >= %d to avoid overlap with system accounts.", minSafeUID),
-				FieldPath:   containerFieldPath(ct, idx, "securityContext.runAsUser"),
+				Checker:   "run-as-high-uid",
+				Severity:  checker.SeverityLow,
+				Resource:  info.ResourceName,
+				Namespace: info.Namespace,
+				Kind:      info.Kind,
+				Container: container.Name,
+				Message:   fmt.Sprintf("Container %q runs as UID %d, which is below the recommended minimum of %d.", container.Name, *effectiveUID, minSafeUID),
+				Remediation: fmt.Sprintf("## Why This Matters\n\n"+
+					"UIDs below %d overlap with well-known system accounts on most Linux distributions (e.g., daemon, www-data, "+
+					"nobody). If a container running with a low UID escapes to the host, it may inherit the permissions of that "+
+					"system account, gaining unintended access to host files, sockets, or services owned by that UID.\n\n"+
+					"## How to Fix\n\n"+
+					"Use a high UID that does not overlap with host system accounts:\n\n"+
+					"```yaml\nsecurityContext:\n  runAsUser: 65534       # nobody, or any UID >= %d\n  runAsNonRoot: true\n  runAsGroup: 65534\n```\n\n"+
+					"Choose a UID >= %d. The conventional `nobody` UID (65534) is a safe default. "+
+					"Also set the UID in your Dockerfile with `USER 65534` for defense in depth.\n\n"+
+					"## Learn More\n\n"+
+					"This is a defense-in-depth measure. While container UID mapping varies by runtime, "+
+					"using high UIDs avoids accidental privilege overlap on hosts that lack user namespace remapping.", minSafeUID, minSafeUID, minSafeUID),
+				FieldPath: containerFieldPath(ct, idx, "securityContext.runAsUser"),
 			})
 		})
 	}

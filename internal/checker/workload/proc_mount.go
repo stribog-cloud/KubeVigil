@@ -64,15 +64,27 @@ func (c *ProcMountChecker) Run(ctx context.Context, resources *checker.ResourceC
 			fieldPath := containerFieldPath(ct, idx, "securityContext.procMount")
 
 			findings = append(findings, checker.Finding{
-				Checker:     "proc-mount",
-				Severity:    checker.SeverityHigh,
-				Resource:    info.ResourceName,
-				Namespace:   info.Namespace,
-				Kind:        info.Kind,
-				Container:   container.Name,
-				Message:     fmt.Sprintf("Container %q has procMount set to Unmasked, exposing sensitive host information via /proc.", container.Name),
-				Remediation: "Set procMount to Default or remove it. Unmasked /proc exposes sensitive host information.",
-				FieldPath:   fieldPath,
+				Checker:   "proc-mount",
+				Severity:  checker.SeverityHigh,
+				Resource:  info.ResourceName,
+				Namespace: info.Namespace,
+				Kind:      info.Kind,
+				Container: container.Name,
+				Message:   fmt.Sprintf("Container %q has procMount set to Unmasked, exposing sensitive host information via /proc.", container.Name),
+				Remediation: "## Why This Matters\n\n" +
+					"Kubernetes masks certain paths in /proc by default to prevent containers from reading sensitive kernel " +
+					"information such as hardware details, other process data, and kernel parameters. An unmasked /proc filesystem " +
+					"exposes these paths and can be used as a stepping stone for container escape attacks by manipulating cgroup " +
+					"files or accessing kernel interfaces.\n\n" +
+					"## How to Fix\n\n" +
+					"Use the default masked proc mount or remove the procMount field entirely:\n\n" +
+					"```yaml\nsecurityContext:\n  procMount: Default\n```\n\n" +
+					"The Default value masks sensitive paths like /proc/kcore, /proc/keys, and /proc/timer_list. " +
+					"If you need raw /proc access for debugging, use ephemeral containers in non-production environments only.\n\n" +
+					"## Learn More\n\n" +
+					"Unmasked procMount is prohibited by the Pod Security Standards \"Baseline\" profile. The masked paths " +
+					"in /proc prevent information disclosure that could aid in kernel exploitation or container escape.",
+				FieldPath: fieldPath,
 			})
 		})
 	}

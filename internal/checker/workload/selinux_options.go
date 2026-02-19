@@ -68,15 +68,27 @@ func (c *SELinuxOptionsChecker) Run(ctx context.Context, resources *checker.Reso
 			fieldPath := containerFieldPath(ct, idx, "securityContext.seLinuxOptions.type")
 
 			findings = append(findings, checker.Finding{
-				Checker:     "selinux-options",
-				Severity:    checker.SeverityMedium,
-				Resource:    info.ResourceName,
-				Namespace:   info.Namespace,
-				Kind:        info.Kind,
-				Container:   container.Name,
-				Message:     fmt.Sprintf("Container %q has dangerous SELinux type %q, which disables SELinux confinement.", container.Name, seType),
-				Remediation: "Remove dangerous SELinux type. Use the default confined context.",
-				FieldPath:   fieldPath,
+				Checker:   "selinux-options",
+				Severity:  checker.SeverityMedium,
+				Resource:  info.ResourceName,
+				Namespace: info.Namespace,
+				Kind:      info.Kind,
+				Container: container.Name,
+				Message:   fmt.Sprintf("Container %q has dangerous SELinux type %q, which disables SELinux confinement.", container.Name, seType),
+				Remediation: "## Why This Matters\n\n" +
+					"SELinux types like `spc_t` (super privileged container) and `unconfined_t` completely disable SELinux " +
+					"mandatory access control for the container. On RHEL, CentOS, and Fedora nodes where SELinux is enforcing, " +
+					"this removes a critical security boundary that prevents containers from accessing host files, devices, and " +
+					"other container data even after a compromise.\n\n" +
+					"## How to Fix\n\n" +
+					"Remove the dangerous SELinux type or use the default confined context:\n\n" +
+					"```yaml\nsecurityContext:\n  seLinuxOptions:\n    type: \"\"  # Use default confined context\n  # Or remove seLinuxOptions entirely\n```\n\n" +
+					"If your application needs specific SELinux access, create a custom policy rather than disabling confinement " +
+					"entirely. Test in a non-production environment first.\n\n" +
+					"## Learn More\n\n" +
+					"SELinux enforcement is a key defense layer on RHEL-family nodes. The `spc_t` type is equivalent to disabling " +
+					"SELinux for that container. Refer to CIS Benchmark 5.7.3 and the OpenShift SELinux documentation.",
+				FieldPath: fieldPath,
 			})
 		})
 	}

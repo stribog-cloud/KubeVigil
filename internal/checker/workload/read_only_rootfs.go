@@ -57,15 +57,26 @@ func (c *ReadOnlyRootfsChecker) Run(ctx context.Context, resources *checker.Reso
 				fieldPath := containerFieldPath(ct, idx, "securityContext.readOnlyRootFilesystem")
 
 				findings = append(findings, checker.Finding{
-					Checker:     "read-only-rootfs",
-					Severity:    checker.SeverityMedium,
-					Resource:    info.ResourceName,
-					Namespace:   info.Namespace,
-					Kind:        info.Kind,
-					Container:   container.Name,
-					Message:     fmt.Sprintf("Container %q does not have a read-only root filesystem.", container.Name),
-					Remediation: "Set securityContext.readOnlyRootFilesystem to true. Use emptyDir or tmpfs for writable paths.",
-					FieldPath:   fieldPath,
+					Checker:   "read-only-rootfs",
+					Severity:  checker.SeverityMedium,
+					Resource:  info.ResourceName,
+					Namespace: info.Namespace,
+					Kind:      info.Kind,
+					Container: container.Name,
+					Message:   fmt.Sprintf("Container %q does not have a read-only root filesystem.", container.Name),
+					Remediation: "## Why This Matters\n\n" +
+						"A writable root filesystem allows an attacker who gains code execution in your container to modify application " +
+						"binaries, install attack tools, plant backdoors, or persist malware across container restarts. Making the " +
+						"filesystem read-only eliminates an entire class of post-exploitation techniques.\n\n" +
+						"## How to Fix\n\n" +
+						"Enable a read-only root filesystem and mount writable volumes only where needed:\n\n" +
+						"```yaml\nsecurityContext:\n  readOnlyRootFilesystem: true\nvolumeMounts:\n  - name: tmp\n    mountPath: /tmp\nvolumes:\n  - name: tmp\n    emptyDir: {}\n```\n\n" +
+						"Common paths that need write access include /tmp, /var/cache, and /var/run. Mount each as an emptyDir " +
+						"or tmpfs volume rather than making the entire filesystem writable.\n\n" +
+						"## Learn More\n\n" +
+						"This aligns with CIS Benchmark 5.2.4 and the defense-in-depth principle. Combined with dropping capabilities " +
+						"and running as non-root, a read-only filesystem forms a strong container hardening baseline.",
+					FieldPath: fieldPath,
 				})
 			}
 		})

@@ -53,15 +53,27 @@ func (c *HostPIDChecker) Run(ctx context.Context, resources *checker.ResourceCac
 		}
 
 		findings = append(findings, checker.Finding{
-			Checker:     "host-pid",
-			Severity:    checker.SeverityCritical,
-			Resource:    info.ResourceName,
-			Namespace:   info.Namespace,
-			Kind:        info.Kind,
-			Container:   "",
-			Message:     fmt.Sprintf("%s %q has hostPID enabled, allowing containers to see all host processes.", info.Kind, info.ResourceName),
-			Remediation: "Set spec.hostPID to false. Host PID namespace allows seeing all host processes.",
-			FieldPath:   ".spec.hostPID",
+			Checker:   "host-pid",
+			Severity:  checker.SeverityCritical,
+			Resource:  info.ResourceName,
+			Namespace: info.Namespace,
+			Kind:      info.Kind,
+			Container: "",
+			Message:   fmt.Sprintf("%s %q has hostPID enabled, allowing containers to see all host processes.", info.Kind, info.ResourceName),
+			Remediation: "## Why This Matters\n\n" +
+				"When hostPID is enabled, containers share the host's process ID namespace and can see every process running " +
+				"on the node, including processes from other pods and system daemons. An attacker can use this to inspect " +
+				"environment variables containing secrets, send signals to critical processes, or exploit /proc entries to " +
+				"escape the container entirely.\n\n" +
+				"## How to Fix\n\n" +
+				"Disable host PID namespace sharing in the pod spec:\n\n" +
+				"```yaml\nspec:\n  hostPID: false\n```\n\n" +
+				"If you need process visibility for monitoring or debugging, consider using ephemeral containers " +
+				"or a dedicated monitoring DaemonSet with tightly scoped RBAC instead.\n\n" +
+				"## Learn More\n\n" +
+				"This check aligns with CIS Benchmark 5.2.2 and the Pod Security Standards \"Baseline\" profile, " +
+				"which prohibits hostPID. Process namespace isolation is a fundamental container security boundary.",
+			FieldPath: ".spec.hostPID",
 		})
 	}
 

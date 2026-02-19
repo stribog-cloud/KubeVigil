@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: placeholder-secret
+  namespace: default
+type: Opaque
+data:
+  # Base64-encoded "CHANGEME" — placeholder value, not a real secret.
+  password: Q0hBTkdFTUU=
+  # Base64-encoded "default" — short, low-entropy config.
+  config: ZGVmYXVsdA==

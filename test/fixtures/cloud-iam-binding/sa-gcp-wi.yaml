@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gcp-sa
+  namespace: default
+  annotations:
+    iam.gke.io/gcp-service-account: my-app@my-project.iam.gserviceaccount.com

@@ -58,15 +58,27 @@ func (c *AppArmorProfileChecker) Run(ctx context.Context, resources *checker.Res
 			fieldPath := containerFieldPath(ct, idx, "securityContext.appArmorProfile")
 
 			findings = append(findings, checker.Finding{
-				Checker:     "apparmor-profile",
-				Severity:    checker.SeverityMedium,
-				Resource:    info.ResourceName,
-				Namespace:   info.Namespace,
-				Kind:        info.Kind,
-				Container:   container.Name,
-				Message:     fmt.Sprintf("Container %q does not have an AppArmor profile set.", container.Name),
-				Remediation: "Set securityContext.appArmorProfile.type to RuntimeDefault or Localhost.",
-				FieldPath:   fieldPath,
+				Checker:   "apparmor-profile",
+				Severity:  checker.SeverityMedium,
+				Resource:  info.ResourceName,
+				Namespace: info.Namespace,
+				Kind:      info.Kind,
+				Container: container.Name,
+				Message:   fmt.Sprintf("Container %q does not have an AppArmor profile set.", container.Name),
+				Remediation: "## Why This Matters\n\n" +
+					"AppArmor provides mandatory access control (MAC) that restricts which files, network resources, and capabilities " +
+					"a container process can access. Without an AppArmor profile, the container operates without these restrictions, " +
+					"allowing an attacker with code execution to access any file the container user can read and make unrestricted " +
+					"network connections.\n\n" +
+					"## How to Fix\n\n" +
+					"Apply an AppArmor profile in the container's securityContext (Kubernetes 1.30+):\n\n" +
+					"```yaml\nsecurityContext:\n  appArmorProfile:\n    type: RuntimeDefault\n```\n\n" +
+					"The RuntimeDefault profile provides sensible restrictions for most applications. For tighter control, " +
+					"create a custom Localhost profile that only allows the specific file and network access your application needs.\n\n" +
+					"## Learn More\n\n" +
+					"AppArmor is available on Debian/Ubuntu-based nodes. RHEL/CentOS nodes use SELinux instead. " +
+					"Both provide MAC enforcement. Refer to CIS Benchmark 5.7.5 and the Kubernetes AppArmor documentation.",
+				FieldPath: fieldPath,
 			})
 		})
 	}

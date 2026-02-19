@@ -57,15 +57,27 @@ func (c *SeccompProfileChecker) Run(ctx context.Context, resources *checker.Reso
 			fieldPath := containerFieldPath(ct, idx, "securityContext.seccompProfile")
 
 			findings = append(findings, checker.Finding{
-				Checker:     "seccomp-profile",
-				Severity:    checker.SeverityMedium,
-				Resource:    info.ResourceName,
-				Namespace:   info.Namespace,
-				Kind:        info.Kind,
-				Container:   container.Name,
-				Message:     fmt.Sprintf("Container %q does not have a Seccomp profile set at either the container or pod level.", container.Name),
-				Remediation: "Set securityContext.seccompProfile.type to RuntimeDefault or Localhost.",
-				FieldPath:   fieldPath,
+				Checker:   "seccomp-profile",
+				Severity:  checker.SeverityMedium,
+				Resource:  info.ResourceName,
+				Namespace: info.Namespace,
+				Kind:      info.Kind,
+				Container: container.Name,
+				Message:   fmt.Sprintf("Container %q does not have a Seccomp profile set at either the container or pod level.", container.Name),
+				Remediation: "## Why This Matters\n\n" +
+					"Without a Seccomp profile, containers can invoke any of the 300+ Linux system calls, leaving the entire " +
+					"kernel attack surface exposed. Kernel vulnerabilities in obscure syscalls are a primary vector for container " +
+					"escapes. Seccomp filtering blocks dangerous syscalls that legitimate applications never use.\n\n" +
+					"## How to Fix\n\n" +
+					"Apply a Seccomp profile at the container or pod level:\n\n" +
+					"```yaml\nsecurityContext:\n  seccompProfile:\n    type: RuntimeDefault\n```\n\n" +
+					"The RuntimeDefault profile blocks approximately 50 dangerous syscalls while allowing normal application " +
+					"behavior. For stricter controls, use a custom Localhost profile tailored to your application's needs. " +
+					"Set the profile at the pod level to apply it to all containers.\n\n" +
+					"## Learn More\n\n" +
+					"Seccomp profiles are required by the Pod Security Standards \"Restricted\" profile and CIS Benchmark 5.7.2. " +
+					"Use tools like `strace` or the Security Profiles Operator to generate custom profiles for your workloads.",
+				FieldPath: fieldPath,
 			})
 		})
 	}

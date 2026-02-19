@@ -57,15 +57,26 @@ func (c *CapabilitiesNotDroppedChecker) Run(ctx context.Context, resources *chec
 			fieldPath := containerFieldPath(ct, idx, "securityContext.capabilities.drop")
 
 			findings = append(findings, checker.Finding{
-				Checker:     "capabilities-not-dropped",
-				Severity:    checker.SeverityMedium,
-				Resource:    info.ResourceName,
-				Namespace:   info.Namespace,
-				Kind:        info.Kind,
-				Container:   container.Name,
-				Message:     fmt.Sprintf("Container %q does not drop ALL capabilities, leaving it with unnecessary default privileges.", container.Name),
-				Remediation: "Add securityContext.capabilities.drop: ['ALL'] and only add back required capabilities.",
-				FieldPath:   fieldPath,
+				Checker:   "capabilities-not-dropped",
+				Severity:  checker.SeverityMedium,
+				Resource:  info.ResourceName,
+				Namespace: info.Namespace,
+				Kind:      info.Kind,
+				Container: container.Name,
+				Message:   fmt.Sprintf("Container %q does not drop ALL capabilities, leaving it with unnecessary default privileges.", container.Name),
+				Remediation: "## Why This Matters\n\n" +
+					"By default, containers receive a set of Linux capabilities including KILL, SETUID, SETGID, and NET_RAW. " +
+					"These defaults are rarely needed by application code and significantly increase the potential damage " +
+					"from a container compromise. Dropping all capabilities follows the principle of least privilege.\n\n" +
+					"## How to Fix\n\n" +
+					"Explicitly drop all capabilities and selectively add back only what your application needs:\n\n" +
+					"```yaml\nsecurityContext:\n  capabilities:\n    drop: [\"ALL\"]\n    add: [\"NET_BIND_SERVICE\"]  # Only if needed\n```\n\n" +
+					"Most web applications, API servers, and background workers run perfectly with all capabilities dropped. " +
+					"Test your application after making this change to confirm no functionality is lost.\n\n" +
+					"## Learn More\n\n" +
+					"This is required by the Pod Security Standards \"Restricted\" profile and aligns with CIS Benchmark 5.2.7. " +
+					"Kubernetes best practice is to treat capability grants as exceptions that require explicit justification.",
+				FieldPath: fieldPath,
 			})
 		})
 	}

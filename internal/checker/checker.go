@@ -64,6 +64,25 @@ func (s Severity) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s.String())
 }
 
+// MarshalYAML serializes Severity as a YAML string (e.g., "Critical").
+func (s Severity) MarshalYAML() (any, error) {
+	return s.String(), nil
+}
+
+// UnmarshalYAML deserializes Severity from a YAML string.
+func (s *Severity) UnmarshalYAML(unmarshal func(any) error) error {
+	var str string
+	if err := unmarshal(&str); err != nil {
+		return err
+	}
+	parsed, err := ParseSeverity(str)
+	if err != nil {
+		return err
+	}
+	*s = parsed
+	return nil
+}
+
 // UnmarshalJSON deserializes Severity from a JSON string.
 func (s *Severity) UnmarshalJSON(data []byte) error {
 	var str string
@@ -131,36 +150,52 @@ func (m *ScanMode) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// FrameworkRef links a finding to a specific compliance framework control.
+type FrameworkRef struct {
+	// Framework is the identifier (e.g., "cis", "mitre", "nsa").
+	Framework string `json:"framework" yaml:"framework"`
+	// Version is the framework version (e.g., "1.8", "v14", "1.2").
+	Version string `json:"version" yaml:"version"`
+	// ControlID is the control identifier (e.g., "5.2.1", "T1611").
+	ControlID string `json:"control_id" yaml:"control_id"`
+	// Title is the human-readable control title.
+	Title string `json:"title" yaml:"title"`
+}
+
 // Finding represents a single security issue detected by a checker.
 type Finding struct {
 	// Checker is the kebab-case ID of the check that produced this finding.
-	Checker string `json:"checker"`
+	Checker string `json:"checker" yaml:"checker"`
 	// Severity is the impact level of this finding.
-	Severity Severity `json:"severity"`
+	Severity Severity `json:"severity" yaml:"severity"`
 	// Resource is the name of the Kubernetes resource.
-	Resource string `json:"resource"`
+	Resource string `json:"resource" yaml:"resource"`
 	// Namespace is the namespace of the resource (empty for cluster-scoped).
-	Namespace string `json:"namespace,omitempty"`
+	Namespace string `json:"namespace,omitempty" yaml:"namespace"`
 	// Kind is the Kubernetes resource kind (Deployment, Pod, etc.).
-	Kind string `json:"kind"`
+	Kind string `json:"kind" yaml:"kind"`
 	// Container is the container name, if applicable.
-	Container string `json:"container,omitempty"`
+	Container string `json:"container,omitempty" yaml:"container"`
 	// Message is a human-readable description of the issue.
-	Message string `json:"message"`
+	Message string `json:"message" yaml:"message"`
 	// Remediation describes how to fix the issue.
-	Remediation string `json:"remediation"`
+	Remediation string `json:"remediation" yaml:"remediation"`
 	// FieldPath is the JSON path to the problematic field.
-	FieldPath string `json:"field_path,omitempty"`
+	FieldPath string `json:"field_path,omitempty" yaml:"field_path"`
+	// Frameworks lists compliance framework references for this finding.
+	Frameworks []FrameworkRef `json:"frameworks,omitempty" yaml:"frameworks"`
 }
 
 // ClusterInfo holds metadata about the scanned cluster.
 type ClusterInfo struct {
 	// ServerVersion is the Kubernetes server version string.
-	ServerVersion string `json:"server_version,omitempty"`
+	ServerVersion string `json:"server_version,omitempty" yaml:"server_version"`
 	// NodeCount is the number of nodes in the cluster.
-	NodeCount int `json:"node_count"`
+	NodeCount int `json:"node_count" yaml:"node_count"`
+	// NamespaceCount is the number of namespaces in the cluster.
+	NamespaceCount int `json:"namespace_count" yaml:"namespace_count"`
 	// ContextName is the kubeconfig context used for the scan.
-	ContextName string `json:"context_name,omitempty"`
+	ContextName string `json:"context_name,omitempty" yaml:"context_name"`
 }
 
 // ScanMeta holds metadata about the scan execution.
@@ -175,6 +210,12 @@ type ScanMeta struct {
 	ChecksSkipped int `json:"checks_skipped"`
 	// ChecksErrored is the number of checks that encountered errors.
 	ChecksErrored int `json:"checks_errored"`
+	// CheckNames lists the names of all checks that were executed.
+	CheckNames []string `json:"check_names,omitempty"`
+	// CheckDescriptions maps check names to their human-readable descriptions.
+	CheckDescriptions map[string]string `json:"check_descriptions,omitempty"`
+	// CheckCategories maps check names to their primary category name.
+	CheckCategories map[string]string `json:"check_categories,omitempty"`
 	// ScanMode is how the scan was performed.
 	ScanMode ScanMode `json:"scan_mode"`
 }

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: latest-ifnp-pod
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: nginx:latest
+      imagePullPolicy: IfNotPresent

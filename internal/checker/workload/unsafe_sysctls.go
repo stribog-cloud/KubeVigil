@@ -77,14 +77,26 @@ func (c *UnsafeSysctlsChecker) Run(ctx context.Context, resources *checker.Resou
 		}
 
 		findings = append(findings, checker.Finding{
-			Checker:     "unsafe-sysctls",
-			Severity:    checker.SeverityHigh,
-			Resource:    info.ResourceName,
-			Namespace:   info.Namespace,
-			Kind:        info.Kind,
-			Message:     fmt.Sprintf("Pod configures unsafe sysctls: %s.", strings.Join(unsafeNames, ", ")),
-			Remediation: "Remove unsafe sysctls. Only use kubelet-allowlisted safe sysctls.",
-			FieldPath:   ".spec.securityContext.sysctls",
+			Checker:   "unsafe-sysctls",
+			Severity:  checker.SeverityHigh,
+			Resource:  info.ResourceName,
+			Namespace: info.Namespace,
+			Kind:      info.Kind,
+			Message:   fmt.Sprintf("Pod configures unsafe sysctls: %s.", strings.Join(unsafeNames, ", ")),
+			Remediation: "## Why This Matters\n\n" +
+				"Unsafe sysctls modify kernel parameters that are not namespaced, meaning they can affect the host system and " +
+				"all other pods running on the same node. An attacker with the ability to set unsafe sysctls can degrade node " +
+				"stability, interfere with network traffic, or weaken security settings for the entire node.\n\n" +
+				"## How to Fix\n\n" +
+				"Remove unsafe sysctls and use only the kubelet-allowlisted safe set:\n\n" +
+				"```yaml\nspec:\n  securityContext:\n    sysctls:\n      - name: net.ipv4.ip_local_port_range\n        value: \"1024 65535\"\n```\n\n" +
+				"Safe sysctls include: `kernel.shm_rmid_forced`, `net.ipv4.ip_local_port_range`, " +
+				"`net.ipv4.tcp_syncookies`, `net.ipv4.ping_group_range`, `net.ipv4.ip_unprivileged_port_start`, " +
+				"and `net.ipv4.ip_local_reserved_ports`.\n\n" +
+				"## Learn More\n\n" +
+				"The kubelet must be explicitly configured to allow unsafe sysctls via --allowed-unsafe-sysctls. " +
+				"Refer to the Kubernetes sysctl documentation and CIS Benchmark 5.2.11 for detailed guidance.",
+			FieldPath: ".spec.securityContext.sysctls",
 		})
 	}
 

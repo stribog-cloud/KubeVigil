@@ -1,0 +1,16 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: weak-cert
+  namespace: default
+spec:
+  secretName: weak-tls
+  duration: "17520h"
+  issuerRef:
+    name: letsencrypt
+    kind: ClusterIssuer
+  privateKey:
+    algorithm: RSA
+    size: 1024
+  dnsNames:
+    - example.com

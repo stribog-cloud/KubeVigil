@@ -89,6 +89,27 @@ func WithPodSecurityContext(sc *corev1.PodSecurityContext) PodOption {
 	}
 }
 
+// WithServiceAccountName sets spec.serviceAccountName.
+func WithServiceAccountName(name string) PodOption {
+	return func(spec *corev1.PodSpec, _ *metav1.ObjectMeta) {
+		spec.ServiceAccountName = name
+	}
+}
+
+// WithAutomountServiceAccountToken sets spec.automountServiceAccountToken.
+func WithAutomountServiceAccountToken(v bool) PodOption {
+	return func(spec *corev1.PodSpec, _ *metav1.ObjectMeta) {
+		spec.AutomountServiceAccountToken = &v
+	}
+}
+
+// WithVolume appends a volume to spec.volumes.
+func WithVolume(vol corev1.Volume) PodOption { //nolint:gocritic // value copy is intentional for builder API ergonomics
+	return func(spec *corev1.PodSpec, _ *metav1.ObjectMeta) {
+		spec.Volumes = append(spec.Volumes, vol)
+	}
+}
+
 // WithContainer replaces the default container with the provided one.
 func WithContainer(c corev1.Container) PodOption { //nolint:gocritic // value copy is intentional for builder API ergonomics
 	return func(spec *corev1.PodSpec, _ *metav1.ObjectMeta) {
@@ -221,6 +242,13 @@ func WithHostPort(port int32) ContainerOption {
 			HostPort:      port,
 			ContainerPort: port,
 		})
+	}
+}
+
+// WithImagePullPolicy sets the container imagePullPolicy.
+func WithImagePullPolicy(policy corev1.PullPolicy) ContainerOption {
+	return func(c *corev1.Container) {
+		c.ImagePullPolicy = policy
 	}
 }
 

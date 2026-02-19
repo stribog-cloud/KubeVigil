@@ -54,15 +54,26 @@ func (c *HostNetworkChecker) Run(ctx context.Context, resources *checker.Resourc
 		}
 
 		findings = append(findings, checker.Finding{
-			Checker:     "host-network",
-			Severity:    checker.SeverityCritical,
-			Resource:    info.ResourceName,
-			Namespace:   info.Namespace,
-			Kind:        info.Kind,
-			Container:   "",
-			Message:     fmt.Sprintf("%s %q has hostNetwork enabled, bypassing network policies and exposing the host network.", info.Kind, info.ResourceName),
-			Remediation: "Set spec.hostNetwork to false. Host network namespace bypasses network policies.",
-			FieldPath:   ".spec.hostNetwork",
+			Checker:   "host-network",
+			Severity:  checker.SeverityCritical,
+			Resource:  info.ResourceName,
+			Namespace: info.Namespace,
+			Kind:      info.Kind,
+			Container: "",
+			Message:   fmt.Sprintf("%s %q has hostNetwork enabled, bypassing network policies and exposing the host network.", info.Kind, info.ResourceName),
+			Remediation: "## Why This Matters\n\n" +
+				"Containers with hostNetwork bypass Kubernetes NetworkPolicies entirely and gain access to all network interfaces " +
+				"on the node, including the node's IP address and loopback. An attacker can use this to sniff traffic from other pods, " +
+				"access node-local services such as the kubelet API on port 10250, or impersonate the node on the network.\n\n" +
+				"## How to Fix\n\n" +
+				"Disable host networking in the pod spec and use Kubernetes Services for exposure:\n\n" +
+				"```yaml\nspec:\n  hostNetwork: false\n```\n\n" +
+				"Use ClusterIP Services, NodePort, LoadBalancer, or Ingress resources to expose your application. " +
+				"Only CNI plugins, kube-proxy, and certain monitoring agents legitimately need host networking.\n\n" +
+				"## Learn More\n\n" +
+				"This aligns with CIS Benchmark 5.2.4 and the Pod Security Standards \"Baseline\" profile. " +
+				"Network namespace isolation is essential for NetworkPolicy enforcement and cluster network segmentation.",
+			FieldPath: ".spec.hostNetwork",
 		})
 	}
 
