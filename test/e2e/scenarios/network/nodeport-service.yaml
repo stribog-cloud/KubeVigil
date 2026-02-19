@@ -1,0 +1,32 @@
+# E2E Scenario: service-type-nodeport (Medium)
+#
+# This manifest creates a Service of type NodePort. The service-type-nodeport
+# checker flags these because NodePort services open a port (30000-32767) on
+# every cluster node, bypassing ingress controllers and their centralized
+# security controls.
+#
+# Expected findings:
+#   - service-type-nodeport (Medium) — Service "node-exposed" is exposed
+#     as NodePort.
+#
+# Usage:
+#   kubectl apply -f namespace.yaml  # Create namespace first
+#   kubectl apply -f nodeport-service.yaml
+#   kubevigil scan --namespace kv-e2e-network
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-exposed
+  namespace: kv-e2e-network
+  labels:
+    app: pause-app
+spec:
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 80
+      nodePort: 30080
+      protocol: TCP
+  selector:
+    app: pause-app

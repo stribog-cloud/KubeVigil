@@ -1,0 +1,56 @@
+# KubeVigil E2E — Deployment with :latest and missing tags.
+#
+# Triggers:
+#   - image-tag-latest  (Medium) — containers "explicit-latest" and "implicit-latest"
+#     both resolve to the :latest tag. The first uses the explicit ":latest" suffix;
+#     the second omits the tag entirely (Kubernetes defaults to :latest).
+#   - image-tag-missing (Medium) — container "implicit-latest" has no tag and no
+#     digest, making the deployment completely non-deterministic.
+#   - image-no-digest   (Low)   — neither container pins by digest.
+#
+# Expected findings: 4
+#   1. image-tag-latest  on "explicit-latest"  (nginx:latest)
+#   2. image-tag-latest  on "implicit-latest"  (busybox — no tag)
+#   3. image-tag-missing on "implicit-latest"  (busybox — no tag, no digest)
+#   4. image-no-digest   on "explicit-latest"  (nginx:latest — no digest)
+#   5. image-no-digest   on "implicit-latest"  (busybox — no digest)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: latest-tag-demo
+  namespace: kv-e2e-image
+  labels:
+    app: latest-tag-demo
+    kubevigil.io/scenario: image-security
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: latest-tag-demo
+  template:
+    metadata:
+      labels:
+        app: latest-tag-demo
+    spec:
+      # Prevent actual scheduling — we only need the manifests applied,
+      # not running pods. The pause image is safe and lightweight.
+      terminationGracePeriodSeconds: 0
+      containers:
+        # Explicit :latest tag — triggers image-tag-latest.
+        - name: explicit-latest
+          image: nginx:latest
+          command: ["sleep", "infinity"]
+          resources:
+            limits:
+              cpu: "10m"
+              memory: "16Mi"
+
+        # No tag at all — triggers both image-tag-latest (implicit latest)
+        # and image-tag-missing (no tag, no digest).
+        - name: implicit-latest
+          image: busybox
+          command: ["sleep", "infinity"]
+          resources:
+            limits:
+              cpu: "10m"
+              memory: "16Mi"

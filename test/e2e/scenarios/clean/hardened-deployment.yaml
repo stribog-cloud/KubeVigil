@@ -1,0 +1,465 @@
+# =============================================================================
+# KubeVigil E2E Clean Scenario — Fully Hardened Deployment
+# =============================================================================
+#
+# PURPOSE: This manifest should produce ZERO findings from KubeVigil.
+# It validates that the tool does not generate false positives against a
+# properly secured Kubernetes deployment.
+#
+# Every field that KubeVigil inspects is explicitly configured to the secure
+# value. Comments reference the specific checker each setting satisfies.
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 1. Namespace with full PSA enforcement
+# -----------------------------------------------------------------------------
+# Satisfies:
+#   - psa-labels-missing      (enforce label present)
+#   - psa-mode-audit-only     (enforce label present, not just audit/warn)
+#   - psa-version-pinning     (enforce-version set to "latest", not a pinned version)
+#   - namespace-default-usage (workloads are NOT in "default" namespace)
+#   - network-policy-missing  (NetworkPolicy is defined below in this namespace)
+#   - network-policy-default-deny (default-deny policies defined below)
+#   - limit-range-missing     (LimitRange defined below)
+#   - resource-quota-missing  (ResourceQuota defined below)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kv-e2e-clean
+  labels:
+    # PSA enforcement at the most restrictive level
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest
+---
+# -----------------------------------------------------------------------------
+# 2. ServiceAccount — dedicated, non-default, with auto-mount disabled
+# -----------------------------------------------------------------------------
+# Satisfies:
+#   - default-service-account  (workload uses a non-default ServiceAccount)
+#   - automount-token          (automountServiceAccountToken: false)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: secure-app-sa
+  namespace: kv-e2e-clean
+# Disable token auto-mounting at the ServiceAccount level as defense-in-depth.
+# The pod spec also sets this to false.
+automountServiceAccountToken: false
+---
+# -----------------------------------------------------------------------------
+# 3. NetworkPolicy — default-deny for both Ingress and Egress
+# -----------------------------------------------------------------------------
+# Satisfies:
+#   - network-policy-missing          (namespace has at least one NetworkPolicy)
+#   - network-policy-default-deny     (empty podSelector + both Ingress and Egress
+#                                       in policyTypes with no allow rules = deny all)
+#   - network-policy-overly-permissive (no overly broad allow rules)
+#   - network-policy-egress-unrestricted (egress is restricted by default-deny)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: kv-e2e-clean
+spec:
+  # Empty podSelector selects ALL pods in the namespace
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  # No ingress or egress rules = deny all traffic by default.
+  # Specific allow rules would be added as separate NetworkPolicy resources
+  # for each legitimate traffic flow.
+---
+# -----------------------------------------------------------------------------
+# 4. ResourceQuota — caps total namespace resource consumption
+# -----------------------------------------------------------------------------
+# Satisfies:
+#   - resource-quota-missing (namespace has a ResourceQuota)
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-quota
+  namespace: kv-e2e-clean
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 4Gi
+    limits.cpu: "8"
+    limits.memory: 8Gi
+    pods: "20"
+---
+# -----------------------------------------------------------------------------
+# 5. LimitRange — sets default resource constraints for the namespace
+# -----------------------------------------------------------------------------
+# Satisfies:
+#   - limit-range-missing (namespace has a LimitRange)
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: default-limits
+  namespace: kv-e2e-clean
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      max:
+        cpu: "2"
+        memory: 1Gi
+---
+# -----------------------------------------------------------------------------
+# 6. PriorityClass — custom priority for application workloads
+# -----------------------------------------------------------------------------
+# Satisfies:
+#   - priority-class-missing (Deployment references this PriorityClass)
+#   - priority-class-system (value is well below system-critical thresholds)
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: secure-app-priority
+value: 100000
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+description: "Priority class for the secure-app E2E clean scenario."
+---
+# -----------------------------------------------------------------------------
+# 7. PodDisruptionBudget — protects replicas during voluntary disruptions
+# -----------------------------------------------------------------------------
+# Satisfies:
+#   - pod-disruption-budget (Deployment with replicas > 1 has a matching PDB)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: secure-app-pdb
+  namespace: kv-e2e-clean
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: secure-app
+---
+# -----------------------------------------------------------------------------
+# 8. Deployment — fully hardened workload
+# -----------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secure-app
+  namespace: kv-e2e-clean
+  labels:
+    app: secure-app
+spec:
+  # Two replicas for high availability
+  replicas: 2
+  selector:
+    matchLabels:
+      app: secure-app
+  template:
+    metadata:
+      labels:
+        app: secure-app
+    spec:
+      # -----------------------------------------------------------------------
+      # ServiceAccount configuration
+      # -----------------------------------------------------------------------
+      # Satisfies:
+      #   - default-service-account (not using "default" ServiceAccount)
+      serviceAccountName: secure-app-sa
+      # Satisfies:
+      #   - automount-token (explicitly false at pod level)
+      automountServiceAccountToken: false
+
+      # -----------------------------------------------------------------------
+      # Pod-level security context
+      # -----------------------------------------------------------------------
+      securityContext:
+        # Satisfies:
+        #   - run-as-root (runAsNonRoot: true at pod level)
+        runAsNonRoot: true
+        # Satisfies:
+        #   - run-as-root (runAsUser is non-zero)
+        #   - run-as-high-uid (UID >= 10000; using 65534 = nobody)
+        runAsUser: 65534
+        # Satisfies:
+        #   - run-as-group (runAsGroup is non-zero and explicitly set)
+        runAsGroup: 65534
+        # fsGroup for volume ownership
+        fsGroup: 65534
+        # Satisfies:
+        #   - seccomp-profile (RuntimeDefault at pod level covers all containers)
+        seccompProfile:
+          type: RuntimeDefault
+        # No unsafe sysctls configured.
+        # Satisfies:
+        #   - unsafe-sysctls (no sysctls = no unsafe ones)
+
+      # -----------------------------------------------------------------------
+      # Scheduling — no dangerous tolerations, no system priority
+      # -----------------------------------------------------------------------
+      # No tolerations specified at all.
+      # Satisfies:
+      #   - toleration-control-plane (no control-plane taint tolerations)
+      #   - toleration-all (no catch-all Exists tolerations)
+
+      # Satisfies:
+      #   - priority-class-missing (priorityClassName is set to a non-empty value)
+      #   - priority-class-system (not using system-cluster-critical or
+      #     system-node-critical; uses the custom PriorityClass defined above)
+      priorityClassName: secure-app-priority
+
+      # -----------------------------------------------------------------------
+      # Topology spread — distribute replicas across nodes
+      # -----------------------------------------------------------------------
+      # Satisfies:
+      #   - topology-spread (topologySpreadConstraints is non-empty)
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: secure-app
+
+      # -----------------------------------------------------------------------
+      # Pod-level flags — no host namespace sharing
+      # -----------------------------------------------------------------------
+      # The following fields default to false when omitted, but we document
+      # them here for clarity.
+      # Satisfies:
+      #   - host-pid (hostPID is not true)
+      #   - host-ipc (hostIPC is not true)
+      #   - host-network (hostNetwork is not true)
+      #   - psa-baseline-violations (none of hostPID/hostIPC/hostNetwork are true)
+      #   - share-process-namespace (shareProcessNamespace is not true)
+      hostPID: false
+      hostIPC: false
+      hostNetwork: false
+      shareProcessNamespace: false
+
+      # Satisfies:
+      #   - runtime-class (runtimeClassName is set to a non-empty value)
+      # NOTE: In a real cluster, this RuntimeClass must exist. For manifest-mode
+      # scanning, KubeVigil only checks that the field is non-empty.
+      runtimeClassName: gvisor
+
+      # No hostPath volumes — satisfies host-path-volumes check.
+      # No container runtime socket mounts — satisfies container-runtime-socket.
+      # emptyDir with sizeLimit — satisfies emptydir-size-limit.
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+
+      # -----------------------------------------------------------------------
+      # Container specification
+      # -----------------------------------------------------------------------
+      containers:
+        - name: pause
+          # -----------------------------------------------------------------
+          # Image configuration
+          # -----------------------------------------------------------------
+          # Satisfies:
+          #   - image-tag-latest (not using :latest tag)
+          #   - image-tag-missing (has digest, which counts as a version identifier)
+          #   - image-no-digest (pinned by sha256 digest)
+          #   - image-pull-policy (pinned by digest, so pull policy is irrelevant
+          #     to security; but we set Always for completeness)
+          #   - image-registry-allowlist (NO-OP without policy config)
+          #   - image-registry-blocklist (NO-OP without policy config)
+          #   - image-signature-verification (NO-OP without RequireSignatures)
+          #   - image-sbom-attestation (NO-OP without RequireSBOM)
+          #   - image-provenance (NO-OP without RequireProvenance)
+          image: registry.k8s.io/pause@sha256:7031c1b283388d2c2e09b57badb803c05ebed362dc88d84b480cc47f72a21097
+          imagePullPolicy: Always
+
+          # -----------------------------------------------------------------
+          # Container-level security context
+          # -----------------------------------------------------------------
+          securityContext:
+            # Satisfies:
+            #   - privileged (not true)
+            #   - psa-baseline-violations (privileged is not true)
+            privileged: false
+            # Satisfies:
+            #   - privilege-escalation (explicitly false)
+            #   - psa-restricted-violations (allowPrivilegeEscalation is false)
+            allowPrivilegeEscalation: false
+            # Satisfies:
+            #   - read-only-rootfs (readOnlyRootFilesystem: true)
+            readOnlyRootFilesystem: true
+            # Satisfies:
+            #   - capabilities-not-dropped (drops ALL)
+            #   - capabilities-added (no dangerous caps added)
+            #   - psa-restricted-violations (capabilities.drop includes ALL)
+            #   - psa-baseline-violations (no ALL or SYS_ADMIN added)
+            capabilities:
+              drop:
+                - ALL
+            # Satisfies:
+            #   - apparmor-profile (AppArmor profile is set)
+            appArmorProfile:
+              type: RuntimeDefault
+            # Do NOT set procMount to Unmasked.
+            # Satisfies:
+            #   - proc-mount (procMount is not Unmasked; nil defaults to Default)
+            # Do NOT set dangerous SELinux types.
+            # Satisfies:
+            #   - selinux-options (no spc_t or unconfined_t)
+
+          # -----------------------------------------------------------------
+          # Resource management
+          # -----------------------------------------------------------------
+          # Satisfies:
+          #   - resource-limits-missing (both CPU and memory limits set)
+          #   - resource-requests-missing (both CPU and memory requests set)
+          #   - ephemeral-storage-limits (ephemeral-storage limit set)
+          #   - resource-limits-ratio (ratio is within 3x threshold:
+          #     CPU: 200m/100m = 2x, Memory: 128Mi/64Mi = 2x)
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+              ephemeral-storage: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+              ephemeral-storage: 64Mi
+
+          # -----------------------------------------------------------------
+          # Health probes
+          # -----------------------------------------------------------------
+          # Satisfies:
+          #   - liveness-readiness-probes (both liveness and readiness probes set)
+          #   - startup-probes (startup probe set, so no finding for
+          #     "liveness without startup")
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "true"
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "true"
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            failureThreshold: 3
+          startupProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "true"
+            failureThreshold: 30
+            periodSeconds: 10
+
+          # -----------------------------------------------------------------
+          # Volume mounts
+          # -----------------------------------------------------------------
+          # Writable /tmp directory backed by a size-limited emptyDir.
+          # No hostPath mounts, no runtime socket mounts.
+          # Satisfies:
+          #   - host-path-volumes (no hostPath volumes)
+          #   - container-runtime-socket (no docker.sock/containerd.sock/crio.sock)
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+
+          # -----------------------------------------------------------------
+          # Environment variables
+          # -----------------------------------------------------------------
+          # No env[].valueFrom.secretKeyRef references.
+          # Satisfies:
+          #   - secrets-in-env (no secrets passed as env vars)
+          # No env[].value with hardcoded secrets.
+          # No lifecycle.preStop with network calls.
+          # Satisfies:
+          #   - lifecycle-hooks (no preStop hooks with curl/wget/HTTP)
+
+          # No hostPorts specified.
+          # Satisfies:
+          #   - host-ports (no hostPort set)
+
+      # -----------------------------------------------------------------------
+      # Additional pod-level notes
+      # -----------------------------------------------------------------------
+      # No ephemeral containers in the template (only added at runtime).
+      # Satisfies:
+      #   - ephemeral-container-policy (no insecure ephemeral containers)
+      #
+      # No nodeSelector or nodeAffinity targeting spot/preemptible/ephemeral nodes.
+      # Satisfies:
+      #   - node-affinity-untrusted (no untrusted node targeting)
+
+# =============================================================================
+# Checkers that are NO-OP in manifest mode without specific policy/resource config:
+# =============================================================================
+#
+# The following checkers produce no findings against this manifest because they
+# either require live cluster access, specific policy configuration, or operate
+# on resource types not present in this file:
+#
+# IMAGE CHECKS (policy-dependent, NO-OP without config):
+#   - image-registry-allowlist  (requires policies.images.allowedRegistries)
+#   - image-registry-blocklist  (requires policies.images.blockedRegistries)
+#   - image-signature-verification (requires policies.images.requireSignatures)
+#   - image-sbom-attestation    (requires policies.images.requireSBOM)
+#   - image-provenance          (requires policies.images.requireProvenance)
+#
+# RBAC CHECKS (operate on Role/ClusterRole/Binding resources):
+#   - rbac-wildcard-verbs, rbac-wildcard-resources, rbac-wildcard-apigroups
+#   - rbac-escalation-verbs, rbac-secret-access, rbac-exec-access, rbac-log-access
+#   - rbac-cluster-admin, rbac-unused-roles, rbac-group-bindings
+#   - rbac-subject-external, cloud-iam-binding
+#   - token-projection-config
+#
+# SECRETS CHECKS (operate on Secret/ConfigMap resources):
+#   - secrets-unencrypted, secrets-in-configmap, secrets-default-type
+#   - secrets-stale, secrets-hardcoded-manifests, external-secrets-sync
+#
+# NETWORK CHECKS (operate on Ingress/Service resources):
+#   - ingress-no-tls, ingress-wildcard-host, ingress-class-missing
+#   - service-type-loadbalancer, service-type-nodeport, external-ips
+#   - service-mesh-mtls, dns-security
+#   - network-policy-overly-permissive (only flags policies with broad allow rules)
+#   - network-policy-egress-unrestricted (only flags policies with broad egress)
+#
+# PSA CHECKS:
+#   - psp-still-present (detects PodSecurityPolicy resources; none here)
+#
+# CLUSTER CHECKS (require live cluster or specific resource types):
+#   - api-server-anonymous, audit-logging, admission-controllers
+#   - etcd-encryption, kubelet-config, component-versions, deprecated-api-usage
+#
+# SCHEDULING CHECKS (operate on HPA resources):
+#   - hpa-without-requests (requires HPA resource)
+#
+# STORAGE CHECKS (operate on PVC/PV/StorageClass/CSIDriver resources):
+#   - pvc-no-encryption, pvc-reclaim-retain, csi-driver-security
+#   - projected-volume-security (requires projected volumes in pod spec)
+#
+# SUPPLY CHAIN CHECKS:
+#   - image-age (requires live registry access)
+#
+# CLOUD PROVIDER CHECKS (require Node resources):
+#   - eks-imds-access, gke-metadata-concealment, aks-pod-identity
+#   - cloud-provider-detection
+#
+# CRD CHECKS (operate on CRD/Certificate resources):
+#   - crd-validation-missing, crd-conversion-webhook
+#   - cert-manager-expiry, cert-manager-insecure

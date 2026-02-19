@@ -1,0 +1,67 @@
+# KubeVigil E2E — Typical Startup Deployment
+#
+# This represents a typical first deployment — functional but insecure.
+#
+# A common pattern seen in startups and early-stage projects: the team focused
+# on getting the application running and never circled back to harden it.
+# Everything works, but nearly every security best practice is violated.
+#
+# Triggers (expected findings):
+#   - image-tag-latest       (Medium)   — uses nginx:latest
+#   - image-tag-missing      (Medium)   — :latest is effectively unversioned
+#   - image-no-digest        (Low)      — no digest pinning
+#   - image-pull-policy      (Medium)   — :latest without Always pull policy
+#   - run-as-root            (High)     — no runAsNonRoot, no runAsUser set
+#   - read-only-rootfs       (Medium)   — no readOnlyRootFilesystem
+#   - capabilities-not-dropped (Medium) — does not drop ALL capabilities
+#   - seccomp-profile        (Medium)   — no seccomp profile configured
+#   - privilege-escalation   (High)     — allowPrivilegeEscalation not set to false
+#   - resource-limits-missing  (Medium) — no resource limits
+#   - resource-requests-missing (Medium) — no resource requests
+#   - default-service-account  (High)   — uses default ServiceAccount
+#   - automount-token          (High)   — token automounted (default behavior)
+#   - liveness-readiness-probes (Low)   — no health probes
+#   - pod-disruption-budget    (Low)    — replicas > 1 without PDB
+#
+# This manifest is intentionally NOT paired with a NetworkPolicy, so
+# namespace-level checks like network-policy-missing will also fire when
+# scanning the namespace in live mode.
+#
+# Usage:
+#   kubectl apply -f namespace.yaml
+#   kubectl apply -f typical-startup.yaml
+#   kubevigil scan --namespace kv-e2e-mixed
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: startup-web-app
+  namespace: kv-e2e-mixed
+  labels:
+    app: startup-web-app
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: mixed
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: startup-web-app
+  template:
+    metadata:
+      labels:
+        app: startup-web-app
+    spec:
+      # No serviceAccountName — uses "default"
+      # No automountServiceAccountToken: false — token is mounted
+      # No securityContext at pod level
+      containers:
+        - name: web
+          image: nginx:latest
+          # No imagePullPolicy specified — defaults to Always for :latest
+          # but the checker flags :latest regardless
+          ports:
+            - containerPort: 80
+          # No securityContext — runs as root, writable rootfs, no caps dropped,
+          # no seccomp, privilege escalation not explicitly denied
+          # No resources — no limits, no requests
+          # No probes — no liveness, no readiness, no startup

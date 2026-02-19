@@ -1,0 +1,42 @@
+# E2E Scenario: PVC with ReadWriteMany access mode
+#
+# A PVC requesting ReadWriteMany (RWX) access. RWX allows multiple nodes
+# to mount the volume simultaneously for reads and writes, which widens
+# the blast radius if any one pod is compromised — all pods sharing the
+# volume can read and modify the same data.
+#
+# Triggers:
+#   - pvc-no-encryption (Medium) — PVC references StorageClass
+#     "kv-e2e-nfs-unencrypted" which has no encryption parameters.
+#
+# Note: The PVC will likely stay Pending in a Kind cluster because no
+#       provisioner supports RWX by default. That is expected.
+#
+# Usage:
+#   kubectl apply -f namespace.yaml
+#   kubectl apply -f permissive-access-modes.yaml
+#   kubevigil scan --namespace kv-e2e-storage
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: kv-e2e-nfs-unencrypted
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+provisioner: example.com/nfs
+# No encryption parameters — triggers pvc-no-encryption
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shared-data-rwx
+  namespace: kv-e2e-storage
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  storageClassName: kv-e2e-nfs-unencrypted
+  accessModes:
+    - ReadWriteMany                         # Overly permissive access mode
+  resources:
+    requests:
+      storage: 5Gi

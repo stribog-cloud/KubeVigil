@@ -1,0 +1,22 @@
+# E2E Scenario: RBAC namespace and ServiceAccount setup
+# Provides the kv-e2e-rbac namespace and a dedicated ServiceAccount
+# used by other RBAC scenario manifests in this directory.
+#
+# This file does not directly trigger any checks — it is shared
+# infrastructure for the RBAC E2E test suite.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kv-e2e-rbac
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: rbac
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kv-e2e-test-sa
+  namespace: kv-e2e-rbac
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e

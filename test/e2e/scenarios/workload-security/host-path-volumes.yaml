@@ -1,0 +1,126 @@
+# KubeVigil E2E — Host Path Volume Mounts
+#
+# Triggers:
+#   - host-path-volumes (Critical-Medium): Pod mounts hostPath volumes.
+#     The checker (internal/checker/workload/host_path_volumes.go) assigns
+#     severity based on the path:
+#       "/" -> Critical (full host filesystem)
+#       "/etc" -> Critical (host configuration, credentials)
+#       "/var/run/docker.sock" -> Critical (container runtime socket)
+#       "/var/log" -> High (host and container logs)
+#       "/opt/data" -> Medium (generic hostPath, defense-in-depth)
+#
+# Each volume is in a separate Pod for clear severity attribution.
+---
+# Triggers: host-path-volumes (Critical — root filesystem "/")
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hostpath-root
+  namespace: kv-e2e-workload
+  labels:
+    app: host-path-test
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  containers:
+    - name: root-mount
+      image: registry.k8s.io/pause:3.9
+      volumeMounts:
+        - name: host-root
+          mountPath: /host
+          readOnly: true
+  volumes:
+    - name: host-root
+      hostPath:
+        path: /
+        type: Directory
+---
+# Triggers: host-path-volumes (Critical — /etc host configuration)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hostpath-etc
+  namespace: kv-e2e-workload
+  labels:
+    app: host-path-test
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  containers:
+    - name: etc-mount
+      image: registry.k8s.io/pause:3.9
+      volumeMounts:
+        - name: host-etc
+          mountPath: /host-etc
+          readOnly: true
+  volumes:
+    - name: host-etc
+      hostPath:
+        path: /etc
+        type: Directory
+---
+# Triggers: host-path-volumes (Critical — Docker socket)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hostpath-docker-sock
+  namespace: kv-e2e-workload
+  labels:
+    app: host-path-test
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  containers:
+    - name: docker-sock-mount
+      image: registry.k8s.io/pause:3.9
+      volumeMounts:
+        - name: docker-sock
+          mountPath: /var/run/docker.sock
+  volumes:
+    - name: docker-sock
+      hostPath:
+        path: /var/run/docker.sock
+        type: Socket
+---
+# Triggers: host-path-volumes (High — /var/log host logs)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hostpath-var-log
+  namespace: kv-e2e-workload
+  labels:
+    app: host-path-test
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  containers:
+    - name: log-mount
+      image: registry.k8s.io/pause:3.9
+      volumeMounts:
+        - name: host-logs
+          mountPath: /host-logs
+          readOnly: true
+  volumes:
+    - name: host-logs
+      hostPath:
+        path: /var/log
+        type: Directory
+---
+# Triggers: host-path-volumes (Medium — generic path /opt/data)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hostpath-opt-data
+  namespace: kv-e2e-workload
+  labels:
+    app: host-path-test
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  containers:
+    - name: data-mount
+      image: registry.k8s.io/pause:3.9
+      volumeMounts:
+        - name: host-data
+          mountPath: /data
+  volumes:
+    - name: host-data
+      hostPath:
+        path: /opt/data
+        type: DirectoryOrCreate

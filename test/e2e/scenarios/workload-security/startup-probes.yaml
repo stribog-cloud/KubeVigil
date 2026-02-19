@@ -1,0 +1,32 @@
+# KubeVigil E2E — Missing Startup Probes
+#
+# Triggers:
+#   - startup-probes (Info): Container has liveness probe but no startup probe.
+#     The checker (internal/checker/supply_chain/startup_probes.go) flags when
+#     container.LivenessProbe != nil && container.StartupProbe == nil.
+#
+# Expected findings:
+#   - startup-probes (Info) — no-startup-probe pod, container "slow-app"
+#     has liveness probe but no startup probe.
+#
+# Note: This pod uses httpGet liveness which will fail (no server running),
+# but KubeVigil analyzes the spec definition, not probe results.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: no-startup-probe
+  namespace: kv-e2e-workload
+  labels:
+    app: startup-probe-test
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  containers:
+    - name: slow-app
+      image: registry.k8s.io/pause:3.9
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: 8080
+        initialDelaySeconds: 5
+        periodSeconds: 10
+      # No startupProbe — triggers startup-probes check

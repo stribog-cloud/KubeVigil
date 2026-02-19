@@ -1,0 +1,61 @@
+# KubeVigil E2E — Dangerous Capabilities
+#
+# Triggers:
+#   - capabilities-added (High): Containers add dangerous Linux capabilities
+#     (SYS_ADMIN, NET_RAW, SYS_PTRACE, DAC_OVERRIDE). The checker
+#     (internal/checker/workload/capabilities_added.go) flags any capability
+#     in the dangerousCapabilities map.
+#
+#   - capabilities-not-dropped (Medium): Container does not include
+#     capabilities.drop: ["ALL"]. The checker
+#     (internal/checker/workload/capabilities_not_dropped.go) flags any
+#     container whose drop list does not contain "ALL".
+#
+# Note: The "caps-not-dropped" container has no capabilities block at all,
+# which also triggers capabilities-not-dropped since it lacks drop: ["ALL"].
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dangerous-capabilities
+  namespace: kv-e2e-workload
+  labels:
+    app: dangerous-capabilities
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dangerous-capabilities
+  template:
+    metadata:
+      labels:
+        app: dangerous-capabilities
+    spec:
+      containers:
+        # Triggers: capabilities-added (SYS_ADMIN, NET_RAW)
+        # Triggers: capabilities-not-dropped (drop list is not ["ALL"])
+        - name: caps-sys-admin
+          image: registry.k8s.io/pause:3.9
+          securityContext:
+            capabilities:
+              add:
+                - SYS_ADMIN
+                - NET_RAW
+
+        # Triggers: capabilities-added (SYS_PTRACE, DAC_OVERRIDE)
+        # Triggers: capabilities-not-dropped (drop list is not ["ALL"])
+        - name: caps-ptrace
+          image: registry.k8s.io/pause:3.9
+          securityContext:
+            capabilities:
+              add:
+                - SYS_PTRACE
+                - DAC_OVERRIDE
+
+        # Triggers: capabilities-not-dropped (no capabilities block at all)
+        # Does NOT trigger capabilities-added (nothing is added)
+        - name: caps-not-dropped
+          image: registry.k8s.io/pause:3.9
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534

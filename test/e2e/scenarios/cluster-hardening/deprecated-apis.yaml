@@ -1,0 +1,49 @@
+# E2E Scenario: Deprecated API usage
+#
+# Triggers:
+#   - deprecated-api-usage (Medium) -- resources using removed or deprecated
+#     API versions will cause deployment failures during cluster upgrades.
+#
+# The deprecated-api-usage checker currently scans for:
+#   - PodSecurityPolicy (policy/v1beta1) -- removed in Kubernetes 1.25
+#
+# IMPORTANT: PodSecurityPolicy was removed in Kubernetes 1.25. On clusters
+# running 1.25+, the API server will reject this resource outright. This
+# manifest is therefore useful for:
+#   1. Manifest-mode scanning (kubevigil scan --file) where the API server
+#      is not involved -- the checker parses the YAML and flags the
+#      deprecated apiVersion directly.
+#   2. Clusters running Kubernetes < 1.25 (uncommon as of 2025+).
+#
+# For live-cluster E2E on 1.25+, this file will fail to apply. That is
+# expected -- the value of this scenario is in manifest-mode testing.
+#
+# Clean up (if applied on a pre-1.25 cluster):
+#   kubectl delete psp kv-e2e-legacy-psp
+---
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: kv-e2e-legacy-psp
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: cluster-hardening
+  annotations:
+    kubevigil.stribog.cloud/note: >-
+      This PSP exists solely to trigger the deprecated-api-usage checker.
+      PodSecurityPolicy was removed in Kubernetes 1.25; the replacement
+      is Pod Security Admission (PSA) with namespace-level labels.
+spec:
+  privileged: false
+  runAsUser:
+    rule: MustRunAsNonRoot
+  seLinux:
+    rule: RunAsAny
+  fsGroup:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  volumes:
+    - configMap
+    - emptyDir
+    - secret

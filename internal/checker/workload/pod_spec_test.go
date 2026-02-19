@@ -14,7 +14,7 @@ import (
 	"github.com/stribog-cloud/kubevigil/test/helpers"
 )
 
-func toUnstructured(t *testing.T, obj interface{}) unstructured.Unstructured {
+func toUnstructured(t *testing.T, obj any) unstructured.Unstructured {
 	t.Helper()
 	data, err := json.Marshal(obj)
 	require.NoError(t, err)
@@ -65,6 +65,24 @@ func TestExtractPodSpecs(t *testing.T) {
 		specs := ExtractPodSpecs(cache)
 		assert.Empty(t, specs)
 	})
+}
+
+func TestContainerType_String(t *testing.T) {
+	tests := []struct {
+		name string
+		ct   ContainerType
+		want string
+	}{
+		{"regular", ContainerTypeRegular, "container"},
+		{"init", ContainerTypeInit, "initContainer"},
+		{"sidecar", ContainerTypeSidecar, "sidecarContainer"},
+		{"unknown", ContainerType(99), "ContainerType(99)"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.ct.String())
+		})
+	}
 }
 
 func TestIterateContainers(t *testing.T) {

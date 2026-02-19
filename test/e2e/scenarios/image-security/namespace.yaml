@@ -1,0 +1,15 @@
+# KubeVigil E2E — Image Security scenario namespace.
+#
+# All image-security scenario manifests deploy into this namespace.
+# Apply this file first:
+#   kubectl apply -f namespace.yaml
+#
+# Clean up after testing:
+#   kubectl delete namespace kv-e2e-image
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kv-e2e-image
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.io/scenario: image-security

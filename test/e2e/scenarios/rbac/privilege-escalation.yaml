@@ -1,0 +1,43 @@
+# E2E Scenario: Role granting privilege-escalation verbs
+#
+# Triggers:
+#   - rbac-escalation-verbs (Critical) — Role contains the dangerous
+#     verbs "escalate", "bind", and "impersonate".
+#
+# These verbs allow a subject to grant itself additional permissions
+# (escalate/bind) or act as another identity (impersonate), which
+# effectively bypasses RBAC entirely.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kv-e2e-escalation-verbs
+  namespace: kv-e2e-rbac
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+rules:
+  # escalate + bind on roles — can self-grant any permission
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "clusterroles"]
+    verbs: ["escalate", "bind"]
+  # impersonate on users/groups — can act as any identity
+  - apiGroups: [""]
+    resources: ["users", "groups", "serviceaccounts"]
+    verbs: ["impersonate"]
+---
+# Binding to make the role active (otherwise rbac-unused-roles fires too)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kv-e2e-escalation-verbs-binding
+  namespace: kv-e2e-rbac
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kv-e2e-escalation-verbs
+subjects:
+  - kind: ServiceAccount
+    name: kv-e2e-test-sa
+    namespace: kv-e2e-rbac

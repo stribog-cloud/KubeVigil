@@ -1,0 +1,43 @@
+# E2E Scenario: Role granting exec, attach, and log access on pods
+#
+# Triggers:
+#   - rbac-exec-access (High)   — grants create on pods/exec and
+#     pods/attach, allowing interactive shell access to running
+#     containers.
+#   - rbac-log-access  (Medium) — grants get on pods/log, allowing
+#     access to container stdout/stderr which may contain secrets
+#     or sensitive application data.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kv-e2e-exec-log-access
+  namespace: kv-e2e-rbac
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+rules:
+  # exec + attach — interactive container access
+  - apiGroups: [""]
+    resources: ["pods/exec", "pods/attach"]
+    verbs: ["create"]
+  # log access — read container output
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+# Binding to keep the role in use
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kv-e2e-exec-log-access-binding
+  namespace: kv-e2e-rbac
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kv-e2e-exec-log-access
+subjects:
+  - kind: ServiceAccount
+    name: kv-e2e-test-sa
+    namespace: kv-e2e-rbac

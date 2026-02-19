@@ -1,0 +1,50 @@
+# KubeVigil E2E -- Pod Security Standards: Missing PSA Labels
+#
+# Scenario: A namespace with NO pod-security.kubernetes.io labels at all,
+# plus a simple deployment running inside it.
+#
+# Triggers:
+#   - psa-labels-missing (Medium) -- the namespace lacks the
+#     pod-security.kubernetes.io/enforce label, so pod security
+#     admission is not enforced.
+#
+# Apply:
+#   kubectl apply -f missing-psa-labels.yaml
+#
+# Clean up:
+#   kubectl delete namespace kv-e2e-psa
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kv-e2e-psa
+  labels:
+    # Standard e2e bookkeeping labels only -- deliberately no
+    # pod-security.kubernetes.io/* labels.
+    # This triggers: psa-labels-missing (Medium)
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: psa
+---
+# A basic deployment in the unprotected namespace. KubeVigil should flag the
+# namespace itself (not this workload) for missing PSA enforcement labels.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unprotected-app
+  namespace: kv-e2e-psa
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    app: unprotected-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: unprotected-app
+  template:
+    metadata:
+      labels:
+        app: unprotected-app
+    spec:
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9

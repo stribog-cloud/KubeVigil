@@ -67,7 +67,7 @@ func (c *ModeAuditOnlyChecker) Run(ctx context.Context, resources *checker.Resou
 				Checker:   "psa-mode-audit-only",
 				Severity:  checker.SeverityMedium,
 				Resource:  name,
-				Namespace: "",
+				Namespace: name,
 				Kind:      "Namespace",
 				Message:   fmt.Sprintf("Namespace %q has PSA audit/warn labels but no enforce label; violations are logged but not blocked.", name),
 				Remediation: "## Why This Matters\n\n" +

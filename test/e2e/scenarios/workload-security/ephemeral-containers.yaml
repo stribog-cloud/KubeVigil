@@ -1,0 +1,48 @@
+# KubeVigil E2E — Ephemeral Container Policy
+#
+# Triggers:
+#   - ephemeral-container-policy (Medium): Ephemeral container lacks adequate
+#     security restrictions. The checker
+#     (internal/checker/workload/ephemeral_container_policy.go) flags
+#     ephemeral containers where any of the following are true:
+#       - securityContext is nil
+#       - privileged is true
+#       - allowPrivilegeEscalation is not explicitly false
+#       - runAsNonRoot is not explicitly true
+#
+# Note: Ephemeral containers are typically added at runtime via
+# `kubectl debug`, but they can also be declared in a Pod spec. In a live
+# cluster, this manifest may be rejected or the ephemeralContainers field
+# may be ignored depending on the K8s version. For manifest-mode scanning
+# with KubeVigil, this will trigger the check correctly.
+#
+# In a real E2E test against a live cluster, you would instead:
+#   1. Create a running pod
+#   2. Use `kubectl debug` to attach an ephemeral container
+#   3. Scan the cluster with KubeVigil
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ephemeral-policy-test
+  namespace: kv-e2e-workload
+  labels:
+    app: ephemeral-container-test
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  containers:
+    - name: main-app
+      image: registry.k8s.io/pause:3.9
+  ephemeralContainers:
+    # Triggers: ephemeral-container-policy (no securityContext at all)
+    - name: debug-no-sc
+      image: busybox:1.36
+      command: ["sh", "-c", "sleep 3600"]
+
+    # Triggers: ephemeral-container-policy (allowPrivilegeEscalation not false)
+    - name: debug-missing-ape
+      image: busybox:1.36
+      command: ["sh", "-c", "sleep 3600"]
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        # allowPrivilegeEscalation is missing — defaults to true

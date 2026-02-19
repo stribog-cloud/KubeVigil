@@ -1,0 +1,116 @@
+# KubeVigil E2E — Partially Hardened Deployment
+#
+# Partially hardened — shows common mistakes when teams start securing
+# workloads.
+#
+# This simulates a team that read a "Kubernetes security checklist" blog post
+# and applied some controls, but misunderstood or incompletely configured
+# several of them. Each security control present has a subtle flaw.
+#
+# Triggers (expected findings):
+#   - image-tag-latest         (Medium)   — tag is :latest despite being set
+#   - image-no-digest          (Low)      — no digest pinning
+#   - run-as-root              (High)     — runAsNonRoot: true contradicted by
+#                                           runAsUser: 0 (will fail at runtime)
+#   - capabilities-not-dropped (Medium)   — only dropped NET_RAW, not ALL
+#   - seccomp-profile          (Medium)   — no seccomp profile configured
+#   - resource-requests-missing (Medium)  — has limits but no requests
+#   - automount-token          (High)     — custom SA but token still mounted
+#   - emptydir-size-limit      (Low)      — emptyDir without sizeLimit
+#   - network-policy-overly-permissive (Medium) — policy allows all ingress
+#   - privilege-escalation     (High)     — allowPrivilegeEscalation not false
+#   - liveness-readiness-probes (Low)     — no health probes
+#
+# Usage:
+#   kubectl apply -f namespace.yaml
+#   kubectl apply -f partially-hardened.yaml
+#   kubevigil scan --namespace kv-e2e-mixed
+---
+# A non-default ServiceAccount — good practice, but automountServiceAccountToken
+# is not disabled, so the token is still projected into the pod.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hardened-app-sa
+  namespace: kv-e2e-mixed
+  labels:
+    app: partially-hardened-app
+    app.kubernetes.io/part-of: kubevigil-e2e
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: partially-hardened-app
+  namespace: kv-e2e-mixed
+  labels:
+    app: partially-hardened-app
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: mixed
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: partially-hardened-app
+  template:
+    metadata:
+      labels:
+        app: partially-hardened-app
+    spec:
+      serviceAccountName: hardened-app-sa
+      # automountServiceAccountToken not set to false — token still mounted
+      containers:
+        - name: app
+          image: nginx:latest
+          ports:
+            - containerPort: 8080
+          securityContext:
+            # Contradiction: runAsNonRoot says "don't run as root" but
+            # runAsUser explicitly requests UID 0 (root). Kubernetes will
+            # reject this pod at admission, but the manifest is syntactically
+            # valid and KubeVigil should catch the misconfiguration.
+            runAsNonRoot: true
+            runAsUser: 0
+            readOnlyRootFilesystem: true
+            # Only dropped NET_RAW — should drop ALL capabilities.
+            # This is a common mistake: teams drop one specific cap they
+            # read about instead of dropping all and adding back what's needed.
+            capabilities:
+              drop:
+                - NET_RAW
+            # allowPrivilegeEscalation not set to false
+            # No seccomp profile
+          resources:
+            # Has limits but no requests — scheduler cannot make informed
+            # placement decisions and QoS class will be Burstable.
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        # emptyDir for /tmp (needed because readOnlyRootFilesystem is true)
+        # but no sizeLimit — a container bug could fill the node's disk.
+        - name: tmp
+          emptyDir: {}
+---
+# NetworkPolicy exists — but it allows all ingress traffic,
+# providing no real network segmentation.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: partially-hardened-policy
+  namespace: kv-e2e-mixed
+  labels:
+    app: partially-hardened-app
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  podSelector:
+    matchLabels:
+      app: partially-hardened-app
+  policyTypes:
+    - Ingress
+  ingress:
+    # Empty rule — no "from" key means allow from all sources.
+    # The team thought "having a NetworkPolicy" was enough.
+    - {}

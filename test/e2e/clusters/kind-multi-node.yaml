@@ -1,0 +1,62 @@
+# KubeVigil E2E — Multi-Node Cluster
+#
+# Purpose: Full-breadth E2E testing across multiple worker nodes.
+# Exercises checkers that depend on node topology, scheduling
+# constraints, hostPath volume detection, and NetworkPolicy support.
+#
+# Key design choices:
+#   - /var/log is mounted at /host-var-log inside worker nodes (NOT at
+#     /var/log, which would break systemd). Tests that need real host
+#     log paths can reference /host-var-log.
+#   - Worker nodes carry distinct labels for node-selector and
+#     node-affinity checker tests.
+#
+# Create:  kind create cluster --config test/e2e/clusters/kind-multi-node.yaml
+# Delete:  kind delete cluster --name kubevigil-e2e-multi
+
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: kubevigil-e2e-multi
+
+nodes:
+  # --- Control plane ------------------------------------------------
+  - role: control-plane
+    labels:
+      kubevigil.io/e2e: "true"
+      kubevigil.io/cluster-profile: "multi-node"
+
+  # --- Worker 1 — general workloads --------------------------------
+  - role: worker
+    labels:
+      kubevigil.io/e2e: "true"
+      kubevigil.io/cluster-profile: "multi-node"
+      kubevigil.io/node-pool: "general"
+      kubernetes.io/os: "linux"
+    extraMounts:
+      - hostPath: /var/log
+        containerPath: /host-var-log
+        readOnly: true
+
+  # --- Worker 2 — GPU / high-memory simulation ---------------------
+  - role: worker
+    labels:
+      kubevigil.io/e2e: "true"
+      kubevigil.io/cluster-profile: "multi-node"
+      kubevigil.io/node-pool: "highmem"
+      kubernetes.io/os: "linux"
+    extraMounts:
+      - hostPath: /var/log
+        containerPath: /host-var-log
+        readOnly: true
+
+  # --- Worker 3 — untrusted / edge simulation ----------------------
+  - role: worker
+    labels:
+      kubevigil.io/e2e: "true"
+      kubevigil.io/cluster-profile: "multi-node"
+      kubevigil.io/node-pool: "untrusted"
+      kubernetes.io/os: "linux"
+    extraMounts:
+      - hostPath: /var/log
+        containerPath: /host-var-log
+        readOnly: true
