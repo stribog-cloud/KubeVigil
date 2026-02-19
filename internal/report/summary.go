@@ -77,9 +77,13 @@ type CheckCoverage struct {
 // ComputeSummary derives an executive summary from a scan result.
 // The optional cfg parameter enables namespace classification; pass nil for
 // default behaviour (all namespaces treated as application).
+//
+// Performance: uses a single pass over findings to compute severity counts,
+// unique resources/namespaces, namespace classification, check aggregation,
+// worst severity per check, top-5 risks (via insertion into a small buffer),
+// and per-tier findings. ClassifyNamespace results are cached per namespace.
 func ComputeSummary(result *checker.ScanResult, cfg ...*config.Config) ExecutiveSummary {
 	findings := result.Findings
-	counts := countBySeverity(findings)
 
 	// Resolve config (variadic for backwards compatibility).
 	var scanCfg *config.Config
@@ -90,25 +94,8 @@ func ComputeSummary(result *checker.ScanResult, cfg ...*config.Config) Executive
 		scanCfg = config.Default()
 	}
 
-	// Posture score: weighted check pass rate.
-	// Each check contributes to the score based on whether it passed (no findings)
-	// and the severity of its findings if it failed:
-	//   - Clean check (no findings):         100 points
-	//   - Check with only Low/Info findings:   60 points
-	//   - Check with Medium findings:          30 points
-	//   - Check with High findings:            10 points
-	//   - Check with Critical findings:         0 points
-	// Score = average of all check scores. If no checks ran, score is 0.
-	score := computePostureScore(findings, result.ScanMeta.ChecksRun)
-
-	// Top risks: up to 5, sorted by severity descending.
-	sorted := make([]checker.Finding, len(findings))
-	copy(sorted, findings)
-	sortFindings(sorted)
-	topN := min(5, len(sorted))
-	topRisks := sorted[:topN]
-
-	// Unique resources, namespaces, and namespace classification.
+	// Pre-allocate data structures for the single-pass loop.
+	counts := make(map[checker.Severity]int)
 	resources := make(map[string]struct{})
 	namespaces := make(map[string]struct{})
 	appNS := make(map[string]struct{})
@@ -116,47 +103,12 @@ func ComputeSummary(result *checker.ScanResult, cfg ...*config.Config) Executive
 	appCounts := make(map[checker.Severity]int)
 	infraCounts := make(map[checker.Severity]int)
 	clusterCounts := make(map[checker.Severity]int)
-
-	for i := range findings {
-		key := findings[i].Namespace + "/" + findings[i].Kind + "/" + findings[i].Resource
-		resources[key] = struct{}{}
-		if findings[i].Namespace != "" {
-			namespaces[findings[i].Namespace] = struct{}{}
-		}
-
-		// Classify and aggregate by namespace type.
-		nsType := config.ClassifyNamespace(scanCfg, findings[i].Namespace)
-		switch nsType {
-		case config.NamespaceApplication:
-			appCounts[findings[i].Severity]++
-			appNS[findings[i].Namespace] = struct{}{}
-		case config.NamespaceInfrastructure:
-			infraCounts[findings[i].Severity]++
-			infraNS[findings[i].Namespace] = struct{}{}
-		case config.NamespaceClusterScoped:
-			clusterCounts[findings[i].Severity]++
-		}
-	}
-
-	// Check coverage: count unique checkers that produced findings.
 	checkersWithFindings := make(map[string]struct{})
-	for i := range findings {
-		checkersWithFindings[findings[i].Checker] = struct{}{}
-	}
+	worstSeverity := make(map[string]checker.Severity) // for posture score
+	appWorstSev := make(map[string]checker.Severity)   // for app tier score
+	infraWorstSev := make(map[string]checker.Severity) // for infra tier score
 
-	coverage := CheckCoverage{
-		TotalRun:     result.ScanMeta.ChecksRun,
-		Skipped:      result.ScanMeta.ChecksSkipped,
-		Errored:      result.ScanMeta.ChecksErrored,
-		WithFindings: len(checkersWithFindings),
-		Clean:        result.ScanMeta.ChecksRun - len(checkersWithFindings),
-	}
-	// Clean can't be negative if checksRun is somehow less than checkers with findings.
-	if coverage.Clean < 0 {
-		coverage.Clean = 0
-	}
-
-	// Check aggregation: group findings by checker.
+	// Check aggregation data, built in the same loop.
 	type aggData struct {
 		severity     checker.Severity
 		count        int
@@ -167,25 +119,77 @@ func ComputeSummary(result *checker.ScanResult, cfg ...*config.Config) Executive
 		namespaces   map[string]struct{}
 	}
 	aggMap := make(map[string]*aggData)
+
+	// Namespace classification cache: avoids repeated ClassifyNamespace calls
+	// for the same namespace.
+	nsTypeCache := make(map[string]config.NamespaceType)
+
+	// Top-5 risks buffer: maintained in sorted order (severity desc, namespace
+	// asc, resource asc, checker asc) without copying/sorting the full slice.
+	var topRisks []checker.Finding
+
+	// --- Single pass over all findings ---
 	for i := range findings {
-		name := findings[i].Checker
-		agg, ok := aggMap[name]
+		f := &findings[i]
+
+		// Severity counts.
+		counts[f.Severity]++
+
+		// Unique resources and namespaces.
+		resKey := f.Namespace + "/" + f.Kind + "/" + f.Resource
+		resources[resKey] = struct{}{}
+		if f.Namespace != "" {
+			namespaces[f.Namespace] = struct{}{}
+		}
+
+		// Classify namespace (cached).
+		nsType, cached := nsTypeCache[f.Namespace]
+		if !cached {
+			nsType = config.ClassifyNamespace(scanCfg, f.Namespace)
+			nsTypeCache[f.Namespace] = nsType
+		}
+
+		// Per-tier severity counts and namespace sets.
+		switch nsType {
+		case config.NamespaceApplication:
+			appCounts[f.Severity]++
+			appNS[f.Namespace] = struct{}{}
+			// Track worst severity per check for app tier posture score.
+			if cur, ok := appWorstSev[f.Checker]; !ok || f.Severity > cur {
+				appWorstSev[f.Checker] = f.Severity
+			}
+		case config.NamespaceInfrastructure:
+			infraCounts[f.Severity]++
+			infraNS[f.Namespace] = struct{}{}
+			// Track worst severity per check for infra tier posture score.
+			if cur, ok := infraWorstSev[f.Checker]; !ok || f.Severity > cur {
+				infraWorstSev[f.Checker] = f.Severity
+			}
+		case config.NamespaceClusterScoped:
+			clusterCounts[f.Severity]++
+		}
+
+		// Unique checkers with findings + worst severity for posture score.
+		checkersWithFindings[f.Checker] = struct{}{}
+		if cur, ok := worstSeverity[f.Checker]; !ok || f.Severity > cur {
+			worstSeverity[f.Checker] = f.Severity
+		}
+
+		// Check aggregation.
+		agg, ok := aggMap[f.Checker]
 		if !ok {
 			agg = &aggData{
-				severity:   findings[i].Severity,
+				severity:   f.Severity,
 				resources:  make(map[string]struct{}),
 				namespaces: make(map[string]struct{}),
 			}
-			aggMap[name] = agg
+			aggMap[f.Checker] = agg
 		}
 		agg.count++
-		resKey := findings[i].Namespace + "/" + findings[i].Kind + "/" + findings[i].Resource
 		agg.resources[resKey] = struct{}{}
-		if findings[i].Namespace != "" {
-			agg.namespaces[findings[i].Namespace] = struct{}{}
+		if f.Namespace != "" {
+			agg.namespaces[f.Namespace] = struct{}{}
 		}
-		// Per-tier counts.
-		nsType := config.ClassifyNamespace(scanCfg, findings[i].Namespace)
 		switch nsType {
 		case config.NamespaceApplication:
 			agg.appCount++
@@ -194,7 +198,31 @@ func ComputeSummary(result *checker.ScanResult, cfg ...*config.Config) Executive
 		case config.NamespaceClusterScoped:
 			agg.clusterCount++
 		}
+
+		// Top-5 insertion: maintain a small sorted buffer.
+		topRisks = insertTopRisk(topRisks, &findings[i])
 	}
+
+	// --- Post-loop computations ---
+
+	// Posture scores computed from the per-check worst severity maps.
+	score := scoreFromWorstMap(worstSeverity, result.ScanMeta.ChecksRun)
+	appScore := scoreFromWorstMap(appWorstSev, result.ScanMeta.ChecksRun)
+	infraScore := scoreFromWorstMap(infraWorstSev, result.ScanMeta.ChecksRun)
+
+	// Check coverage.
+	coverage := CheckCoverage{
+		TotalRun:     result.ScanMeta.ChecksRun,
+		Skipped:      result.ScanMeta.ChecksSkipped,
+		Errored:      result.ScanMeta.ChecksErrored,
+		WithFindings: len(checkersWithFindings),
+		Clean:        result.ScanMeta.ChecksRun - len(checkersWithFindings),
+	}
+	if coverage.Clean < 0 {
+		coverage.Clean = 0
+	}
+
+	// Build and sort check aggregates.
 	aggregates := make([]CheckAggregate, 0, len(aggMap))
 	for name, agg := range aggMap {
 		aggregates = append(aggregates, CheckAggregate{
@@ -218,7 +246,7 @@ func ComputeSummary(result *checker.ScanResult, cfg ...*config.Config) Executive
 		return aggregates[i].Checker < aggregates[j].Checker
 	})
 
-	// Compute passed checks: checks that ran but produced no findings.
+	// Passed checks: checks that ran but produced no findings.
 	var passedChecks []string
 	for _, name := range result.ScanMeta.CheckNames {
 		if _, hasFinding := checkersWithFindings[name]; !hasFinding {
@@ -226,20 +254,6 @@ func ComputeSummary(result *checker.ScanResult, cfg ...*config.Config) Executive
 		}
 	}
 	sort.Strings(passedChecks)
-
-	// Compute per-tier posture scores by filtering findings per tier.
-	var appFindings, infraFindings []checker.Finding
-	for i := range findings {
-		nsType := config.ClassifyNamespace(scanCfg, findings[i].Namespace)
-		switch nsType {
-		case config.NamespaceApplication:
-			appFindings = append(appFindings, findings[i])
-		case config.NamespaceInfrastructure:
-			infraFindings = append(infraFindings, findings[i])
-		}
-	}
-	appScore := computeTierPostureScore(appFindings, result.ScanMeta.ChecksRun)
-	infraScore := computeTierPostureScore(infraFindings, result.ScanMeta.ChecksRun)
 
 	return ExecutiveSummary{
 		PostureScore:        score,
@@ -258,42 +272,72 @@ func ComputeSummary(result *checker.ScanResult, cfg ...*config.Config) Executive
 	}
 }
 
-// computePostureScore calculates a 0–100 posture score based on weighted
-// check pass rates. Each check gets a score based on its worst finding
-// severity, and the overall score is the average across all checks.
-//
-// Per-check scores:
-//   - No findings (clean):  100 points
-//   - Low/Info only:         60 points
-//   - Medium (worst):        30 points
-//   - High (worst):          10 points
-//   - Critical (worst):       0 points
-//
-// Overall score = sum(check_scores) / total_checks.
-func computePostureScore(findings []checker.Finding, checksRun int) int {
+// insertTopRisk inserts a finding into the top-5 buffer, maintaining sorted
+// order (severity descending, then namespace ascending, then resource
+// ascending, then checker ascending). The buffer never exceeds 5 elements.
+// This avoids copying and sorting the entire findings slice.
+func insertTopRisk(buf []checker.Finding, f *checker.Finding) []checker.Finding {
+	const maxTop = 5
+
+	// Find the insertion position using the same sort order as sortFindings.
+	pos := len(buf)
+	for k := range buf {
+		if findingLess(f, &buf[k]) {
+			pos = k
+			break
+		}
+	}
+
+	if pos >= maxTop {
+		// Finding is not in the top 5.
+		return buf
+	}
+
+	// Insert at position.
+	if len(buf) < maxTop {
+		buf = append(buf, checker.Finding{})
+	}
+	copy(buf[pos+1:], buf[pos:])
+	buf[pos] = *f
+
+	// Trim to maxTop.
+	if len(buf) > maxTop {
+		buf = buf[:maxTop]
+	}
+	return buf
+}
+
+// findingLess returns true if a should sort before b, using the same ordering
+// as sortFindings: severity descending, namespace ascending, resource
+// ascending, checker ascending.
+func findingLess(a, b *checker.Finding) bool {
+	if a.Severity != b.Severity {
+		return a.Severity > b.Severity
+	}
+	if a.Namespace != b.Namespace {
+		return a.Namespace < b.Namespace
+	}
+	if a.Resource != b.Resource {
+		return a.Resource < b.Resource
+	}
+	return a.Checker < b.Checker
+}
+
+// scoreFromWorstMap computes a posture score from a pre-built map of
+// checker name -> worst severity. This avoids re-iterating findings.
+func scoreFromWorstMap(worstSev map[string]checker.Severity, checksRun int) int {
 	if checksRun == 0 {
 		return 0
 	}
 
-	// Find the worst severity per check.
-	worstSeverity := make(map[string]checker.Severity)
-	for i := range findings {
-		name := findings[i].Checker
-		if cur, ok := worstSeverity[name]; !ok || findings[i].Severity > cur {
-			worstSeverity[name] = findings[i].Severity
-		}
-	}
-
-	// Score each check.
-	totalScore := 0
-	checksWithFindings := len(worstSeverity)
+	checksWithFindings := len(worstSev)
 	cleanChecks := max(0, checksRun-checksWithFindings)
-	totalScore += cleanChecks * 100
+	totalScore := cleanChecks * 100
 
-	for _, sev := range worstSeverity {
+	for _, sev := range worstSev {
 		switch {
 		case sev >= checker.SeverityCritical:
-			totalScore += 0
+			// 0 points
 		case sev >= checker.SeverityHigh:
 			totalScore += 10
 		case sev >= checker.SeverityMedium:
@@ -304,11 +348,4 @@ func computePostureScore(findings []checker.Finding, checksRun int) int {
 	}
 
 	return totalScore / checksRun
-}
-
-// computeTierPostureScore computes a posture score for a subset of findings
-// (e.g., only app-tier or infra-tier). It uses the same check count as the
-// overall score so that tiers with fewer failing checks score higher.
-func computeTierPostureScore(findings []checker.Finding, checksRun int) int {
-	return computePostureScore(findings, checksRun)
 }

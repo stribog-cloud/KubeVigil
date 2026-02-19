@@ -70,6 +70,7 @@ Full documentation lives in [`docs/`](docs/index.md):
 | [Architecture](docs/architecture/overview.md) | Internal design for contributors |
 | [Contributing](docs/contributing/guide.md) | How to add checks and fix strategies |
 | [Troubleshooting](docs/troubleshooting/common-issues.md) | Common issues and solutions |
+| [Changelog](CHANGELOG.md) | What shipped in each version |
 
 ## Security Checks (110 total)
 
@@ -139,10 +140,12 @@ See [Exit Codes](docs/reference/exit-codes.md) for CI/CD usage examples.
 - [x] **Phase 1** — Core engine, 25 workload checks, text/JSON output, CLI
 - [x] **Phase 2** — 85 additional checks (110 total), 6 new formats, compliance mapping
 - [x] **Phase 3** — Auto-remediation, 20 fixable checks, YAML round-trip, safety model
-- [ ] **Phase 4** — GitHub Action, baseline management, PR decoration
-- [ ] **Phase 5** — Admission webhooks, operator mode, Prometheus metrics
-- [ ] **Phase 6** — Multi-cluster, trend analysis, Rego policies
-- [ ] **Phase 7** — SDK, plugin system, Helm/Krew/Homebrew distribution
+- [ ] **Phase 4** — Distribution (GoReleaser, GitHub Releases, Homebrew, Krew, Docker, install script)
+- [ ] **Phase 5** — Feedback, hardening & polish (real-world testing, severity calibration, bug fixes)
+- [ ] **Phase 6** — CI/CD integration (GitHub Action, baseline management, PR decoration)
+- [ ] **Phase 7** — Runtime (admission webhooks, operator mode, Prometheus metrics)
+- [ ] **Phase 8** — Enterprise (multi-cluster, trend analysis, Rego policies)
+- [ ] **Phase 9** — Ecosystem (SDK, plugin system, Helm chart)
 
 ## Development
 

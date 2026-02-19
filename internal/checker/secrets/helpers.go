@@ -9,18 +9,23 @@ import (
 
 // GVR definitions for secrets-related resource types.
 var (
-	SecretGVR    = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "secrets"}
+	// SecretGVR is the GroupVersionResource for core/v1 Secret objects.
+	SecretGVR = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "secrets"}
+	// ConfigMapGVR is the GroupVersionResource for core/v1 ConfigMap objects.
 	ConfigMapGVR = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}
 )
 
 // ExternalSecret CRD GVRs for external-secrets operator.
 var (
+	// ExternalSecretGVR is the GroupVersionResource for external-secrets.io/v1beta1 ExternalSecret objects.
 	ExternalSecretGVR = schema.GroupVersionResource{
 		Group: "external-secrets.io", Version: "v1beta1", Resource: "externalsecrets",
 	}
+	// SecretStoreGVR is the GroupVersionResource for external-secrets.io/v1beta1 SecretStore objects.
 	SecretStoreGVR = schema.GroupVersionResource{
 		Group: "external-secrets.io", Version: "v1beta1", Resource: "secretstores",
 	}
+	// ClusterSecretStoreGVR is the GroupVersionResource for external-secrets.io/v1beta1 ClusterSecretStore objects.
 	ClusterSecretStoreGVR = schema.GroupVersionResource{
 		Group: "external-secrets.io", Version: "v1beta1", Resource: "clustersecretstores",
 	}
@@ -28,9 +33,12 @@ var (
 
 // Default thresholds for secrets detection.
 const (
+	// DefaultEntropyThreshold is the minimum Shannon entropy to flag a value as potentially secret.
 	DefaultEntropyThreshold = 4.5
-	DefaultMinSecretLength  = 16
-	DefaultMaxAgeDays       = 90
+	// DefaultMinSecretLength is the minimum string length to consider for entropy-based detection.
+	DefaultMinSecretLength = 16
+	// DefaultMaxAgeDays is the maximum age in days before a secret is flagged for rotation.
+	DefaultMaxAgeDays = 90
 )
 
 // secretKeyPatterns contains substrings that suggest a key name holds a secret value.

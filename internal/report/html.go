@@ -1688,11 +1688,13 @@ func buildPrintTriage(app, infra, cluster []htmlSection) []htmlPrintNamespaceTri
 
 	var entries []entry
 	addSections := func(sections []htmlSection, tier string) {
-		for _, sec := range sections {
+		for i := range sections {
+			sec := &sections[i]
 			resources := make(map[string]struct{})
 			var worstSev checker.Severity
 			var worstChecker string
-			for _, f := range sec.Findings {
+			for j := range sec.Findings {
+				f := &sec.Findings[j]
 				res := f.Resource
 				if res != "" {
 					resources[res] = struct{}{}
@@ -1706,7 +1708,7 @@ func buildPrintTriage(app, infra, cluster []htmlSection) []htmlPrintNamespaceTri
 			entries = append(entries, entry{
 				ns:          sec.Label,
 				tier:        tier,
-				htmlSection: sec,
+				htmlSection: *sec,
 				workloads:   len(resources),
 				topIssue:    worstChecker,
 			})
@@ -1724,7 +1726,8 @@ func buildPrintTriage(app, infra, cluster []htmlSection) []htmlPrintNamespaceTri
 	})
 
 	out := make([]htmlPrintNamespaceTriage, len(entries))
-	for i, e := range entries {
+	for i := range entries {
+		e := &entries[i]
 		out[i] = htmlPrintNamespaceTriage{
 			Rank:      i + 1,
 			Namespace: e.ns,
@@ -1743,22 +1746,20 @@ func buildPrintTriage(app, infra, cluster []htmlSection) []htmlPrintNamespaceTri
 }
 
 // buildPrintNamespaceDetails builds the workload drilldown for Critical & High findings.
-func buildPrintNamespaceDetails(app, infra, cluster []htmlSection) ([]htmlPrintNamespaceDetail, int) {
+func buildPrintNamespaceDetails(app, infra, cluster []htmlSection) (details []htmlPrintNamespaceDetail, totalFindings int) {
 	type nsKey struct {
 		label string
 		tier  string
 	}
-	type wlKey struct {
-		resource string
-	}
-
 	nsMap := make(map[nsKey]*htmlPrintNamespaceDetail)
 	var nsOrder []nsKey
 
 	processSections := func(sections []htmlSection, tier string) {
-		for _, sec := range sections {
+		for i := range sections {
+			sec := &sections[i]
 			key := nsKey{label: sec.Label, tier: tier}
-			for _, f := range sec.Findings {
+			for j := range sec.Findings {
+				f := &sec.Findings[j]
 				sev := parseSev(f.Severity)
 				if sev != checker.SeverityCritical && sev != checker.SeverityHigh {
 					continue
@@ -1854,7 +1855,8 @@ func buildPrintNamespaceDetails(app, infra, cluster []htmlSection) ([]htmlPrintN
 // buildPrintNamespaceRows builds enhanced namespace rows with top workloads column.
 func buildPrintNamespaceRows(sections []htmlSection, maxWorkloads int) []htmlPrintNamespaceRow {
 	rows := make([]htmlPrintNamespaceRow, len(sections))
-	for i, sec := range sections {
+	for i := range sections {
+		sec := &sections[i]
 		// Count findings per resource and find top workloads by severity weight.
 		type resStat struct {
 			name string
@@ -1862,7 +1864,8 @@ func buildPrintNamespaceRows(sections []htmlSection, maxWorkloads int) []htmlPri
 			high int
 		}
 		resMap := make(map[string]*resStat)
-		for _, f := range sec.Findings {
+		for j := range sec.Findings {
+			f := &sec.Findings[j]
 			res := f.Resource
 			if res == "" {
 				continue
@@ -1924,11 +1927,11 @@ func buildExecActions(topAggs []htmlAggregate, app, infra, cluster []htmlSection
 		// Collect affected namespaces.
 		var nsNames []string
 		for _, sections := range [][]htmlSection{app, infra, cluster} {
-			for _, sec := range sections {
-				for _, f := range sec.Findings {
-					if f.Checker == agg.Checker {
-						if !slices.Contains(nsNames, sec.Label) {
-							nsNames = append(nsNames, sec.Label)
+			for si := range sections {
+				for fi := range sections[si].Findings {
+					if sections[si].Findings[fi].Checker == agg.Checker {
+						if !slices.Contains(nsNames, sections[si].Label) {
+							nsNames = append(nsNames, sections[si].Label)
 						}
 					}
 				}
@@ -2029,7 +2032,7 @@ func formatTimestamp(t time.Time) string {
 
 // formatFrameworkColumns groups framework references into pipe-delimited strings.
 // Returns two strings: "CIS | MITRE | NSA" and "5.2.1 | T1611 | 3.1".
-func formatFrameworkColumns(refs []checker.FrameworkRef) (frameworks, controlIDs string) {
+func formatFrameworkColumns(refs []checker.FrameworkRef) (fwNames, controlIDs string) {
 	type fwGroup struct {
 		name string
 		cids []string

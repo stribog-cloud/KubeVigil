@@ -19,6 +19,10 @@ coverage.*
 *.coverprofile
 profile.cov
 
+# Benchmark and profiling output
+bench-*.txt
+*.prof
+
 # Dependency directories (remove the comment below to include it)
 # vendor/
 

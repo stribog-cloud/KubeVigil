@@ -901,7 +901,7 @@ func TestFindPlannedFix(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := findPlannedFix(tc.plan, tc.result)
+			got := findPlannedFix(tc.plan, &tc.result)
 			if tc.found {
 				require.NotNil(t, got, "expected to find a PlannedFix")
 			} else {

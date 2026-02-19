@@ -40,46 +40,9 @@ func (r *MarkdownReporter) Generate(ctx context.Context, result *checker.ScanRes
 	fmt.Fprintln(w)
 	fmt.Fprintf(w, "**Posture Score: %d/100**\n", summary.PostureScore)
 	fmt.Fprintln(w)
-	fmt.Fprintf(w, "| Metric | Value |\n")
-	fmt.Fprintf(w, "|--------|-------|\n")
-	fmt.Fprintf(w, "| KubeVigil | %s |\n", version.Version)
-	fmt.Fprintf(w, "| Scan Mode | %s |\n", result.ScanMeta.ScanMode)
-	fmt.Fprintf(w, "| Duration | %s |\n", formatDuration(result.ScanMeta.Duration))
-	fmt.Fprintf(w, "| Total Findings | %d |\n", len(result.Findings))
-	fmt.Fprintf(w, "| Resources Affected | %d |\n", summary.UniqueResources)
-	fmt.Fprintf(w, "| Namespaces | %d |\n", summary.UniqueNamespaces)
-	fmt.Fprintf(w, "| Checks Run | %d |\n", summary.CheckCoverage.TotalRun)
-	fmt.Fprintf(w, "| Checks with Findings | %d |\n", summary.CheckCoverage.WithFindings)
-	fmt.Fprintf(w, "| Checks Clean | %d |\n", summary.CheckCoverage.Clean)
-	fmt.Fprintf(w, "| Checks Skipped | %d |\n", summary.CheckCoverage.Skipped)
-	fmt.Fprintf(w, "| Checks Errored | %d |\n", summary.CheckCoverage.Errored)
-	if summary.CheckCoverage.TotalRun > 0 {
-		passRate := 100 * summary.CheckCoverage.Clean / summary.CheckCoverage.TotalRun
-		fmt.Fprintf(w, "| Pass Rate | %d%% |\n", passRate)
-	}
-	fmt.Fprintln(w)
-
-	// Findings by check aggregation (collapsible when > 10 checks).
-	if len(summary.CheckAggregates) > 0 {
-		if len(summary.CheckAggregates) > 10 {
-			fmt.Fprintf(w, "<details>\n<summary><b>Findings by Check (%d)</b></summary>\n\n", len(summary.CheckAggregates))
-		} else {
-			fmt.Fprintln(w, "### Findings by Check")
-			fmt.Fprintln(w)
-		}
-		fmt.Fprintf(w, "| Severity | Check | Findings | Resources |\n")
-		fmt.Fprintf(w, "|----------|-------|----------|-----------|\n")
-		for i := range summary.CheckAggregates {
-			agg := &summary.CheckAggregates[i]
-			emoji := severityEmoji(agg.Severity)
-			fmt.Fprintf(w, "| %s %s | %s | %d | %d |\n",
-				emoji, agg.Severity, agg.Checker, agg.Count, agg.Resources)
-		}
-		if len(summary.CheckAggregates) > 10 {
-			fmt.Fprintln(w, "\n</details>")
-		}
-		fmt.Fprintln(w)
-	}
+	writeMetricsTable(w, result, &summary)
+	writeCheckAggregates(w, &summary)
+	writeTopRisks(w, &summary)
 
 	// Findings.
 	sorted := slices.Clone(result.Findings)
@@ -200,33 +163,98 @@ func (r *MarkdownReporter) Generate(ctx context.Context, result *checker.ScanRes
 		fmt.Fprintln(w)
 	}
 
-	// Application namespace sections.
 	if len(appNS) > 0 {
 		fmt.Fprintln(w, "## Application Namespaces")
 		fmt.Fprintln(w)
 		writeMarkdownNSSections(w, appNS, nsGroups, aggregate)
 	}
-
-	// Infrastructure namespace sections.
 	if len(infraNS) > 0 {
 		fmt.Fprintln(w, "## Infrastructure Namespaces")
 		fmt.Fprintln(w)
 		writeMarkdownNSSections(w, infraNS, nsGroups, aggregate)
 	}
-
-	// Cluster-scoped sections.
 	if len(clusterNS) > 0 {
 		fmt.Fprintln(w, "## Cluster-Scoped Resources")
 		fmt.Fprintln(w)
 		writeMarkdownNSSections(w, clusterNS, nsGroups, aggregate)
 	}
-
-	// Fallback: if no classification produced sections, render all.
 	if len(appNS) == 0 && len(infraNS) == 0 && len(clusterNS) == 0 {
 		writeMarkdownNSSections(w, namespaces, nsGroups, aggregate)
 	}
 
 	return nil
+}
+
+// writeMetricsTable writes the executive summary metrics table.
+func writeMetricsTable(w io.Writer, result *checker.ScanResult, summary *ExecutiveSummary) {
+	fmt.Fprintf(w, "| Metric | Value |\n")
+	fmt.Fprintf(w, "|--------|-------|\n")
+	fmt.Fprintf(w, "| KubeVigil | %s |\n", version.Version)
+	fmt.Fprintf(w, "| Scan Mode | %s |\n", result.ScanMeta.ScanMode)
+	fmt.Fprintf(w, "| Duration | %s |\n", formatDuration(result.ScanMeta.Duration))
+	fmt.Fprintf(w, "| Total Findings | %d |\n", len(result.Findings))
+	fmt.Fprintf(w, "| Resources Affected | %d |\n", summary.UniqueResources)
+	fmt.Fprintf(w, "| Namespaces | %d |\n", summary.UniqueNamespaces)
+	fmt.Fprintf(w, "| Checks Run | %d |\n", summary.CheckCoverage.TotalRun)
+	fmt.Fprintf(w, "| Checks with Findings | %d |\n", summary.CheckCoverage.WithFindings)
+	fmt.Fprintf(w, "| Checks Clean | %d |\n", summary.CheckCoverage.Clean)
+	fmt.Fprintf(w, "| Checks Skipped | %d |\n", summary.CheckCoverage.Skipped)
+	fmt.Fprintf(w, "| Checks Errored | %d |\n", summary.CheckCoverage.Errored)
+	if summary.CheckCoverage.TotalRun > 0 {
+		passRate := 100 * summary.CheckCoverage.Clean / summary.CheckCoverage.TotalRun
+		fmt.Fprintf(w, "| Pass Rate | %d%% |\n", passRate)
+	}
+	if summary.AppPostureScore > 0 {
+		fmt.Fprintf(w, "| App Posture Score | %d/100 |\n", summary.AppPostureScore)
+	}
+	if summary.InfraPostureScore > 0 {
+		fmt.Fprintf(w, "| Infra Posture Score | %d/100 |\n", summary.InfraPostureScore)
+	}
+	fmt.Fprintln(w)
+}
+
+// writeCheckAggregates writes the findings by check aggregation section.
+func writeCheckAggregates(w io.Writer, summary *ExecutiveSummary) {
+	if len(summary.CheckAggregates) == 0 {
+		return
+	}
+	if len(summary.CheckAggregates) > 10 {
+		fmt.Fprintf(w, "<details>\n<summary><b>Findings by Check (%d)</b></summary>\n\n", len(summary.CheckAggregates))
+	} else {
+		fmt.Fprintln(w, "### Findings by Check")
+		fmt.Fprintln(w)
+	}
+	fmt.Fprintf(w, "| Severity | Check | Findings | Resources |\n")
+	fmt.Fprintf(w, "|----------|-------|----------|-----------|\n")
+	for i := range summary.CheckAggregates {
+		agg := &summary.CheckAggregates[i]
+		emoji := severityEmoji(agg.Severity)
+		fmt.Fprintf(w, "| %s %s | %s | %d | %d |\n",
+			emoji, agg.Severity, agg.Checker, agg.Count, agg.Resources)
+	}
+	if len(summary.CheckAggregates) > 10 {
+		fmt.Fprintln(w, "\n</details>")
+	}
+	fmt.Fprintln(w)
+}
+
+// writeTopRisks writes the top risks section.
+func writeTopRisks(w io.Writer, summary *ExecutiveSummary) {
+	if len(summary.TopRisks) == 0 {
+		return
+	}
+	fmt.Fprintln(w, "### Top Risks")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "| # | Severity | Check | Resource | Message |")
+	fmt.Fprintln(w, "|---|----------|-------|----------|---------|")
+	for i := range summary.TopRisks {
+		risk := &summary.TopRisks[i]
+		emoji := severityEmoji(risk.Severity)
+		resource := formatResource(risk)
+		fmt.Fprintf(w, "| %d | %s %s | %s | %s | %s |\n",
+			i+1, emoji, risk.Severity, risk.Checker, resource, risk.Message)
+	}
+	fmt.Fprintln(w)
 }
 
 // writeMarkdownNSSections writes namespace sections for the given namespace list.
@@ -237,7 +265,6 @@ func writeMarkdownNSSections(w io.Writer, namespaces []string, groups map[string
 		nsFindings := groups[ns]
 		nsCounts := countBySeverity(nsFindings)
 
-		// Build severity summary suffix.
 		var sevParts []string
 		if c := nsCounts[checker.SeverityCritical]; c > 0 {
 			sevParts = append(sevParts, fmt.Sprintf("%s%d", severityEmoji(checker.SeverityCritical), c))
@@ -269,7 +296,6 @@ func writeMarkdownNSSections(w io.Writer, namespaces []string, groups map[string
 		}
 		fmt.Fprintln(w)
 
-		// Write remediation grouped by check.
 		writeMarkdownRemediation(w, nsFindings)
 	}
 }
@@ -309,7 +335,6 @@ func writeMarkdownAggregatedTable(w io.Writer, findings []checker.Finding) {
 		}
 	}
 
-	// Write expandable resource lists for aggregated groups.
 	for i := range aggs {
 		if len(aggs[i].Resources) > 1 {
 			fmt.Fprintln(w)
@@ -328,9 +353,7 @@ func writeMarkdownAggregatedTable(w io.Writer, findings []checker.Finding) {
 }
 
 // writeMarkdownRemediation writes collapsible remediation blocks grouped by check.
-// Only checks that have remediation text are shown.
 func writeMarkdownRemediation(w io.Writer, findings []checker.Finding) {
-	// Group findings by checker, preserving first remediation and listing resources.
 	type checkGroup struct {
 		remediation string
 		resources   []string
@@ -364,8 +387,7 @@ func writeMarkdownRemediation(w io.Writer, findings []checker.Finding) {
 	}
 }
 
-// groupByNamespace groups findings by namespace. Cluster-scoped findings (empty namespace)
-// are grouped under the empty string key.
+// groupByNamespace groups findings by namespace.
 func groupByNamespace(findings []checker.Finding) map[string][]checker.Finding {
 	groups := make(map[string][]checker.Finding)
 	for i := range findings {
@@ -375,8 +397,7 @@ func groupByNamespace(findings []checker.Finding) map[string][]checker.Finding {
 	return groups
 }
 
-// sortedNamespaces returns namespace keys sorted alphabetically,
-// with the empty string (cluster-scoped) always last.
+// sortedNamespaces returns namespace keys sorted alphabetically.
 func sortedNamespaces(groups map[string][]checker.Finding) []string {
 	var namespaces []string
 	hasCluster := false

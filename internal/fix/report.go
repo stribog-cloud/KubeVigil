@@ -29,7 +29,7 @@ type ReportOptions struct {
 // from a fix plan and options. The report includes a summary, per-file changes,
 // impact warnings, skipped findings, manual remediation guidance, and restore
 // instructions.
-func GenerateFixReport(plan *Plan, opts ReportOptions) ([]byte, error) {
+func GenerateFixReport(plan *Plan, opts *ReportOptions) ([]byte, error) {
 	ts := opts.Timestamp
 	if ts.IsZero() {
 		ts = time.Now()
@@ -49,7 +49,7 @@ func GenerateFixReport(plan *Plan, opts ReportOptions) ([]byte, error) {
 }
 
 // WriteFixReport generates a fix report and writes it to the given file path.
-func WriteFixReport(plan *Plan, opts ReportOptions, path string) error {
+func WriteFixReport(plan *Plan, opts *ReportOptions, path string) error {
 	data, err := GenerateFixReport(plan, opts)
 	if err != nil {
 		return fmt.Errorf("generating fix report: %w", err)
@@ -61,7 +61,7 @@ func WriteFixReport(plan *Plan, opts ReportOptions, path string) error {
 }
 
 // writeHeader writes the report header with timestamp, risk level, mode, and source path.
-func writeHeader(b *strings.Builder, ts time.Time, opts ReportOptions) {
+func writeHeader(b *strings.Builder, ts time.Time, opts *ReportOptions) {
 	fmt.Fprintf(b, "# KubeVigil Fix Report\n\n")
 
 	mode := "Dry-run"
@@ -136,7 +136,8 @@ func writeChangesByFile(b *strings.Builder, results []Result) {
 	for _, fp := range filePaths {
 		fixes := fileResults[fp]
 		fmt.Fprintf(b, "### `%s`\n\n", fp)
-		for _, r := range fixes {
+		for i := range fixes {
+			r := &fixes[i]
 			fmt.Fprintf(b, "- **%s** %s/%s (check: `%s`, safety: %s): %s\n",
 				r.Kind, r.Namespace, r.Resource, r.CheckID, string(r.Safety), r.Description)
 		}
@@ -161,7 +162,8 @@ func writeWhatCouldBreak(b *strings.Builder, results []Result) {
 	}
 
 	fmt.Fprintf(b, "## What Could Break\n\n")
-	for _, w := range warnings {
+	for i := range warnings {
+		w := &warnings[i]
 		fmt.Fprintf(b, "- **%s** %s/%s (check: `%s`, safety: %s): %s\n",
 			w.Kind, w.Namespace, w.Resource, w.CheckID, string(w.Safety), w.Impact)
 	}
@@ -234,7 +236,8 @@ func writeManualRemediation(b *strings.Builder, results []Result) {
 
 	fmt.Fprintf(b, "## Manual Remediation\n\n")
 	fmt.Fprintf(b, "The following findings cannot be auto-fixed and require manual intervention:\n\n")
-	for _, r := range manualResults {
+	for i := range manualResults {
+		r := &manualResults[i]
 		fmt.Fprintf(b, "- **%s** %s/%s (check: `%s`): %s\n",
 			r.Kind, r.Namespace, r.Resource, r.CheckID, r.Description)
 	}
@@ -242,7 +245,7 @@ func writeManualRemediation(b *strings.Builder, results []Result) {
 }
 
 // writeRestoreInstructions writes the restore instructions section.
-func writeRestoreInstructions(b *strings.Builder, opts ReportOptions) {
+func writeRestoreInstructions(b *strings.Builder, opts *ReportOptions) {
 	fmt.Fprintf(b, "## Restore Instructions\n\n")
 
 	if opts.BackupDir != "" {

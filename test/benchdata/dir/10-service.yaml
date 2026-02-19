@@ -1,0 +1,46 @@
+# LoadBalancer service
+apiVersion: v1
+kind: Service
+metadata:
+  name: public-lb
+  namespace: app-ns
+spec:
+  type: LoadBalancer
+  selector:
+    app: web-frontend
+  ports:
+    - port: 80
+      targetPort: 80
+    - port: 443
+      targetPort: 443
+---
+# NodePort service
+apiVersion: v1
+kind: Service
+metadata:
+  name: debug-nodeport
+  namespace: app-ns
+spec:
+  type: NodePort
+  selector:
+    app: debug
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080
+---
+# ExternalIPs service
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-svc
+  namespace: app-ns
+spec:
+  type: ClusterIP
+  externalIPs:
+    - 203.0.113.10
+  selector:
+    app: api-server
+  ports:
+    - port: 8080
+      targetPort: 8080

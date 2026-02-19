@@ -1,0 +1,56 @@
+# Ingress without TLS, no ingress class
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-ingress
+  namespace: app-ns
+spec:
+  rules:
+    - host: app.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: public-lb
+                port:
+                  number: 80
+---
+# Ingress with wildcard host, no TLS
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wildcard-ingress
+  namespace: app-ns
+spec:
+  rules:
+    - host: "*.example.com"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: public-lb
+                port:
+                  number: 80
+---
+# API ingress without TLS
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-ingress
+  namespace: app-ns
+spec:
+  rules:
+    - host: api.example.com
+      http:
+        paths:
+          - path: /v1
+            pathType: Prefix
+            backend:
+              service:
+                name: api-svc
+                port:
+                  number: 8080

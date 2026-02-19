@@ -1381,4 +1381,3 @@ func TestRunScan_AllFiltersCombo(t *testing.T) {
 		assert.ErrorAs(t, err, &ee)
 	}
 }
-

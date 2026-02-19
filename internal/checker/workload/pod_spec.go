@@ -70,7 +70,19 @@ func GVRs() []schema.GroupVersionResource {
 }
 
 // ExtractPodSpecs extracts PodSpecInfo from all workload resources in the cache.
+// Results are computed once per ResourceCache and reused across all callers (checkers).
+// This eliminates redundant JSON marshal/unmarshal cycles when multiple workload
+// checkers each call ExtractPodSpecs with the same cache.
 func ExtractPodSpecs(cache *checker.ResourceCache) []PodSpecInfo {
+	result := cache.CachedResult("workload.PodSpecs", func() any {
+		return extractPodSpecsUncached(cache)
+	})
+	return result.([]PodSpecInfo)
+}
+
+// extractPodSpecsUncached performs the actual PodSpec extraction from all workload
+// resources in the cache. This is the expensive operation that CachedResult deduplicates.
+func extractPodSpecsUncached(cache *checker.ResourceCache) []PodSpecInfo {
 	var specs []PodSpecInfo
 
 	for _, gvr := range workloadGVRs {

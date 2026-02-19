@@ -6,8 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stribog-cloud/kubevigil/internal/checker"
 	"gopkg.in/yaml.v3"
+
+	"github.com/stribog-cloud/kubevigil/internal/checker"
 )
 
 // helmTestPlan builds a Plan with applied results for the given check IDs.

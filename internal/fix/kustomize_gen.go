@@ -9,8 +9,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/stribog-cloud/kubevigil/internal/checker"
 	"gopkg.in/yaml.v3"
+
+	"github.com/stribog-cloud/kubevigil/internal/checker"
 )
 
 // ResourceID uniquely identifies a Kubernetes resource for patch grouping.
@@ -39,7 +40,8 @@ func GenerateKustomizeOverlay(plan *Plan, outputDir string) error {
 
 	// Group results by ResourceID.
 	groups := make(map[ResourceID][]PlannedFix)
-	for _, result := range applied {
+	for i := range applied {
+		result := &applied[i]
 		id := ResourceID{
 			Kind:      result.Kind,
 			Name:      result.Resource,
@@ -224,7 +226,8 @@ func isContainerPath(fieldPath string) bool {
 func buildPodFixesSpec(fixes []PlannedFix, kind string) map[string]any {
 	spec := make(map[string]any)
 
-	for _, fix := range fixes {
+	for i := range fixes {
+		fix := &fixes[i]
 		path := fix.Strategy.FieldPath
 		// Strip the "spec." prefix since we're building the spec map.
 		path = strings.TrimPrefix(path, "spec.")
@@ -265,7 +268,8 @@ func buildContainerPatches(containerFixes map[string][]PlannedFix) []map[string]
 			"name": name,
 		}
 
-		for _, fix := range fixes {
+		for j := range fixes {
+			fix := &fixes[j]
 			// Extract the path after "containers[*]." or "containers[N].".
 			subPath := extractContainerSubPath(fix.Strategy.FieldPath)
 			if subPath == "" {
@@ -352,7 +356,7 @@ func setNestedValue(m map[string]any, path string, value any) {
 }
 
 // findPlannedFix locates the matching PlannedFix in the plan for a given result.
-func findPlannedFix(plan *Plan, result Result) *PlannedFix {
+func findPlannedFix(plan *Plan, result *Result) *PlannedFix {
 	fp, ok := plan.Files[result.FilePath]
 	if !ok {
 		return nil
@@ -375,8 +379,8 @@ func highestRiskLevel(results []Result) RiskLevel {
 	hasPotentiallyBreaking := false
 	hasLikelySafe := false
 
-	for _, r := range results {
-		switch r.Safety {
+	for i := range results {
+		switch results[i].Safety {
 		case checker.FixPotentiallyBreaking:
 			hasPotentiallyBreaking = true
 		case checker.FixLikelySafe:

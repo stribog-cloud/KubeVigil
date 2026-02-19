@@ -4,7 +4,7 @@ KubeVigil welcomes contributions. This guide covers the development setup, code 
 
 ## Prerequisites
 
-- **Go 1.22+** ([install](https://go.dev/doc/install))
+- **Go 1.25+** ([install](https://go.dev/doc/install))
 - **make** (included on macOS and most Linux distributions)
 - **golangci-lint** ([install](https://golangci-lint.run/usage/install/)) for linting
 - **Bats** ([install](https://bats-core.readthedocs.io/)) for end-to-end tests (optional)

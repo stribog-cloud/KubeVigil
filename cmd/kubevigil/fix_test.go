@@ -1432,8 +1432,8 @@ func TestPrintFixSummary_AggressiveRiskLevel(t *testing.T) {
 		TotalFindings: 8,
 		Applied:       8,
 		ByRisk: map[checker.FixSafety]int{
-			checker.FixSafe:               3,
-			checker.FixLikelySafe:         3,
+			checker.FixSafe:                3,
+			checker.FixLikelySafe:          3,
 			checker.FixPotentiallyBreaking: 2,
 		},
 		SkipReasons: map[string]int{},

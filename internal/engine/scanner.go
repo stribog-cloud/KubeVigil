@@ -49,6 +49,7 @@ func (s *Scanner) ScanManifest(ctx context.Context, path string) (*checker.ScanR
 	}
 
 	cache.SetPolicies(&s.config.Policies)
+	cache.Freeze()
 
 	annotations := collectAnnotations(cache)
 	findings, errCount := s.runChecks(ctx, enabled, cache)
@@ -97,6 +98,7 @@ func (s *Scanner) ScanLive(ctx context.Context, client dynamic.Interface, disc d
 	}
 
 	cache.SetPolicies(&s.config.Policies)
+	cache.Freeze()
 
 	annotations := collectAnnotations(cache)
 	findings, errCount := s.runChecks(ctx, enabled, cache)

@@ -21,8 +21,20 @@ Scan Mode:       Manifest
 Duration:        50ms
 
 ──────────────────────────────────────────────────
+Top Risks
+──────────────────────────────────────────────────
+  [Critical] privileged — default/Deployment/nginx
+             Container runs in privileged mode
+  [High]     run-as-root — backend/Deployment/api-server
+             Container runs as root
+  [Medium]   read-only-rootfs — default/StatefulSet/worker
+             Root filesystem is not read-only
+
+──────────────────────────────────────────────────
 Findings (3 total)
 ──────────────────────────────────────────────────
+
+── Application Namespaces ──────────────────────
 
 [Critical] privileged
   Resource:    default/Deployment/nginx
@@ -48,11 +60,8 @@ Findings (3 total)
   Frameworks:  CIS 5.2.4 · NSA 3.1
 
 ──────────────────────────────────────────────────
-Summary
+Compliance
 ──────────────────────────────────────────────────
-Total: 3 findings
-  Critical: 1
-  High:     1
-  Medium:   1
-  Low:      0
-  Info:     0
+  CIS v1.8:          3 controls violated
+  MITRE ATT&CK v14:  1 technique
+  NSA/CISA v1.2:     1 control violated

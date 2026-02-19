@@ -133,3 +133,111 @@ func TestSARIFReporter_CancelledContext(t *testing.T) {
 	err := r.Generate(ctx, &checker.ScanResult{}, &buf)
 	require.Error(t, err)
 }
+
+func TestSARIFReporter_RuleDescriptions(t *testing.T) {
+	r := &SARIFReporter{}
+	var buf bytes.Buffer
+	result := &checker.ScanResult{
+		Findings: []checker.Finding{
+			{Checker: "privileged", Severity: checker.SeverityCritical, Resource: "a", Kind: "Pod", Message: "Container runs in privileged mode", Remediation: "Set privileged to false"},
+			{Checker: "privileged", Severity: checker.SeverityCritical, Resource: "b", Kind: "Pod", Message: "Container runs in privileged mode", Remediation: "Set privileged to false"},
+			{Checker: "run-as-root", Severity: checker.SeverityHigh, Resource: "c", Kind: "Pod", Message: "Container runs as root", Remediation: "Set runAsNonRoot: true"},
+		},
+		ScanMeta: checker.ScanMeta{ScanMode: checker.ScanModeManifest},
+	}
+	require.NoError(t, r.Generate(context.Background(), result, &buf))
+
+	var parsed sarifLog
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &parsed))
+	rules := parsed.Runs[0].Tool.Driver.Rules
+	require.Len(t, rules, 2)
+
+	// shortDescription should be the finding message, not the checker ID.
+	assert.Equal(t, "Container runs in privileged mode", rules[0].ShortDescription.Text)
+	assert.Equal(t, "Container runs as root", rules[1].ShortDescription.Text)
+
+	// fullDescription should be the remediation.
+	require.NotNil(t, rules[0].FullDescription)
+	assert.Equal(t, "Set privileged to false", rules[0].FullDescription.Text)
+	require.NotNil(t, rules[1].FullDescription)
+	assert.Equal(t, "Set runAsNonRoot: true", rules[1].FullDescription.Text)
+}
+
+func TestSARIFReporter_RuleHelpURI(t *testing.T) {
+	r := &SARIFReporter{}
+	var buf bytes.Buffer
+	result := &checker.ScanResult{
+		Findings: []checker.Finding{
+			{Checker: "privileged", Severity: checker.SeverityCritical, Resource: "a", Kind: "Pod", Message: "msg", Remediation: "fix"},
+		},
+		ScanMeta: checker.ScanMeta{ScanMode: checker.ScanModeManifest},
+	}
+	require.NoError(t, r.Generate(context.Background(), result, &buf))
+
+	var parsed sarifLog
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &parsed))
+	rule := parsed.Runs[0].Tool.Driver.Rules[0]
+	assert.Equal(t, "https://github.com/stribog-cloud/kubevigil", rule.HelpURI)
+}
+
+func TestSARIFReporter_RuleHelp(t *testing.T) {
+	r := &SARIFReporter{}
+	var buf bytes.Buffer
+	result := &checker.ScanResult{
+		Findings: []checker.Finding{
+			{Checker: "privileged", Severity: checker.SeverityCritical, Resource: "a", Kind: "Pod", Message: "msg", Remediation: "Set privileged to false"},
+			{Checker: "no-remediation", Severity: checker.SeverityLow, Resource: "b", Kind: "Pod", Message: "info only"},
+		},
+		ScanMeta: checker.ScanMeta{ScanMode: checker.ScanModeManifest},
+	}
+	require.NoError(t, r.Generate(context.Background(), result, &buf))
+
+	var parsed sarifLog
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &parsed))
+	rules := parsed.Runs[0].Tool.Driver.Rules
+
+	// Rule with remediation should have help.
+	ruleWith := rules[0]
+	require.NotNil(t, ruleWith.Help)
+	assert.Equal(t, "Set privileged to false", ruleWith.Help.Text)
+
+	// Rule without remediation should have nil help and fullDescription.
+	ruleWithout := rules[1]
+	assert.Nil(t, ruleWithout.Help)
+	assert.Nil(t, ruleWithout.FullDescription)
+}
+
+func TestSARIFReporter_ResultRemediation(t *testing.T) {
+	r := &SARIFReporter{}
+	var buf bytes.Buffer
+	result := &checker.ScanResult{
+		Findings: []checker.Finding{
+			{Checker: "privileged", Severity: checker.SeverityCritical, Resource: "a", Kind: "Pod", Message: "Container runs in privileged mode", Remediation: "Set privileged to false"},
+		},
+		ScanMeta: checker.ScanMeta{ScanMode: checker.ScanModeManifest},
+	}
+	require.NoError(t, r.Generate(context.Background(), result, &buf))
+
+	var parsed sarifLog
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &parsed))
+	res := parsed.Runs[0].Results[0]
+	assert.Contains(t, res.Message.Markdown, "**Remediation:**")
+	assert.Contains(t, res.Message.Markdown, "Set privileged to false")
+}
+
+func TestSARIFReporter_ResultWithoutRemediation(t *testing.T) {
+	r := &SARIFReporter{}
+	var buf bytes.Buffer
+	result := &checker.ScanResult{
+		Findings: []checker.Finding{
+			{Checker: "info-check", Severity: checker.SeverityInfo, Resource: "a", Kind: "Pod", Message: "informational"},
+		},
+		ScanMeta: checker.ScanMeta{ScanMode: checker.ScanModeManifest},
+	}
+	require.NoError(t, r.Generate(context.Background(), result, &buf))
+
+	var parsed sarifLog
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &parsed))
+	res := parsed.Runs[0].Results[0]
+	assert.Empty(t, res.Message.Markdown)
+}

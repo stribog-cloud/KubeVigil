@@ -10,12 +10,15 @@ import (
 
 // GVR constants for cloud-related resource types.
 var (
+	// NodeGVR is the GroupVersionResource for core/v1 Node objects.
 	NodeGVR = schema.GroupVersionResource{
 		Group: "", Version: "v1", Resource: "nodes",
 	}
+	// NetworkPolicyGVR is the GroupVersionResource for networking.k8s.io/v1 NetworkPolicy objects.
 	NetworkPolicyGVR = schema.GroupVersionResource{
 		Group: "networking.k8s.io", Version: "v1", Resource: "networkpolicies",
 	}
+	// DaemonSetGVR is the GroupVersionResource for apps/v1 DaemonSet objects.
 	DaemonSetGVR = schema.GroupVersionResource{
 		Group: "apps", Version: "v1", Resource: "daemonsets",
 	}
@@ -25,9 +28,13 @@ var (
 type Provider string
 
 const (
-	ProviderEKS     Provider = "EKS"
-	ProviderGKE     Provider = "GKE"
-	ProviderAKS     Provider = "AKS"
+	// ProviderEKS indicates Amazon Elastic Kubernetes Service.
+	ProviderEKS Provider = "EKS"
+	// ProviderGKE indicates Google Kubernetes Engine.
+	ProviderGKE Provider = "GKE"
+	// ProviderAKS indicates Azure Kubernetes Service.
+	ProviderAKS Provider = "AKS"
+	// ProviderUnknown indicates the cloud provider could not be determined.
 	ProviderUnknown Provider = "Unknown"
 )
 

@@ -137,11 +137,12 @@ func TestGenerateDiff(t *testing.T) {
 			patched: func() string {
 				lines := make([]string, 30)
 				for i := 0; i < 30; i++ {
-					if i == 1 { // line 2
+					switch i {
+					case 1: // line 2
 						lines[i] = "CHANGED-2"
-					} else if i == 28 { // line 29
+					case 28: // line 29
 						lines[i] = "CHANGED-29"
-					} else {
+					default:
 						lines[i] = numberedLine(i + 1)
 					}
 				}
@@ -211,11 +212,12 @@ func TestGenerateDiff_HunkCount(t *testing.T) {
 	original := generateNumberedLines(1, 30)
 	lines := make([]string, 30)
 	for i := 0; i < 30; i++ {
-		if i == 1 {
+		switch i {
+		case 1:
 			lines[i] = "CHANGED-2"
-		} else if i == 28 {
+		case 28:
 			lines[i] = "CHANGED-29"
-		} else {
+		default:
 			lines[i] = numberedLine(i + 1)
 		}
 	}

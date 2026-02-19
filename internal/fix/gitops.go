@@ -28,7 +28,7 @@ type GitPRConfig struct {
 
 // CreateGitOpsPR creates a branch, commits modified files, pushes, and opens a PR.
 // Returns the PR URL on success.
-func CreateGitOpsPR(cfg GitPRConfig) (string, error) {
+func CreateGitOpsPR(cfg *GitPRConfig) (string, error) {
 	cli, err := detectGitCLI()
 	if err != nil {
 		return "", fmt.Errorf("detecting git CLI: %w\nInstall gh (https://cli.github.com/) or glab (https://gitlab.com/gitlab-org/cli)", err)

@@ -13,20 +13,30 @@ import (
 // KubeletConfigChecker detects kubelet misconfigurations via node annotations.
 type KubeletConfigChecker struct{}
 
+// Name returns the kebab-case identifier for this check.
 func (c *KubeletConfigChecker) Name() string { return "kubelet-config" }
+
+// Description returns a human-readable summary of what this check detects.
 func (c *KubeletConfigChecker) Description() string {
 	return "Detects kubelet misconfigurations such as anonymous auth enabled or read-only port open."
 }
+
+// Categories returns the security categories this check belongs to.
 func (c *KubeletConfigChecker) Categories() []checker.Category {
 	return []checker.Category{checker.CategoryClusterConfig}
 }
+
+// SupportedModes returns the scan modes (manifest, live, or both) that support this check.
 func (c *KubeletConfigChecker) SupportedModes() []checker.ScanMode {
 	return []checker.ScanMode{checker.ScanModeLive}
 }
+
+// RequiredResources returns the Kubernetes GVRs this check needs to operate.
 func (c *KubeletConfigChecker) RequiredResources() []schema.GroupVersionResource {
 	return []schema.GroupVersionResource{NodeGVR}
 }
 
+// Run executes the check against cached resources and returns any findings.
 func (c *KubeletConfigChecker) Run(ctx context.Context, resources *checker.ResourceCache) ([]checker.Finding, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("kubelet-config check: %w", err)

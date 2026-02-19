@@ -30,36 +30,46 @@ func (r *SARIFReporter) Generate(ctx context.Context, result *checker.ScanResult
 	ruleIndex := make(map[string]int)
 	var rules []sarifRule
 	for i := range sorted {
-		if _, ok := ruleIndex[sorted[i].Checker]; !ok {
-			rule := sarifRule{
-				ID:               sorted[i].Checker,
-				ShortDescription: sarifMessage{Text: sorted[i].Checker},
-				DefaultConfig: sarifRuleConfig{
-					Level: sarifLevel(sorted[i].Severity),
-				},
-			}
-			if len(sorted[i].Frameworks) > 0 {
-				props := &sarifRuleProperties{}
-				for j := range sorted[i].Frameworks {
-					props.Tags = append(props.Tags,
-						fmt.Sprintf("%s/%s/%s", sorted[i].Frameworks[j].Framework,
-							sorted[i].Frameworks[j].Version, sorted[i].Frameworks[j].ControlID))
-				}
-				rule.Properties = props
-			}
-			ruleIndex[sorted[i].Checker] = len(rules)
-			rules = append(rules, rule)
+		if _, ok := ruleIndex[sorted[i].Checker]; ok {
+			continue
 		}
+		rule := sarifRule{
+			ID:               sorted[i].Checker,
+			ShortDescription: sarifMessage{Text: sorted[i].Message},
+			HelpURI:          "https://github.com/stribog-cloud/kubevigil",
+			DefaultConfig: sarifRuleConfig{
+				Level: sarifLevel(sorted[i].Severity),
+			},
+		}
+		if sorted[i].Remediation != "" {
+			rule.FullDescription = &sarifMessage{Text: sorted[i].Remediation}
+			rule.Help = &sarifHelp{Text: sorted[i].Remediation}
+		}
+		if len(sorted[i].Frameworks) > 0 {
+			props := &sarifRuleProperties{}
+			for j := range sorted[i].Frameworks {
+				props.Tags = append(props.Tags,
+					fmt.Sprintf("%s/%s/%s", sorted[i].Frameworks[j].Framework,
+						sorted[i].Frameworks[j].Version, sorted[i].Frameworks[j].ControlID))
+			}
+			rule.Properties = props
+		}
+		ruleIndex[sorted[i].Checker] = len(rules)
+		rules = append(rules, rule)
 	}
 
 	// Build results.
 	var results []sarifResult
 	for i := range sorted {
+		msg := sarifMessage{Text: sorted[i].Message}
+		if sorted[i].Remediation != "" {
+			msg.Markdown = sorted[i].Message + "\n\n**Remediation:** " + sorted[i].Remediation
+		}
 		sr := sarifResult{
 			RuleID:    sorted[i].Checker,
 			RuleIndex: ruleIndex[sorted[i].Checker],
 			Level:     sarifLevel(sorted[i].Severity),
-			Message:   sarifMessage{Text: sorted[i].Message},
+			Message:   msg,
 		}
 		if sorted[i].FieldPath != "" {
 			sr.Locations = []sarifLocation{
@@ -180,8 +190,15 @@ type sarifDriver struct {
 type sarifRule struct {
 	ID               string               `json:"id"`
 	ShortDescription sarifMessage         `json:"shortDescription"`
+	FullDescription  *sarifMessage        `json:"fullDescription,omitempty"`
+	HelpURI          string               `json:"helpUri,omitempty"`
+	Help             *sarifHelp           `json:"help,omitempty"`
 	DefaultConfig    sarifRuleConfig      `json:"defaultConfiguration"`
 	Properties       *sarifRuleProperties `json:"properties,omitempty"`
+}
+
+type sarifHelp struct {
+	Text string `json:"text"`
 }
 
 type sarifRuleProperties struct {
@@ -193,7 +210,8 @@ type sarifRuleConfig struct {
 }
 
 type sarifMessage struct {
-	Text string `json:"text"`
+	Text     string `json:"text"`
+	Markdown string `json:"markdown,omitempty"`
 }
 
 type sarifResult struct {

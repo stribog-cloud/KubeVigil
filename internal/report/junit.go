@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"time"
 
 	"github.com/stribog-cloud/kubevigil/internal/checker"
 )
@@ -39,8 +40,13 @@ func (r *JUnitReporter) Generate(ctx context.Context, result *checker.ScanResult
 	summary := ComputeSummary(result)
 
 	var suites junitTestSuites
-	suites.Tests = len(sorted)
+	suites.Name = "KubeVigil Security Scan"
+	suites.Tests = len(sorted) + len(summary.PassedChecks)
 	suites.Failures = len(sorted)
+	suites.Time = fmt.Sprintf("%.2f", result.ScanMeta.Duration.Seconds())
+	if !result.ScanMeta.StartTime.IsZero() {
+		suites.Timestamp = result.ScanMeta.StartTime.Format(time.RFC3339)
+	}
 	suites.Properties = []junitProperty{
 		{Name: "posture_score", Value: fmt.Sprintf("%d", summary.PostureScore)},
 		{Name: "total_findings", Value: fmt.Sprintf("%d", len(sorted))},
@@ -64,6 +70,7 @@ func (r *JUnitReporter) Generate(ctx context.Context, result *checker.ScanResult
 			Name:     name,
 			Tests:    len(findings),
 			Failures: len(findings),
+			Time:     "0",
 		}
 		for i := range findings {
 			failText := fmt.Sprintf("Severity: %s\nMessage: %s\nRemediation: %s",
@@ -74,6 +81,7 @@ func (r *JUnitReporter) Generate(ctx context.Context, result *checker.ScanResult
 			tc := junitTestCase{
 				Name:      formatResource(&findings[i]),
 				ClassName: findings[i].Checker,
+				Time:      "0",
 				Failure: &junitFailure{
 					Message: findings[i].Message,
 					Type:    findings[i].Severity.String(),
@@ -83,6 +91,24 @@ func (r *JUnitReporter) Generate(ctx context.Context, result *checker.ScanResult
 			suite.TestCases = append(suite.TestCases, tc)
 		}
 		suites.Suites = append(suites.Suites, suite)
+	}
+
+	// Add passed checks as a separate test suite.
+	if len(summary.PassedChecks) > 0 {
+		passedSuite := junitTestSuite{
+			Name:     "passed-checks",
+			Tests:    len(summary.PassedChecks),
+			Failures: 0,
+			Time:     "0",
+		}
+		for _, name := range summary.PassedChecks {
+			passedSuite.TestCases = append(passedSuite.TestCases, junitTestCase{
+				Name:      name,
+				ClassName: "passed-checks",
+				Time:      "0",
+			})
+		}
+		suites.Suites = append(suites.Suites, passedSuite)
 	}
 
 	if _, err := fmt.Fprint(w, xml.Header); err != nil {
@@ -95,8 +121,11 @@ func (r *JUnitReporter) Generate(ctx context.Context, result *checker.ScanResult
 
 type junitTestSuites struct {
 	XMLName    xml.Name         `xml:"testsuites"`
+	Name       string           `xml:"name,attr"`
 	Tests      int              `xml:"tests,attr"`
 	Failures   int              `xml:"failures,attr"`
+	Time       string           `xml:"time,attr"`
+	Timestamp  string           `xml:"timestamp,attr,omitempty"`
 	Properties []junitProperty  `xml:"properties>property,omitempty"`
 	Suites     []junitTestSuite `xml:"testsuite"`
 }
@@ -110,12 +139,14 @@ type junitTestSuite struct {
 	Name      string          `xml:"name,attr"`
 	Tests     int             `xml:"tests,attr"`
 	Failures  int             `xml:"failures,attr"`
+	Time      string          `xml:"time,attr"`
 	TestCases []junitTestCase `xml:"testcase"`
 }
 
 type junitTestCase struct {
 	Name      string        `xml:"name,attr"`
 	ClassName string        `xml:"classname,attr"`
+	Time      string        `xml:"time,attr"`
 	Failure   *junitFailure `xml:"failure,omitempty"`
 }
 

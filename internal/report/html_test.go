@@ -1835,12 +1835,12 @@ func TestHTMLReporter_CheckerMetaScript(t *testing.T) {
 				},
 			},
 			{
-				Checker:  "run-as-root",
-				Severity: checker.SeverityHigh,
-				Resource: "api",
+				Checker:   "run-as-root",
+				Severity:  checker.SeverityHigh,
+				Resource:  "api",
 				Namespace: "default",
-				Kind:     "Deployment",
-				Message:  "root",
+				Kind:      "Deployment",
+				Message:   "root",
 			},
 		},
 		ScanMeta: checker.ScanMeta{

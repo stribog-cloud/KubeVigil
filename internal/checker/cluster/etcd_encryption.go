@@ -13,20 +13,30 @@ import (
 // EtcdEncryptionChecker detects when etcd encryption is not configured.
 type EtcdEncryptionChecker struct{}
 
+// Name returns the kebab-case identifier for this check.
 func (c *EtcdEncryptionChecker) Name() string { return "etcd-encryption" }
+
+// Description returns a human-readable summary of what this check detects.
 func (c *EtcdEncryptionChecker) Description() string {
 	return "Detects etcd encryption configuration status; secrets may be stored in plaintext."
 }
+
+// Categories returns the security categories this check belongs to.
 func (c *EtcdEncryptionChecker) Categories() []checker.Category {
 	return []checker.Category{checker.CategoryClusterConfig}
 }
+
+// SupportedModes returns the scan modes (manifest, live, or both) that support this check.
 func (c *EtcdEncryptionChecker) SupportedModes() []checker.ScanMode {
 	return []checker.ScanMode{checker.ScanModeLive}
 }
+
+// RequiredResources returns the Kubernetes GVRs this check needs to operate.
 func (c *EtcdEncryptionChecker) RequiredResources() []schema.GroupVersionResource {
 	return []schema.GroupVersionResource{ConfigMapGVR}
 }
 
+// Run executes the check against cached resources and returns any findings.
 func (c *EtcdEncryptionChecker) Run(ctx context.Context, resources *checker.ResourceCache) ([]checker.Finding, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("etcd-encryption check: %w", err)
