@@ -3,6 +3,7 @@
 #
 # Binaries for programs and plugins
 /kubevigil
+bin/
 *.exe
 *.exe~
 *.dll
@@ -42,3 +43,9 @@ scan-results/
 *.crt
 *.token
 *.secret
+
+# E2E test runtime artifacts (ephemeral, not part of the test suite)
+test/e2e/results/
+test/e2e/clusters/*.local.yaml
+test/e2e/third-party/kubernetes-goat/
+test/e2e/third-party/microservices-demo/

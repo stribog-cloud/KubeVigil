@@ -1,0 +1,56 @@
+# KubeVigil E2E — Deployment with tag-pinned images but no digest.
+#
+# Triggers:
+#   - image-no-digest (Low) — both containers use a specific version tag but
+#     lack a content-addressable digest (@sha256:...). Tags are mutable pointers
+#     that can be re-pushed to a different image without notice.
+#
+# Does NOT trigger:
+#   - image-tag-latest  — both images have explicit non-latest tags.
+#   - image-tag-missing — both images have explicit tags.
+#   - image-pull-policy — "tag-only" uses imagePullPolicy: Always (safe);
+#                          "tag-pinned" also uses Always.
+#
+# Expected findings: 2
+#   1. image-no-digest on "tag-only"   (nginx:1.25)
+#   2. image-no-digest on "tag-pinned" (registry.k8s.io/pause:3.9)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: no-digest-demo
+  namespace: kv-e2e-image
+  labels:
+    app: no-digest-demo
+    kubevigil.io/scenario: image-security
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: no-digest-demo
+  template:
+    metadata:
+      labels:
+        app: no-digest-demo
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+        # Specific tag without digest — triggers image-no-digest.
+        - name: tag-only
+          image: nginx:1.25
+          imagePullPolicy: Always
+          command: ["sleep", "infinity"]
+          resources:
+            limits:
+              cpu: "10m"
+              memory: "16Mi"
+
+        # Another specific tag without digest — also triggers image-no-digest.
+        # Uses registry.k8s.io, a trusted registry, to show that even
+        # trusted images should be digest-pinned.
+        - name: tag-pinned
+          image: registry.k8s.io/pause:3.9
+          imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: "10m"
+              memory: "16Mi"

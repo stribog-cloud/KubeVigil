@@ -1,0 +1,88 @@
+# KubeVigil E2E — Containers with mutable tags and unsafe pull policies.
+#
+# Triggers:
+#   - image-pull-policy (Medium) — containers using mutable image tags without
+#     imagePullPolicy: Always. Without Always, Kubernetes may serve a cached
+#     (potentially stale or compromised) image from the node's local store.
+#
+# The image-pull-policy checker logic:
+#   1. Skip if image is pinned by digest — immutable, policy is irrelevant.
+#   2. Compute effective pull policy:
+#      - Explicit policy if set, else
+#      - "Always" if image IsLatest() (tag=latest or no tag), else
+#      - "IfNotPresent" (K8s default for non-latest tags).
+#   3. Flag if effective policy is NOT "Always".
+#
+# Also triggers:
+#   - image-no-digest (Low) — all containers lack digest pinning.
+#
+# Does NOT trigger image-pull-policy:
+#   - "safe-always" has imagePullPolicy: Always (explicitly safe).
+#   - "latest-default" uses nginx:latest with no explicit policy;
+#     K8s defaults :latest to Always, so it is safe.
+#
+# Expected image-pull-policy findings: 2
+#   1. "mutable-ifnotpresent" — nginx:1.25 with explicit IfNotPresent
+#   2. "mutable-default"      — nginx:1.25 with no policy (defaults to IfNotPresent)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pull-policy-demo
+  namespace: kv-e2e-image
+  labels:
+    app: pull-policy-demo
+    kubevigil.io/scenario: image-security
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pull-policy-demo
+  template:
+    metadata:
+      labels:
+        app: pull-policy-demo
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+        # Mutable tag with explicit IfNotPresent — triggers image-pull-policy.
+        # This is the most common misconfiguration: a version tag that could
+        # be re-pushed, combined with a policy that allows cached images.
+        - name: mutable-ifnotpresent
+          image: nginx:1.25
+          imagePullPolicy: IfNotPresent
+          command: ["sleep", "infinity"]
+          resources:
+            limits:
+              cpu: "10m"
+              memory: "16Mi"
+
+        # Mutable tag with no explicit policy — K8s defaults non-latest tags
+        # to IfNotPresent, which triggers image-pull-policy.
+        - name: mutable-default
+          image: nginx:1.25
+          command: ["sleep", "infinity"]
+          resources:
+            limits:
+              cpu: "10m"
+              memory: "16Mi"
+
+        # Mutable tag with explicit Always — safe, no image-pull-policy finding.
+        - name: safe-always
+          image: nginx:1.25
+          imagePullPolicy: Always
+          command: ["sleep", "infinity"]
+          resources:
+            limits:
+              cpu: "10m"
+              memory: "16Mi"
+
+        # :latest tag with no explicit policy — K8s defaults :latest to Always,
+        # so this does NOT trigger image-pull-policy. However, it DOES trigger
+        # image-tag-latest (Medium).
+        - name: latest-default
+          image: nginx:latest
+          command: ["sleep", "infinity"]
+          resources:
+            limits:
+              cpu: "10m"
+              memory: "16Mi"

@@ -1,0 +1,42 @@
+# E2E Scenario: ClusterRoleBindings referencing overly broad groups
+#
+# Triggers:
+#   - rbac-group-bindings (High) — bindings reference the
+#     system:authenticated and system:unauthenticated groups.
+#
+# system:authenticated includes every authenticated user (i.e.,
+# anyone with a valid token). system:unauthenticated includes
+# anonymous API requests. Granting roles to either group
+# effectively removes access control.
+---
+# Binding to system:authenticated — every logged-in user gets view access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kv-e2e-group-binding-authenticated
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: Group
+    name: system:authenticated
+    apiGroup: rbac.authorization.k8s.io
+---
+# Binding to system:unauthenticated — anonymous access to discovery
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kv-e2e-group-binding-unauthenticated
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:discovery
+subjects:
+  - kind: Group
+    name: system:unauthenticated
+    apiGroup: rbac.authorization.k8s.io

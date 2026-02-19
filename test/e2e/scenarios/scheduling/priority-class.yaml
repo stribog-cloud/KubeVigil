@@ -1,0 +1,56 @@
+# KubeVigil E2E — Priority Class Misuse
+#
+# Two workloads demonstrating priority class issues:
+#
+# 1. system-priority-app: A non-system workload using system-cluster-critical,
+#    which can preempt legitimate system pods like CoreDNS and kube-proxy.
+#
+# 2. no-priority-app: A workload with no PriorityClass at all, meaning it
+#    gets default priority (0) and is evicted first under resource pressure.
+#
+# Triggers:
+#   - priority-class-system  (High): non-system namespace using system-cluster-critical
+#   - priority-class-missing (Low):  no priorityClassName set
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: system-priority-app
+  namespace: kv-e2e-scheduling
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: system-priority-app
+  template:
+    metadata:
+      labels:
+        app: system-priority-app
+    spec:
+      priorityClassName: system-cluster-critical
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: no-priority-app
+  namespace: kv-e2e-scheduling
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: no-priority-app
+  template:
+    metadata:
+      labels:
+        app: no-priority-app
+    spec:
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9

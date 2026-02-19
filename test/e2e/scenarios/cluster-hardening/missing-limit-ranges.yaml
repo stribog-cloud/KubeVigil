@@ -1,0 +1,43 @@
+# E2E Scenario: Namespace without a LimitRange
+#
+# Triggers:
+#   - limit-range-missing (Low) -- namespace kv-e2e-cluster-no-limits has
+#     no LimitRange, so any container can be created without resource
+#     constraints and potentially starve other workloads on the node.
+#
+# The limit-range-missing checker iterates all non-system namespaces and
+# flags those with zero LimitRange objects. A deployment is included so
+# the namespace is not empty (closer to a real-world scenario).
+#
+# Clean up after testing:
+#   kubectl delete namespace kv-e2e-cluster-no-limits
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kv-e2e-cluster-no-limits
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: cluster-hardening
+---
+# No LimitRange is defined in this namespace -- that is the point.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kv-e2e-no-limits-app
+  namespace: kv-e2e-cluster-no-limits
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kv-e2e-no-limits-app
+  template:
+    metadata:
+      labels:
+        app: kv-e2e-no-limits-app
+    spec:
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9

@@ -1,0 +1,28 @@
+# KubeVigil E2E — Missing PodDisruptionBudget
+#
+# A Deployment with 3 replicas and NO matching PodDisruptionBudget.
+# All replicas can be evicted simultaneously during node drain.
+#
+# Triggers:
+#   - pod-disruption-budget (Low): replicas > 1 without a PDB
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: no-pdb-app
+  namespace: kv-e2e-scheduling
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: no-pdb-app
+  template:
+    metadata:
+      labels:
+        app: no-pdb-app
+    spec:
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9

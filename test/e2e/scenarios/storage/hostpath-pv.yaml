@@ -1,0 +1,61 @@
+# E2E Scenario: PersistentVolume using hostPath
+#
+# A PV backed by a hostPath directory. hostPath volumes bypass normal
+# storage isolation — a pod mounting this PV gains direct access to the
+# node filesystem. In production clusters hostPath should be avoided.
+#
+# Note: PersistentVolumes are cluster-scoped (no namespace field).
+#       The matching PVC is namespaced in kv-e2e-storage.
+#
+# Triggers:
+#   - pvc-reclaim-retain (Medium) — PV uses Retain reclaim policy.
+#     (Finding only fires in live mode when PV enters Released state.)
+#   - pvc-no-encryption (Medium) — PVC references StorageClass "manual"
+#     which has no encryption parameters.
+#
+# Usage:
+#   kubectl apply -f namespace.yaml
+#   kubectl apply -f hostpath-pv.yaml
+#   kubevigil scan
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: kv-e2e-manual
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+# No encryption parameters — triggers pvc-no-encryption on bound PVCs
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: kv-e2e-hostpath-pv
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain    # Data persists after PVC deletion
+  storageClassName: kv-e2e-manual
+  hostPath:
+    path: /tmp/kv-e2e-storage
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hostpath-claim
+  namespace: kv-e2e-storage
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  storageClassName: kv-e2e-manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

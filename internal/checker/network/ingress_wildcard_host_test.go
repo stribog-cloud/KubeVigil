@@ -171,6 +171,29 @@ func TestIngressWildcardHostChecker_Run(t *testing.T) {
 			wantResource: "bad-ing",
 		},
 		{
+			name: "ingress with wildcard subdomain *.example.com triggers finding",
+			setup: func() *checker.ResourceCache {
+				cache := checker.NewResourceCache()
+				ing := makeIngress("wildcard-sub", "default", map[string]interface{}{
+					"rules": []interface{}{
+						map[string]interface{}{
+							"host": "*.example.com",
+							"http": map[string]interface{}{
+								"paths": []interface{}{},
+							},
+						},
+					},
+				})
+				cache.Add(IngressGVR, ing)
+				return cache
+			},
+			wantFindings: 1,
+			wantResource: "wildcard-sub",
+			verify: func(t *testing.T, findings []checker.Finding) {
+				assert.Equal(t, ".spec.rules[0].host", findings[0].FieldPath)
+			},
+		},
+		{
 			name: "ingress with subdomain host is not wildcard",
 			setup: func() *checker.ResourceCache {
 				cache := checker.NewResourceCache()

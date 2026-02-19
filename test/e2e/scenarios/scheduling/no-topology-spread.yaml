@@ -1,0 +1,28 @@
+# KubeVigil E2E — Missing Topology Spread Constraints
+#
+# A multi-replica Deployment without topologySpreadConstraints.
+# All replicas may land on the same node, negating high availability.
+#
+# Triggers:
+#   - topology-spread (Low): no topologySpreadConstraints defined
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: no-topology-spread-app
+  namespace: kv-e2e-scheduling
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: no-topology-spread-app
+  template:
+    metadata:
+      labels:
+        app: no-topology-spread-app
+    spec:
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9

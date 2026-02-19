@@ -1,0 +1,74 @@
+# KubeVigil E2E — Resource Limits and Requests
+#
+# Triggers:
+#   - resource-limits-missing (Medium): Container is missing CPU or memory
+#     limits. The checker (internal/checker/workload/resource_limits_missing.go)
+#     flags when resources.limits is nil or missing cpu/memory keys.
+#
+#   - resource-requests-missing (Medium): Container is missing CPU or memory
+#     requests. The checker (internal/checker/workload/resource_requests_missing.go)
+#     flags when resources.requests is nil or missing cpu/memory keys.
+#
+#   - resource-limits-ratio (Low): Container has a limits-to-requests ratio
+#     exceeding 3.0x. The checker
+#     (internal/checker/workload/resource_limits_ratio.go) uses threshold 3.0.
+#
+#   - ephemeral-storage-limits (Low): Container is missing
+#     ephemeral-storage limits. The checker
+#     (internal/checker/workload/ephemeral_storage_limits.go) flags when
+#     resources.limits does not contain the ephemeral-storage key.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resource-issues
+  namespace: kv-e2e-workload
+  labels:
+    app: resource-issues
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: resource-issues
+  template:
+    metadata:
+      labels:
+        app: resource-issues
+    spec:
+      containers:
+        # Triggers: resource-limits-missing (no limits at all)
+        # Triggers: resource-requests-missing (no requests at all)
+        # Triggers: ephemeral-storage-limits (no ephemeral-storage limit)
+        - name: no-resources
+          image: registry.k8s.io/pause:3.9
+
+        # Triggers: resource-requests-missing (has limits but no requests)
+        # Triggers: ephemeral-storage-limits (no ephemeral-storage limit)
+        - name: limits-no-requests
+          image: registry.k8s.io/pause:3.9
+          resources:
+            limits:
+              cpu: 500m
+              memory: 256Mi
+
+        # Triggers: resource-limits-ratio (CPU: 1000m/100m = 10x, memory: 2Gi/128Mi ~= 16x)
+        # Triggers: ephemeral-storage-limits (no ephemeral-storage limit)
+        # The threshold is 3.0x; these ratios far exceed it.
+        - name: extreme-ratio
+          image: registry.k8s.io/pause:3.9
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+
+        # Triggers: resource-limits-missing (has requests but no limits)
+        # Triggers: ephemeral-storage-limits (no ephemeral-storage limit)
+        - name: requests-no-limits
+          image: registry.k8s.io/pause:3.9
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi

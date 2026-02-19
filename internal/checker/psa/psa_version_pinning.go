@@ -70,7 +70,7 @@ func (c *VersionPinningChecker) Run(ctx context.Context, resources *checker.Reso
 					Checker:   "psa-version-pinning",
 					Severity:  checker.SeverityLow,
 					Resource:  name,
-					Namespace: "",
+					Namespace: name,
 					Kind:      "Namespace",
 					Message:   fmt.Sprintf("Namespace %q has PSA version label %s pinned to %q instead of \"latest\"; new restrictions won't apply on upgrade.", name, versionLabel, val),
 					Remediation: fmt.Sprintf(

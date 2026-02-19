@@ -1,0 +1,19 @@
+# KubeVigil E2E — Mixed Scenario Namespace
+#
+# This namespace contains E2E manifests that simulate real-world production
+# deployments with varying security postures. Unlike single-check scenarios,
+# these manifests intentionally combine multiple security issues to test how
+# KubeVigil reports on realistic, multi-dimensional attack surfaces.
+#
+# Deploy this namespace first before applying any other manifests in this
+# directory.
+#
+# Usage:
+#   kubectl apply -f namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kv-e2e-mixed
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: mixed

@@ -1,0 +1,35 @@
+# E2E Scenario: PVC without explicit storageClassName
+#
+# A PVC that omits the storageClassName field entirely. Kubernetes will
+# assign the cluster's default StorageClass, which may or may not have
+# encryption enabled. Relying on the default makes encryption posture
+# unpredictable across environments.
+#
+# Triggers:
+#   - pvc-no-encryption (Medium) — PVC has no explicit storageClassName.
+#     The checker skips PVCs without a storageClassName, so this manifest
+#     demonstrates the gap: without a named StorageClass, encryption
+#     cannot be verified from the manifest alone.
+#
+# Note: In a Kind cluster the default StorageClass (standard / rancher.io/
+#       local-path) will bind this PVC. The PVC itself is valid.
+#
+# Usage:
+#   kubectl apply -f namespace.yaml
+#   kubectl apply -f no-storage-class.yaml
+#   kubevigil scan --namespace kv-e2e-storage
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-no-sc
+  namespace: kv-e2e-storage
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  # storageClassName intentionally omitted — falls back to cluster default
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi

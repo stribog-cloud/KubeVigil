@@ -1,0 +1,55 @@
+# KubeVigil E2E -- Pod Security Standards: Audit/Warn Only (No Enforce)
+#
+# Scenario: A namespace with PSA audit and warn labels set to "baseline",
+# but NO enforce label. Violations are logged and shown as warnings to
+# users, but non-compliant pods are still admitted.
+#
+# Triggers:
+#   - psa-mode-audit-only (Medium) -- the namespace has
+#     pod-security.kubernetes.io/audit and pod-security.kubernetes.io/warn
+#     labels but is missing the pod-security.kubernetes.io/enforce label.
+#
+# Apply:
+#   kubectl apply -f psa-mode-mismatch.yaml
+#
+# Clean up:
+#   kubectl delete namespace kv-e2e-psa-audit
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kv-e2e-psa-audit
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: psa
+    # Audit and warn are configured, but enforce is deliberately absent.
+    # The PSA admission controller will log violations and show warnings,
+    # but it will NOT reject non-compliant pods.
+    # Triggers: psa-mode-audit-only (Medium)
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline
+---
+# A simple deployment to prove that pods land in this namespace without
+# being rejected, even though they would violate the baseline profile
+# if enforcement were enabled.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: audit-only-app
+  namespace: kv-e2e-psa-audit
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    app: audit-only-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: audit-only-app
+  template:
+    metadata:
+      labels:
+        app: audit-only-app
+    spec:
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9

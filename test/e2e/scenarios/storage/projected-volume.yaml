@@ -1,0 +1,41 @@
+# E2E Scenario: projected-volume-security (Medium)
+#
+# A Pod with a projected volume whose defaultMode is 0644 (octal 420).
+# This is Kubernetes' default and means token files are world-readable
+# inside the pod. Any process — including a compromised sidecar — can
+# read the service account token. The safe threshold is 0600 or lower.
+#
+# Triggers:
+#   - projected-volume-security (Medium) — projected volume "sa-token"
+#     has defaultMode 0644, which is too permissive.
+#
+# Usage:
+#   kubectl apply -f namespace.yaml
+#   kubectl apply -f projected-volume.yaml
+#   kubevigil scan --namespace kv-e2e-storage
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: projected-permissive
+  namespace: kv-e2e-storage
+  labels:
+    app: projected-permissive
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  containers:
+    - name: pause
+      image: registry.k8s.io/pause:3.9
+      volumeMounts:
+        - name: sa-token
+          mountPath: /var/run/secrets/tokens
+          readOnly: true
+  volumes:
+    - name: sa-token
+      projected:
+        defaultMode: 0644                   # Too permissive — should be 0600 or 0400
+        sources:
+          - serviceAccountToken:
+              path: token
+              expirationSeconds: 3600
+              audience: api

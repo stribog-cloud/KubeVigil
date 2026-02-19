@@ -166,6 +166,13 @@ func TestModeAuditOnlyChecker_Run(t *testing.T) {
 				if tt.wantResource != "" {
 					helpers.AssertFindingForResource(t, findings, tt.wantResource)
 				}
+
+				// Regression: Namespace field must match the namespace name, not be empty.
+				// Bug fix: psa_mode_audit_only.go changed Namespace: "" to Namespace: name.
+				for _, f := range findings {
+					assert.Equal(t, f.Resource, f.Namespace,
+						"Finding.Namespace must equal the namespace name (Resource), not be empty")
+				}
 			}
 		})
 	}

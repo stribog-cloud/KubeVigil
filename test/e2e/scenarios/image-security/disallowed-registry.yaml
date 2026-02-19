@@ -1,0 +1,79 @@
+# KubeVigil E2E — Deployment pulling from non-standard registries.
+#
+# Triggers (when kubevigil is configured with registry policies):
+#   - image-registry-allowlist (High)     — images pulled from registries not
+#     in the configured allowed list. Requires .kubevigil.yaml with:
+#       policies:
+#         images:
+#           allowedRegistries:
+#             - registry.k8s.io
+#             - docker.io
+#
+#   - image-registry-blocklist (Critical) — images pulled from explicitly
+#     blocked registries. Requires .kubevigil.yaml with:
+#       policies:
+#         images:
+#           blockedRegistries:
+#             - some-untrusted-registry.io
+#             - quay.io/malicious-org
+#
+# NOTE: Both registry checks are NO-OPs without policy configuration.
+# When running E2E tests, supply a .kubevigil.yaml that defines the
+# allowedRegistries and/or blockedRegistries lists.
+#
+# Also triggers:
+#   - image-no-digest (Low) — none of the images use digest pinning.
+#
+# Expected findings (with both policies configured): 4
+#   1. image-registry-allowlist on "untrusted-app"   (some-untrusted-registry.io)
+#   2. image-registry-allowlist on "another-unknown"  (internal.corp.example.com)
+#   3. image-registry-blocklist on "untrusted-app"   (some-untrusted-registry.io)
+#   4. image-no-digest          on all three containers
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: disallowed-registry-demo
+  namespace: kv-e2e-image
+  labels:
+    app: disallowed-registry-demo
+    kubevigil.io/scenario: image-security
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: disallowed-registry-demo
+  template:
+    metadata:
+      labels:
+        app: disallowed-registry-demo
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+        # Image from an untrusted/blocked registry — triggers both
+        # image-registry-allowlist and image-registry-blocklist.
+        - name: untrusted-app
+          image: some-untrusted-registry.io/app:v1
+          command: ["sleep", "infinity"]
+          resources:
+            limits:
+              cpu: "10m"
+              memory: "16Mi"
+
+        # Image from an unknown private registry — triggers
+        # image-registry-allowlist only (not on blocklist).
+        - name: another-unknown
+          image: internal.corp.example.com/tools/debugger:2.0
+          command: ["sleep", "infinity"]
+          resources:
+            limits:
+              cpu: "10m"
+              memory: "16Mi"
+
+        # Image from a trusted registry — no registry finding expected.
+        # Still triggers image-no-digest since no @sha256 is present.
+        - name: trusted-pause
+          image: registry.k8s.io/pause:3.9
+          resources:
+            limits:
+              cpu: "10m"
+              memory: "16Mi"

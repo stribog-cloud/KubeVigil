@@ -1,0 +1,58 @@
+# KubeVigil E2E — Host Namespace Sharing
+#
+# Triggers:
+#   - host-pid (Critical): Pod has hostPID: true. The checker
+#     (internal/checker/workload/host_pid.go) flags info.Spec.HostPID.
+#
+#   - host-ipc (Critical): Pod has hostIPC: true. The checker
+#     (internal/checker/workload/host_ipc.go) flags info.Spec.HostIPC.
+#
+#   - host-network (Critical): Pod has hostNetwork: true. The checker
+#     (internal/checker/workload/host_network.go) flags info.Spec.HostNetwork.
+#
+# Each flag is on a separate Pod so findings are clearly attributable.
+---
+# Triggers: host-pid (Critical)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: host-pid-pod
+  namespace: kv-e2e-workload
+  labels:
+    app: host-namespaces-test
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  hostPID: true
+  containers:
+    - name: pid-container
+      image: registry.k8s.io/pause:3.9
+---
+# Triggers: host-ipc (Critical)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: host-ipc-pod
+  namespace: kv-e2e-workload
+  labels:
+    app: host-namespaces-test
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  hostIPC: true
+  containers:
+    - name: ipc-container
+      image: registry.k8s.io/pause:3.9
+---
+# Triggers: host-network (Critical)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: host-network-pod
+  namespace: kv-e2e-workload
+  labels:
+    app: host-namespaces-test
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  hostNetwork: true
+  containers:
+    - name: network-container
+      image: registry.k8s.io/pause:3.9

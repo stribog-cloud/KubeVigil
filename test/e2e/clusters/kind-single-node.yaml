@@ -1,0 +1,21 @@
+# KubeVigil E2E — Single-Node Cluster
+#
+# Purpose: Quick smoke tests. A single control-plane node that also
+# schedules workloads (Kind default behavior for a single node).
+# Use this for fast iteration on checker logic that does not require
+# multi-node topology (affinity, topology spread, PDB, etc.).
+#
+# Create:  kind create cluster --config test/e2e/clusters/kind-single-node.yaml
+# Delete:  kind delete cluster --name kubevigil-e2e-single
+
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: kubevigil-e2e-single
+
+nodes:
+  # Single node acts as both control-plane and worker.
+  - role: control-plane
+    labels:
+      # Mark the node so tests can assert on label presence.
+      kubevigil.io/e2e: "true"
+      kubevigil.io/cluster-profile: "single-node"

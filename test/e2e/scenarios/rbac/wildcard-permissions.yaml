@@ -1,0 +1,96 @@
+# E2E Scenario: Roles and ClusterRoles using wildcard permissions
+#
+# Triggers:
+#   - rbac-wildcard-verbs     (Critical) — Role with verbs: ["*"]
+#   - rbac-wildcard-resources (Critical) — ClusterRole with resources: ["*"]
+#   - rbac-wildcard-apigroups (Critical) — ClusterRole with apiGroups: ["*"]
+#
+# Each resource demonstrates a different wildcard axis. Wildcard
+# permissions defeat the principle of least privilege and should
+# always be flagged.
+---
+# Wildcard verbs — grants every verb on pods in the namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kv-e2e-wildcard-verbs
+  namespace: kv-e2e-rbac
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["*"]
+---
+# RoleBinding so the wildcard-verbs Role is actively in use
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kv-e2e-wildcard-verbs-binding
+  namespace: kv-e2e-rbac
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kv-e2e-wildcard-verbs
+subjects:
+  - kind: ServiceAccount
+    name: kv-e2e-test-sa
+    namespace: kv-e2e-rbac
+---
+# Wildcard resources — grants get/list on every resource type
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kv-e2e-wildcard-resources
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+rules:
+  - apiGroups: [""]
+    resources: ["*"]
+    verbs: ["get", "list"]
+---
+# ClusterRoleBinding so kv-e2e-wildcard-resources is actively in use
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kv-e2e-wildcard-resources-binding
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kv-e2e-wildcard-resources
+subjects:
+  - kind: ServiceAccount
+    name: kv-e2e-test-sa
+    namespace: kv-e2e-rbac
+---
+# Wildcard apiGroups — grants get/list on pods across all API groups
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kv-e2e-wildcard-apigroups
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+rules:
+  - apiGroups: ["*"]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+# ClusterRoleBinding so kv-e2e-wildcard-apigroups is actively in use
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kv-e2e-wildcard-apigroups-binding
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kv-e2e-wildcard-apigroups
+subjects:
+  - kind: ServiceAccount
+    name: kv-e2e-test-sa
+    namespace: kv-e2e-rbac

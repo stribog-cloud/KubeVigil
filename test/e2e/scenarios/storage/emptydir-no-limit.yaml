@@ -1,0 +1,41 @@
+# E2E Scenario: emptydir-size-limit (Low)
+#
+# A Deployment with an emptyDir volume that has no sizeLimit set.
+# Without a limit a container can write unlimited data to the node
+# filesystem, risking node-level disk exhaustion and pod evictions.
+#
+# Triggers:
+#   - emptydir-size-limit (Low) — emptyDir volume "scratch" has no sizeLimit.
+#
+# Usage:
+#   kubectl apply -f namespace.yaml
+#   kubectl apply -f emptydir-no-limit.yaml
+#   kubevigil scan --namespace kv-e2e-storage
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: emptydir-no-limit
+  namespace: kv-e2e-storage
+  labels:
+    app: emptydir-no-limit
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: emptydir-no-limit
+  template:
+    metadata:
+      labels:
+        app: emptydir-no-limit
+    spec:
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9
+          volumeMounts:
+            - name: scratch
+              mountPath: /scratch
+      volumes:
+        - name: scratch
+          emptyDir: {}          # No sizeLimit — triggers emptydir-size-limit

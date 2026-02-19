@@ -1,0 +1,337 @@
+# KubeVigil E2E — Realistic Microservices Application
+#
+# Realistic microservices app with varying security postures across services.
+#
+# A 4-service application (frontend, backend, database, cache) deployed in
+# kv-e2e-mixed namespace. Each service has a different security posture,
+# reflecting how real teams often harden services unevenly — the frontend
+# gets attention because it faces the internet, the database gets some care
+# because it holds data, but internal services like cache are neglected.
+#
+# Services and their issues:
+#
+#   frontend (nginx:alpine):
+#     - image-no-digest          (Low)    — no digest pinning
+#     - image-tag-latest         (Medium) — :latest tag on nginx
+#     - seccomp-profile          (Medium) — no seccomp profile
+#     - liveness-readiness-probes (Low)   — no health probes
+#     - privilege-escalation     (High)   — not explicitly denied
+#     - capabilities-not-dropped (Medium) — caps not dropped
+#     - run-as-root              (High)   — no runAsNonRoot set
+#     - read-only-rootfs         (Medium) — no readOnlyRootFilesystem
+#
+#   backend (busybox):
+#     - image-no-digest          (Low)    — no digest pinning
+#     - run-as-root              (High)   — no runAsNonRoot set
+#     - secrets-in-env           (Medium) — Secret ref in env (DB_PASSWORD)
+#     - capabilities-added       (Medium) — NET_BIND_SERVICE added
+#     - seccomp-profile          (Medium) — no seccomp profile
+#     - privilege-escalation     (High)   — not explicitly denied
+#     - read-only-rootfs         (Medium) — no readOnlyRootFilesystem
+#
+#   database (busybox simulating postgres):
+#     - image-no-digest          (Low)    — no digest pinning
+#     - host-path-volumes        (High)   — hostPath volume for /data
+#     - read-only-rootfs         (Medium) — no readOnlyRootFilesystem
+#     - seccomp-profile          (Medium) — no seccomp profile
+#     - capabilities-not-dropped (Medium) — caps not dropped
+#     - privilege-escalation     (High)   — not explicitly denied
+#
+#   cache (busybox simulating redis):
+#     - image-no-digest          (Low)    — no digest pinning
+#     - host-ports               (Medium) — hostPort 6379 exposed
+#     - run-as-root              (High)   — no security context at all
+#     - read-only-rootfs         (Medium) — no readOnlyRootFilesystem
+#     - capabilities-not-dropped (Medium) — no caps dropped
+#     - seccomp-profile          (Medium) — no seccomp profile
+#     - privilege-escalation     (High)   — not explicitly denied
+#     - resource-limits-missing  (Medium) — no resource limits
+#     - resource-requests-missing (Medium) — no resource requests
+#
+# Services:
+#   - service-type-nodeport    (Medium)  — frontend exposed as NodePort
+#
+# Usage:
+#   kubectl apply -f namespace.yaml
+#   kubectl apply -f microservices-app.yaml
+#   kubevigil scan --namespace kv-e2e-mixed
+
+# ============================================================================
+# Frontend — nginx reverse proxy / static file server
+# ============================================================================
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: kv-e2e-mixed
+  labels:
+    app: frontend
+    tier: web
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: mixed
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        tier: web
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+              name: http
+          # No seccomp profile
+          # No security context at all — runs as root, writable rootfs
+          # No probes
+          resources:
+            limits:
+              cpu: "100m"
+              memory: "128Mi"
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: kv-e2e-mixed
+  labels:
+    app: frontend
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  # NodePort exposes the service on every node's IP — triggers
+  # service-type-nodeport. In production, prefer Ingress with TLS.
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30080
+      protocol: TCP
+      name: http
+  selector:
+    app: frontend
+
+# ============================================================================
+# Backend — API server
+# ============================================================================
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: kv-e2e-mixed
+  labels:
+    app: backend
+    tier: api
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: mixed
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+        tier: api
+    spec:
+      containers:
+        - name: api
+          image: busybox:1.36
+          command: ["sh", "-c", "sleep infinity"]
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            # Database credentials pulled from a Secret — triggers secrets-in-env.
+            # Using Secret refs is better than hardcoding, but env vars are still
+            # visible via kubectl describe, /proc, and crash dumps. Best practice
+            # is to mount secrets as files or use an external secrets operator.
+            - name: DB_HOST
+              value: "database.kv-e2e-mixed.svc.cluster.local"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: password
+          securityContext:
+            # Runs as root — no runAsNonRoot, no runAsUser
+            # Adding NET_BIND_SERVICE to bind to ports < 1024.
+            # This is a valid use case but still flagged because capabilities
+            # should be minimized — run on a high port instead.
+            capabilities:
+              add:
+                - NET_BIND_SERVICE
+          resources:
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: kv-e2e-mixed
+  labels:
+    app: backend
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: backend
+
+# ============================================================================
+# Database — simulated PostgreSQL
+# ============================================================================
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: database
+  namespace: kv-e2e-mixed
+  labels:
+    app: database
+    tier: data
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: mixed
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: database
+  template:
+    metadata:
+      labels:
+        app: database
+        tier: data
+    spec:
+      containers:
+        - name: postgres
+          image: busybox:1.36
+          command: ["sh", "-c", "sleep infinity"]
+          ports:
+            - containerPort: 5432
+              name: postgres
+          securityContext:
+            privileged: false
+            # Runs as UID 999 (postgres convention) — good practice,
+            # but runAsNonRoot not set so Kubernetes doesn't enforce it.
+            runAsUser: 999
+            # No readOnlyRootFilesystem — database writes to the filesystem
+            # No capabilities dropped
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        # hostPath volume for database storage — triggers host-path-volumes.
+        # This ties the pod to a specific node, bypasses storage access controls,
+        # and exposes the host filesystem. Use PersistentVolumeClaim instead.
+        - name: data
+          hostPath:
+            path: /mnt/data/postgres
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: database
+  namespace: kv-e2e-mixed
+  labels:
+    app: database
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP
+      name: postgres
+  selector:
+    app: database
+
+# ============================================================================
+# Cache — simulated Redis
+# ============================================================================
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cache
+  namespace: kv-e2e-mixed
+  labels:
+    app: cache
+    tier: data
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: mixed
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cache
+  template:
+    metadata:
+      labels:
+        app: cache
+        tier: data
+    spec:
+      # No security context at all — the most neglected service in the stack.
+      # Teams often skip hardening for "just a cache" but Redis has been the
+      # entry point in many real-world breaches (cryptomining, data exfil).
+      containers:
+        - name: redis
+          image: busybox:1.36
+          command: ["sh", "-c", "sleep infinity"]
+          ports:
+            - containerPort: 6379
+              name: redis
+              # hostPort exposes the container port directly on the node's
+              # network interface — triggers host-ports. Any process on the
+              # node (or anything that can reach the node IP) can connect to
+              # Redis without going through Kubernetes networking or
+              # NetworkPolicy enforcement.
+              hostPort: 6379
+          # No securityContext — runs as root, writable rootfs, no caps dropped
+          # No resources — no limits, no requests
+          # No probes
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cache
+  namespace: kv-e2e-mixed
+  labels:
+    app: cache
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6379
+      targetPort: 6379
+      protocol: TCP
+      name: redis
+  selector:
+    app: cache

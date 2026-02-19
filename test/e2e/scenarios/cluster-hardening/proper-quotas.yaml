@@ -1,0 +1,87 @@
+# E2E Scenario: Properly hardened namespace (passing example)
+#
+# This namespace has both a ResourceQuota and a LimitRange defined,
+# demonstrating the correct configuration. It serves as a contrast to the
+# failing scenarios in this directory.
+#
+# Should NOT trigger:
+#   - resource-quota-missing  (ResourceQuota is present)
+#   - limit-range-missing     (LimitRange is present)
+#
+# Clean up after testing:
+#   kubectl delete namespace kv-e2e-cluster-proper
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kv-e2e-cluster-proper
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: cluster-hardening
+---
+# ResourceQuota caps total resource consumption for the namespace.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-quota
+  namespace: kv-e2e-cluster-proper
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+    pods: "20"
+    services: "5"
+---
+# LimitRange sets default and maximum per-container resource constraints.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: default-limits
+  namespace: kv-e2e-cluster-proper
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      max:
+        cpu: "2"
+        memory: 1Gi
+---
+# A sample workload that lives in the properly configured namespace.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kv-e2e-proper-app
+  namespace: kv-e2e-cluster-proper
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kv-e2e-proper-app
+  template:
+    metadata:
+      labels:
+        app: kv-e2e-proper-app
+    spec:
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi

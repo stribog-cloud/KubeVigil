@@ -1,0 +1,49 @@
+# E2E Scenario: network-policy-overly-permissive (Medium)
+#
+# This manifest creates two NetworkPolicies that provide no real segmentation:
+#
+# 1. allow-all-ingress — An ingress rule with an empty "from" (absent key in
+#    the rule object), which the checker treats as "allow from everywhere".
+#    The empty rule `- {}` means the ingress rule has no "from" field at all.
+#
+# 2. allow-all-egress — An egress rule with ipBlock CIDR 0.0.0.0/0 and no
+#    "except" entries, plus no port restrictions. This is an unrestricted
+#    egress rule that the checker detects as overly permissive.
+#
+# Expected findings:
+#   - network-policy-overly-permissive (Medium) — allow-all-ingress allows all
+#     ingress traffic (empty from).
+#   - network-policy-overly-permissive (Medium) — allow-all-egress allows all
+#     egress traffic (0.0.0.0/0 without except).
+#
+# Usage:
+#   kubectl apply -f namespace.yaml  # Create namespace first
+#   kubectl apply -f permissive-policy.yaml
+#   kubevigil scan --namespace kv-e2e-network
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-all-ingress
+  namespace: kv-e2e-network
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    # Empty rule — no "from" key means allow from all sources.
+    - {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-all-egress
+  namespace: kv-e2e-network
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0

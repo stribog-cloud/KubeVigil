@@ -1,0 +1,127 @@
+# KubeVigil E2E -- Pod Security Standards: Baseline Profile Violations
+#
+# Scenario: A namespace labelled with PSA audit:baseline (NOT enforce, so the
+# pods actually get created in a Kind cluster), plus workloads that violate
+# the PSS Baseline profile.
+#
+# Triggers:
+#   - psa-baseline-violations (High) -- workloads use hostNetwork, hostPID,
+#     privileged containers, and dangerous capability additions (SYS_ADMIN).
+#   - psa-mode-audit-only (Medium) -- the namespace has audit/warn labels
+#     but no enforce label (co-trigger, intentional for this scenario).
+#
+# Note: We use audit+warn mode instead of enforce so that the Kubernetes API
+# server accepts the pods. We are testing KubeVigil's detection, not the
+# cluster's built-in PSA enforcement.
+#
+# Apply:
+#   kubectl apply -f psa-baseline-violations.yaml
+#
+# Clean up:
+#   kubectl delete namespace kv-e2e-psa-baseline
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kv-e2e-psa-baseline
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    kubevigil.stribog.cloud/scenario: psa
+    # Audit + warn only -- no enforce label so pods are admitted.
+    # This also co-triggers: psa-mode-audit-only (Medium)
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline
+---
+# Deployment 1: hostNetwork violation
+# Triggers: psa-baseline-violations (High) -- hostNetwork is true
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: host-network-app
+  namespace: kv-e2e-psa-baseline
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    app: host-network-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: host-network-app
+  template:
+    metadata:
+      labels:
+        app: host-network-app
+    spec:
+      # Violates PSS Baseline: hostNetwork gives pod full access to the
+      # node's network stack, bypassing NetworkPolicy isolation.
+      # Triggers: psa-baseline-violations (High) via .spec.hostNetwork
+      hostNetwork: true
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9
+---
+# Deployment 2: privileged container + hostPID violation
+# Triggers: psa-baseline-violations (High) -- privileged is true
+# Triggers: psa-baseline-violations (High) -- hostPID is true
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: privileged-app
+  namespace: kv-e2e-psa-baseline
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    app: privileged-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: privileged-app
+  template:
+    metadata:
+      labels:
+        app: privileged-app
+    spec:
+      # Violates PSS Baseline: hostPID shares the host process namespace.
+      # Triggers: psa-baseline-violations (High) via .spec.hostPID
+      hostPID: true
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9
+          securityContext:
+            # Violates PSS Baseline: privileged gives full root-equivalent
+            # access to the host, including all devices and capabilities.
+            # Triggers: psa-baseline-violations (High) via
+            #   .spec.containers[0].securityContext.privileged
+            privileged: true
+---
+# Deployment 3: dangerous capability addition (SYS_ADMIN)
+# Triggers: psa-baseline-violations (High) -- adds SYS_ADMIN capability
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dangerous-caps-app
+  namespace: kv-e2e-psa-baseline
+  labels:
+    app.kubernetes.io/part-of: kubevigil-e2e
+    app: dangerous-caps-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dangerous-caps-app
+  template:
+    metadata:
+      labels:
+        app: dangerous-caps-app
+    spec:
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9
+          securityContext:
+            capabilities:
+              # Violates PSS Baseline: SYS_ADMIN enables mount, namespace
+              # manipulation, and other operations that enable container escape.
+              # Triggers: psa-baseline-violations (High) via
+              #   .spec.containers[0].securityContext.capabilities.add
+              add:
+                - SYS_ADMIN

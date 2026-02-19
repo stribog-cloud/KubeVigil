@@ -1,0 +1,52 @@
+# KubeVigil E2E — Missing Seccomp and AppArmor Profiles
+#
+# Triggers:
+#   - seccomp-profile (Medium): Container does not have a Seccomp profile set
+#     at either container or pod level. The checker
+#     (internal/checker/workload/seccomp_profile.go) flags when neither
+#     container-level nor pod-level seccompProfile is RuntimeDefault or
+#     Localhost.
+#
+#   - apparmor-profile (Medium): Container does not have an AppArmor profile
+#     set. The checker (internal/checker/workload/apparmor_profile.go) checks
+#     the K8s 1.30+ securityContext.appArmorProfile field (not the legacy
+#     annotation). Flags when this field is nil.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: missing-profiles
+  namespace: kv-e2e-workload
+  labels:
+    app: missing-profiles
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: missing-profiles
+  template:
+    metadata:
+      labels:
+        app: missing-profiles
+    spec:
+      # No pod-level seccompProfile — each container must have its own.
+      containers:
+        # Triggers: seccomp-profile (no seccomp at container or pod level)
+        # Triggers: apparmor-profile (no appArmorProfile field)
+        - name: no-seccomp-no-apparmor
+          image: registry.k8s.io/pause:3.9
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            # Intentionally missing seccompProfile and appArmorProfile
+
+        # Triggers: apparmor-profile (no appArmorProfile field)
+        # Does NOT trigger seccomp-profile (seccomp is set)
+        - name: seccomp-only
+          image: registry.k8s.io/pause:3.9
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            seccompProfile:
+              type: RuntimeDefault
+            # Intentionally missing appArmorProfile

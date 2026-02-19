@@ -1,0 +1,35 @@
+# KubeVigil E2E — Read-Only Root Filesystem
+#
+# Triggers:
+#   - read-only-rootfs (Medium): Container does not set
+#     readOnlyRootFilesystem: true. The checker
+#     (internal/checker/workload/read_only_rootfs.go) flags when
+#     securityContext is nil, readOnlyRootFilesystem is nil, or it is false.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: writable-rootfs
+  namespace: kv-e2e-workload
+  labels:
+    app: writable-rootfs
+    kubevigil.stribog.cloud/scenario: workload-security
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: writable-rootfs
+  template:
+    metadata:
+      labels:
+        app: writable-rootfs
+    spec:
+      containers:
+        # Triggers: read-only-rootfs (readOnlyRootFilesystem not set)
+        - name: no-readonly
+          image: registry.k8s.io/pause:3.9
+
+        # Triggers: read-only-rootfs (readOnlyRootFilesystem explicitly false)
+        - name: explicit-writable
+          image: registry.k8s.io/pause:3.9
+          securityContext:
+            readOnlyRootFilesystem: false
