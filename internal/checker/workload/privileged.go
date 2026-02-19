@@ -1,0 +1,87 @@
+package workload
+
+import (
+	"context"
+	"fmt"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/stribog-cloud/kubevigil/internal/checker"
+)
+
+// PrivilegedChecker detects containers running with privileged: true.
+// Privileged containers have full access to the host, effectively running
+// as root on the node. This is a direct path to cluster compromise.
+type PrivilegedChecker struct{}
+
+// Name returns the kebab-case check ID.
+func (c *PrivilegedChecker) Name() string { return "privileged" }
+
+// Description returns a human-readable description.
+func (c *PrivilegedChecker) Description() string {
+	return "Detects containers running with privileged: true, which grants full host access."
+}
+
+// Categories returns the check categories.
+func (c *PrivilegedChecker) Categories() []checker.Category {
+	return []checker.Category{checker.CategoryWorkload}
+}
+
+// SupportedModes returns which scan modes this check supports.
+func (c *PrivilegedChecker) SupportedModes() []checker.ScanMode {
+	return []checker.ScanMode{checker.ScanModeLive, checker.ScanModeManifest}
+}
+
+// RequiredResources returns the Kubernetes resource types this check needs.
+func (c *PrivilegedChecker) RequiredResources() []schema.GroupVersionResource {
+	return GVRs()
+}
+
+// Run executes the privileged check against all workload resources in the cache.
+func (c *PrivilegedChecker) Run(ctx context.Context, resources *checker.ResourceCache) ([]checker.Finding, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("privileged check: %w", err)
+	}
+
+	specs := ExtractPodSpecs(resources)
+	var findings []checker.Finding
+
+	for i := range specs {
+		info := &specs[i]
+		IterateContainers(info, func(container corev1.Container, ct ContainerType, idx int) {
+			if container.SecurityContext == nil {
+				return
+			}
+			if container.SecurityContext.Privileged == nil || !*container.SecurityContext.Privileged {
+				return
+			}
+
+			fieldPath := containerFieldPath(ct, idx, "securityContext.privileged")
+
+			findings = append(findings, checker.Finding{
+				Checker:     "privileged",
+				Severity:    checker.SeverityCritical,
+				Resource:    info.ResourceName,
+				Namespace:   info.Namespace,
+				Kind:        info.Kind,
+				Container:   container.Name,
+				Message:     fmt.Sprintf("Container %q is running in privileged mode, granting full host access.", container.Name),
+				Remediation: "Set securityContext.privileged to false. Privileged containers can escape to the host and compromise the entire node.",
+				FieldPath:   fieldPath,
+			})
+		})
+	}
+
+	return findings, nil
+}
+
+// containerFieldPath builds a JSON-style field path for a container field.
+func containerFieldPath(ct ContainerType, idx int, field string) string {
+	switch ct {
+	case ContainerTypeInit, ContainerTypeSidecar:
+		return fmt.Sprintf(".spec.initContainers[%d].%s", idx, field)
+	default:
+		return fmt.Sprintf(".spec.containers[%d].%s", idx, field)
+	}
+}

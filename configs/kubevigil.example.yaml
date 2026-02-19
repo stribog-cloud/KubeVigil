@@ -1,0 +1,41 @@
+# KubeVigil Configuration
+# Copy this file to .kubevigil.yaml in your project root.
+
+version: "1"
+
+settings:
+  # Minimum severity to include in reports (info, low, medium, high, critical)
+  severity_threshold: info
+  # Minimum severity that causes exit code 1 (info, low, medium, high, critical)
+  fail_on: high
+  # Maximum number of checks to run in parallel
+  concurrency: 10
+  # Maximum scan duration
+  timeout: 5m
+
+checks:
+  # List of check IDs to disable
+  disabled: []
+  #  - runtime-class
+
+  # Per-check severity overrides
+  overrides: {}
+  #  privileged:
+  #    severity: high
+
+exemptions: []
+  # Skip all checks for kube-system namespace
+  #- namespace: kube-system
+  #  reason: "System namespace"
+  #  approved_by: "platform-team"
+
+  # Skip specific checks for a resource
+  #- namespace: monitoring
+  #  resource: prometheus
+  #  kind: StatefulSet
+  #  checks:
+  #    - host-network
+  #    - host-ports
+  #  reason: "Prometheus needs host network for node metrics"
+  #  approved_by: "security-team"
+  #  expires: "2025-12-31"

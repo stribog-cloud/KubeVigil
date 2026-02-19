@@ -1,0 +1,43 @@
+══════════════════════════════════════════════════
+KubeVigil Scan Report
+══════════════════════════════════════════════════
+
+Scan Mode:       Manifest
+Duration:        42ms
+Checks Run:      25
+Checks Skipped:  2
+Checks Errored:  0
+
+──────────────────────────────────────────────────
+Findings (3 total)
+──────────────────────────────────────────────────
+
+[Critical] privileged
+  Resource:    default/Deployment/nginx
+  Container:   nginx
+  Message:     Container runs in privileged mode
+  Remediation: Set securityContext.privileged to false
+  Field:       .spec.containers[0].securityContext.privileged
+
+[High] run-as-root
+  Resource:    backend/Deployment/api-server
+  Container:   api
+  Message:     Container runs as root
+  Remediation: Set runAsNonRoot: true
+
+[Medium] read-only-rootfs
+  Resource:    default/StatefulSet/worker
+  Container:   worker
+  Message:     Root filesystem is not read-only
+  Remediation: Set readOnlyRootFilesystem: true
+  Field:       .spec.containers[0].securityContext.readOnlyRootFilesystem
+
+──────────────────────────────────────────────────
+Summary
+──────────────────────────────────────────────────
+Total: 3 findings
+  Critical: 1
+  High:     1
+  Medium:   1
+  Low:      0
+  Info:     0

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: host-network-pod
+  namespace: default
+spec:
+  hostNetwork: true
+  containers:
+    - name: app
+      image: nginx:1.25

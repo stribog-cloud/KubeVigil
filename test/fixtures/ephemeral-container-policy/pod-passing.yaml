@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ephemeral-secure-pod
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: nginx:1.25
+  ephemeralContainers:
+    - name: debugger
+      image: busybox:latest
+      securityContext:
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
