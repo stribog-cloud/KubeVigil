@@ -177,7 +177,7 @@ See [Exit Codes](docs/reference/exit-codes.md) for CI/CD usage examples.
 - [x] **Phase 1** — Core engine, 25 workload checks, text/JSON output, CLI
 - [x] **Phase 2** — 85 additional checks (110 total), 6 new formats, compliance mapping
 - [x] **Phase 3** — Auto-remediation, 20 fixable checks, YAML round-trip, safety model
-- [ ] **Phase 4** — Distribution (GoReleaser, GitHub Releases, Homebrew, Krew, Docker, install script)
+- [x] **Phase 4** — Distribution (GoReleaser, GitHub Releases, Homebrew, Krew, Docker, install script)
 - [ ] **Phase 5** — Feedback, hardening & polish (real-world testing, severity calibration, bug fixes)
 - [ ] **Phase 6** — CI/CD integration (GitHub Action, baseline management, PR decoration)
 - [ ] **Phase 7** — Runtime (admission webhooks, operator mode, Prometheus metrics)
