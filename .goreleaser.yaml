@@ -1,0 +1,72 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# GoReleaser configuration for KubeVigil cross-platform releases.
+
+version: 2
+
+project_name: kubevigil
+
+builds:
+  - id: kubevigil
+    main: ./cmd/kubevigil
+    binary: kubevigil
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X github.com/stribog-cloud/kubevigil/internal/version.Version={{.Version}}
+      - -X github.com/stribog-cloud/kubevigil/internal/version.Commit={{.ShortCommit}}
+      - -X github.com/stribog-cloud/kubevigil/internal/version.Date={{.Date}}
+
+archives:
+  - id: default
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+
+checksum:
+  name_template: "{{ .ProjectName }}_checksums.txt"
+  algorithm: sha256
+
+changelog:
+  use: github-native
+
+release:
+  github:
+    owner: stribog-cloud
+    name: KubeVigil
+  draft: false
+  prerelease: auto
+  name_template: "v{{.Version}}"
+
+# Homebrew tap — uncomment when repo is made public.
+# brews:
+#   - repository:
+#       owner: stribog-cloud
+#       name: homebrew-tap
+#     name: kubevigil
+#     homepage: "https://github.com/stribog-cloud/KubeVigil"
+#     description: "Kubernetes Security Posture Management CLI — know your clusters before attackers do."
+#     license: "Apache-2.0"
+#     install: |
+#       bin.install "kubevigil"
+#     test: |
+#       system "#{bin}/kubevigil", "version"
