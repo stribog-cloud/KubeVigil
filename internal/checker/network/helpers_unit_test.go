@@ -46,7 +46,7 @@ func TestIsEmptyPodSelector(t *testing.T) {
 		},
 		{
 			name: "nil object spec returns true (missing selector)",
-			pol: unstructured.Unstructured{Object: map[string]interface{}{}},
+			pol:  unstructured.Unstructured{Object: map[string]interface{}{}},
 			want: true,
 		},
 	}
@@ -389,7 +389,7 @@ func TestServiceType(t *testing.T) {
 		},
 		{
 			name: "missing spec defaults to ClusterIP",
-			svc: unstructured.Unstructured{Object: map[string]interface{}{}},
+			svc:  unstructured.Unstructured{Object: map[string]interface{}{}},
 			want: "ClusterIP",
 		},
 		{

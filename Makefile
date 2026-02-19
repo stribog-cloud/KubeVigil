@@ -8,7 +8,7 @@ LDFLAGS  := -X $(MODULE)/internal/version.Version=$(VERSION) \
             -X $(MODULE)/internal/version.Commit=$(COMMIT) \
             -X $(MODULE)/internal/version.Date=$(DATE)
 
-.PHONY: build test test-cover lint vet fmt clean check
+.PHONY: build test test-cover lint vet fmt cover vulncheck clean check
 
 build:
 	go build -ldflags "$(LDFLAGS)" -o $(BIN) ./cmd/kubevigil
@@ -29,6 +29,13 @@ vet:
 fmt:
 	gofmt -w .
 	goimports -w -local $(MODULE) .
+
+cover:
+	go test -coverprofile=coverage.out ./...
+	go tool cover -func=coverage.out | tail -1
+
+vulncheck:
+	govulncheck ./...
 
 clean:
 	rm -rf bin/ coverage.out

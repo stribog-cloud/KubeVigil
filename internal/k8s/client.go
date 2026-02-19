@@ -1,3 +1,6 @@
+// Package k8s provides Kubernetes client initialization and cluster connectivity.
+// It wraps client-go to create dynamic and discovery clients, fetch resources
+// into a cache, and filter out controller-managed duplicates.
 package k8s
 
 import (
@@ -17,7 +20,7 @@ import (
 // NewClient creates Kubernetes dynamic and discovery clients.
 // If kubeconfig is empty, falls back to in-cluster config.
 // The context parameter overrides the current-context in kubeconfig (empty = use default).
-func NewClient(kubeconfig, context string) (dynamic.Interface, discovery.DiscoveryInterface, error) {
+func NewClient(kubeconfig, kubeCtx string) (dynamic.Interface, discovery.DiscoveryInterface, error) {
 	var cfg *rest.Config
 	var err error
 
@@ -26,8 +29,8 @@ func NewClient(kubeconfig, context string) (dynamic.Interface, discovery.Discove
 		loadingRules.ExplicitPath = kubeconfig
 	}
 	overrides := &clientcmd.ConfigOverrides{}
-	if context != "" {
-		overrides.CurrentContext = context
+	if kubeCtx != "" {
+		overrides.CurrentContext = kubeCtx
 	}
 	cfg, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, overrides).ClientConfig()
 	if err != nil {

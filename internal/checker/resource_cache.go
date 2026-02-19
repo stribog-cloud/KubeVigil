@@ -9,12 +9,24 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+// cachedEntry holds a lazily-computed result protected by sync.Once.
+// Used by ResourceCache.CachedResult for deduplicating expensive computations
+// (e.g., PodSpec extraction) across concurrent checkers.
+type cachedEntry struct {
+	once   sync.Once
+	result any
+}
+
 // ResourceCache provides a shared, read-only, thread-safe cache of Kubernetes resources.
 // It is populated once per scan before any checkers run, then read concurrently by all checkers.
+// After population, call Freeze() to pre-compute flat lists for zero-allocation List() calls.
 type ResourceCache struct {
-	mu        sync.RWMutex
-	resources map[schema.GroupVersionResource]map[string][]unstructured.Unstructured
-	policies  *Policies
+	mu            sync.RWMutex
+	resources     map[schema.GroupVersionResource]map[string][]unstructured.Unstructured
+	policies      *Policies
+	cachedResults sync.Map // map[string]*cachedEntry — lazy computed results
+	frozen        bool
+	flatLists     map[schema.GroupVersionResource][]unstructured.Unstructured
 }
 
 // NewResourceCache creates an empty ResourceCache.
@@ -25,10 +37,14 @@ func NewResourceCache() *ResourceCache {
 }
 
 // Add inserts a resource into the cache. This should only be called during cache population,
-// before checkers begin running.
+// before checkers begin running. Panics if called after Freeze().
 func (c *ResourceCache) Add(gvr schema.GroupVersionResource, obj unstructured.Unstructured) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	if c.frozen {
+		panic("ResourceCache.Add called after Freeze")
+	}
 
 	ns := obj.GetNamespace()
 	if c.resources[gvr] == nil {
@@ -38,9 +54,14 @@ func (c *ResourceCache) Add(gvr schema.GroupVersionResource, obj unstructured.Un
 }
 
 // List returns all resources of the given type across all namespaces.
+// After Freeze() has been called, this returns the pre-computed slice directly (zero allocation).
 func (c *ResourceCache) List(gvr schema.GroupVersionResource) []unstructured.Unstructured {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+
+	if c.frozen {
+		return c.flatLists[gvr]
+	}
 
 	nsByGVR := c.resources[gvr]
 	if nsByGVR == nil {
@@ -145,6 +166,44 @@ func (c *ResourceCache) Policies() *Policies {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.policies
+}
+
+// CachedResult returns a lazily-computed result for the given key. The compute function
+// is called at most once per key, even under concurrent access from multiple checkers.
+// This is used to deduplicate expensive operations like PodSpec extraction, which would
+// otherwise be repeated by every workload checker.
+func (c *ResourceCache) CachedResult(key string, compute func() any) any {
+	entry, _ := c.cachedResults.LoadOrStore(key, &cachedEntry{})
+	ce := entry.(*cachedEntry)
+	ce.once.Do(func() {
+		ce.result = compute()
+	})
+	return ce.result
+}
+
+// ClearCachedResults removes all cached computation results.
+// This is intended for testing; in production, a new ResourceCache is created per scan.
+func (c *ResourceCache) ClearCachedResults() {
+	c.cachedResults = sync.Map{}
+}
+
+// Freeze pre-computes flat lists for all GVRs, enabling zero-allocation List() calls.
+// After Freeze(), the cache is immutable: Add() will panic. Calling Freeze() multiple
+// times is safe (idempotent). This should be called after all resources have been added
+// and before checkers begin running.
+func (c *ResourceCache) Freeze() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.flatLists = make(map[schema.GroupVersionResource][]unstructured.Unstructured, len(c.resources))
+	for gvr, nsByGVR := range c.resources {
+		var flat []unstructured.Unstructured
+		for _, objs := range nsByGVR {
+			flat = append(flat, objs...)
+		}
+		c.flatLists[gvr] = flat
+	}
+	c.frozen = true
 }
 
 // knownGVRs maps common apiVersion+kind pairs to their GVR for manifest parsing.

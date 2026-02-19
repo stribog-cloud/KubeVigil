@@ -1,4 +1,3 @@
-// Package main is the entry point for the kubevigil CLI.
 package main
 
 import (
@@ -38,6 +37,7 @@ type exitError struct {
 	err  error
 }
 
+// Error returns the underlying error message, implementing the error interface.
 func (e *exitError) Error() string { return e.err.Error() }
 
 func execute() int {

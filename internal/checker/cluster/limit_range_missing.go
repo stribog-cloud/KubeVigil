@@ -12,20 +12,30 @@ import (
 // LimitRangeMissingChecker detects namespaces without a LimitRange defined.
 type LimitRangeMissingChecker struct{}
 
+// Name returns the kebab-case identifier for this check.
 func (c *LimitRangeMissingChecker) Name() string { return "limit-range-missing" }
+
+// Description returns a human-readable summary of what this check detects.
 func (c *LimitRangeMissingChecker) Description() string {
 	return "Detects namespaces without LimitRange; a single container can request all node resources."
 }
+
+// Categories returns the security categories this check belongs to.
 func (c *LimitRangeMissingChecker) Categories() []checker.Category {
 	return []checker.Category{checker.CategoryClusterConfig}
 }
+
+// SupportedModes returns the scan modes (manifest, live, or both) that support this check.
 func (c *LimitRangeMissingChecker) SupportedModes() []checker.ScanMode {
 	return []checker.ScanMode{checker.ScanModeLive, checker.ScanModeManifest}
 }
+
+// RequiredResources returns the Kubernetes GVRs this check needs to operate.
 func (c *LimitRangeMissingChecker) RequiredResources() []schema.GroupVersionResource {
 	return []schema.GroupVersionResource{NamespaceGVR, LimitRangeGVR}
 }
 
+// Run executes the check against cached resources and returns any findings.
 func (c *LimitRangeMissingChecker) Run(ctx context.Context, resources *checker.ResourceCache) ([]checker.Finding, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("limit-range-missing check: %w", err)

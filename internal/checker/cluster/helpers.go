@@ -7,18 +7,23 @@ import "k8s.io/apimachinery/pkg/runtime/schema"
 
 // GVR constants for cluster-related resources.
 var (
+	// NamespaceGVR is the GroupVersionResource for core/v1 Namespace objects.
 	NamespaceGVR = schema.GroupVersionResource{
 		Group: "", Version: "v1", Resource: "namespaces",
 	}
+	// LimitRangeGVR is the GroupVersionResource for core/v1 LimitRange objects.
 	LimitRangeGVR = schema.GroupVersionResource{
 		Group: "", Version: "v1", Resource: "limitranges",
 	}
+	// ResourceQuotaGVR is the GroupVersionResource for core/v1 ResourceQuota objects.
 	ResourceQuotaGVR = schema.GroupVersionResource{
 		Group: "", Version: "v1", Resource: "resourcequotas",
 	}
+	// NodeGVR is the GroupVersionResource for core/v1 Node objects.
 	NodeGVR = schema.GroupVersionResource{
 		Group: "", Version: "v1", Resource: "nodes",
 	}
+	// ConfigMapGVR is the GroupVersionResource for core/v1 ConfigMap objects.
 	ConfigMapGVR = schema.GroupVersionResource{
 		Group: "", Version: "v1", Resource: "configmaps",
 	}

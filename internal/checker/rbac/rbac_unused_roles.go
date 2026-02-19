@@ -51,11 +51,12 @@ func (c *UnusedRolesChecker) Run(ctx context.Context, resources *checker.Resourc
 	referenced := make(map[string]bool)
 	for i := range bindings {
 		b := &bindings[i]
-		if b.RoleRef.Kind == "Role" {
+		switch b.RoleRef.Kind {
+		case "Role":
 			// Namespaced: key includes namespace.
 			key := b.Namespace + "/" + b.RoleRef.Name
 			referenced[key] = true
-		} else if b.RoleRef.Kind == "ClusterRole" {
+		case "ClusterRole":
 			// Cluster-scoped.
 			key := "/" + b.RoleRef.Name
 			referenced[key] = true

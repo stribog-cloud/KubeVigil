@@ -1,0 +1,54 @@
+# Nightly backup: root, dangerous caps
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nightly-backup
+  namespace: data-ns
+spec:
+  schedule: "0 2 * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: nightly-backup
+        spec:
+          containers:
+            - name: backup
+              image: pg-backup:latest
+              command: ["pg_dumpall"]
+              securityContext:
+                runAsUser: 0
+                capabilities:
+                  add: ["SYS_ADMIN", "DAC_OVERRIDE"]
+          restartPolicy: OnFailure
+---
+# Log cleanup: hostPath, privilege escalation
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: log-cleanup
+  namespace: monitoring-ns
+spec:
+  schedule: "0 4 * * 0"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: log-cleanup
+        spec:
+          containers:
+            - name: cleanup
+              image: busybox:latest
+              command: ["find", "/logs", "-mtime", "+30", "-delete"]
+              securityContext:
+                allowPrivilegeEscalation: true
+              volumeMounts:
+                - name: logs
+                  mountPath: /logs
+          volumes:
+            - name: logs
+              hostPath:
+                path: /var/log
+          restartPolicy: OnFailure

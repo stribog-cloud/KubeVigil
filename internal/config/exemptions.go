@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -37,7 +36,7 @@ const (
 
 // ExemptionKey builds a lookup key for a resource from its namespace, kind, and name.
 func ExemptionKey(namespace, kind, name string) string {
-	return fmt.Sprintf("%s/%s/%s", namespace, kind, name)
+	return namespace + "/" + kind + "/" + name
 }
 
 // IsExempt checks whether a finding should be skipped based on exemptions and annotations.

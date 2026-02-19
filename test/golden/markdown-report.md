@@ -18,6 +18,8 @@
 | Checks Skipped | 2 |
 | Checks Errored | 0 |
 | Pass Rate | 88% |
+| App Posture Score | 89/100 |
+| Infra Posture Score | 100/100 |
 
 ### Findings by Check
 
@@ -26,6 +28,14 @@
 | 🔴 Critical | privileged | 1 | 1 |
 | 🟠 High | run-as-root | 1 | 1 |
 | 🟡 Medium | read-only-rootfs | 1 | 1 |
+
+### Top Risks
+
+| # | Severity | Check | Resource | Message |
+|---|----------|-------|----------|---------|
+| 1 | 🔴 Critical | privileged | default/Deployment/nginx | Container runs in privileged mode |
+| 2 | 🟠 High | run-as-root | backend/Deployment/api-server | Container runs as root |
+| 3 | 🟡 Medium | read-only-rootfs | default/StatefulSet/worker | Root filesystem is not read-only |
 
 ## Findings (3 total)
 

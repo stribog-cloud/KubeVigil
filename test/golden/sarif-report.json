@@ -12,7 +12,14 @@
             {
               "id": "privileged",
               "shortDescription": {
-                "text": "privileged"
+                "text": "Container runs in privileged mode"
+              },
+              "fullDescription": {
+                "text": "Set securityContext.privileged to false"
+              },
+              "helpUri": "https://github.com/stribog-cloud/kubevigil",
+              "help": {
+                "text": "Set securityContext.privileged to false"
               },
               "defaultConfiguration": {
                 "level": "error"
@@ -28,7 +35,14 @@
             {
               "id": "run-as-root",
               "shortDescription": {
-                "text": "run-as-root"
+                "text": "Container runs as root"
+              },
+              "fullDescription": {
+                "text": "Set runAsNonRoot: true"
+              },
+              "helpUri": "https://github.com/stribog-cloud/kubevigil",
+              "help": {
+                "text": "Set runAsNonRoot: true"
               },
               "defaultConfiguration": {
                 "level": "error"
@@ -42,7 +56,14 @@
             {
               "id": "read-only-rootfs",
               "shortDescription": {
-                "text": "read-only-rootfs"
+                "text": "Root filesystem is not read-only"
+              },
+              "fullDescription": {
+                "text": "Set readOnlyRootFilesystem: true"
+              },
+              "helpUri": "https://github.com/stribog-cloud/kubevigil",
+              "help": {
+                "text": "Set readOnlyRootFilesystem: true"
               },
               "defaultConfiguration": {
                 "level": "warning"
@@ -63,7 +84,8 @@
           "ruleIndex": 0,
           "level": "error",
           "message": {
-            "text": "Container runs in privileged mode"
+            "text": "Container runs in privileged mode",
+            "markdown": "Container runs in privileged mode\n\n**Remediation:** Set securityContext.privileged to false"
           },
           "locations": [
             {
@@ -82,7 +104,8 @@
           "ruleIndex": 1,
           "level": "error",
           "message": {
-            "text": "Container runs as root"
+            "text": "Container runs as root",
+            "markdown": "Container runs as root\n\n**Remediation:** Set runAsNonRoot: true"
           }
         },
         {
@@ -90,7 +113,8 @@
           "ruleIndex": 2,
           "level": "warning",
           "message": {
-            "text": "Root filesystem is not read-only"
+            "text": "Root filesystem is not read-only",
+            "markdown": "Root filesystem is not read-only\n\n**Remediation:** Set readOnlyRootFilesystem: true"
           },
           "locations": [
             {

@@ -89,18 +89,10 @@ func TestMarkdownReporter_GroupedByNamespace(t *testing.T) {
 	}
 	require.NoError(t, r.Generate(context.Background(), result, &buf))
 	out := buf.String()
-
-	// Should have application namespace heading.
 	assert.Contains(t, out, "## Application Namespaces")
-
-	// Should have namespace sections.
 	assert.Contains(t, out, "### backend")
 	assert.Contains(t, out, "### default")
-
-	// Cluster-scoped findings should be in a separate section.
 	assert.Contains(t, out, "### Cluster-Scoped")
-
-	// Namespace sections should appear before the cluster section.
 	backendIdx := strings.Index(out, "### backend")
 	defaultIdx := strings.Index(out, "### default")
 	clusterIdx := strings.Index(out, "### Cluster-Scoped")
@@ -113,31 +105,13 @@ func TestMarkdownReporter_Remediation(t *testing.T) {
 	var buf bytes.Buffer
 	result := &checker.ScanResult{
 		Findings: []checker.Finding{
-			{
-				Checker:     "privileged",
-				Severity:    checker.SeverityCritical,
-				Resource:    "nginx",
-				Namespace:   "default",
-				Kind:        "Deployment",
-				Message:     "privileged mode",
-				Remediation: "Set privileged to false:\n\n```yaml\nsecurityContext:\n  privileged: false\n```",
-			},
-			{
-				Checker:     "privileged",
-				Severity:    checker.SeverityCritical,
-				Resource:    "redis",
-				Namespace:   "default",
-				Kind:        "Deployment",
-				Message:     "privileged mode",
-				Remediation: "Set privileged to false:\n\n```yaml\nsecurityContext:\n  privileged: false\n```",
-			},
+			{Checker: "privileged", Severity: checker.SeverityCritical, Resource: "nginx", Namespace: "default", Kind: "Deployment", Message: "privileged mode", Remediation: "Set privileged to false:\n\n```yaml\nsecurityContext:\n  privileged: false\n```"},
+			{Checker: "privileged", Severity: checker.SeverityCritical, Resource: "redis", Namespace: "default", Kind: "Deployment", Message: "privileged mode", Remediation: "Set privileged to false:\n\n```yaml\nsecurityContext:\n  privileged: false\n```"},
 		},
 		ScanMeta: checker.ScanMeta{ScanMode: checker.ScanModeManifest},
 	}
 	require.NoError(t, r.Generate(context.Background(), result, &buf))
 	out := buf.String()
-
-	// Should have collapsible remediation grouped by check.
 	assert.Contains(t, out, "<details>")
 	assert.Contains(t, out, "Remediation: privileged (2 resources affected)")
 	assert.Contains(t, out, "privileged: false")
@@ -159,11 +133,7 @@ func TestMarkdownReporter_Aggregation(t *testing.T) {
 	}
 	require.NoError(t, r.Generate(context.Background(), result, &buf))
 	out := buf.String()
-
-	// Aggregated: shows "3 resources" in bold.
 	assert.Contains(t, out, "**3 resources**")
-
-	// Expandable details block with resource list.
 	assert.Contains(t, out, "privileged: 3 affected resources")
 	assert.Contains(t, out, "`default/Deployment/nginx (nginx)`")
 	assert.Contains(t, out, "`default/Deployment/redis (redis)`")
@@ -177,26 +147,15 @@ func TestMarkdownReporter_ChecksPassed(t *testing.T) {
 		Findings: []checker.Finding{
 			{Checker: "privileged", Severity: checker.SeverityCritical, Resource: "nginx", Namespace: "default", Kind: "Deployment", Message: "privileged mode"},
 		},
-		ScanMeta: checker.ScanMeta{
-			ScanMode:  checker.ScanModeManifest,
-			ChecksRun: 4,
-			CheckNames: []string{
-				"automount-token",
-				"host-network",
-				"privileged",
-				"run-as-root",
-			},
-		},
+		ScanMeta: checker.ScanMeta{ScanMode: checker.ScanModeManifest, ChecksRun: 4, CheckNames: []string{"automount-token", "host-network", "privileged", "run-as-root"}},
 	}
 	require.NoError(t, r.Generate(context.Background(), result, &buf))
 	out := buf.String()
-
 	assert.Contains(t, out, "Checks Passed (3)")
 	assert.Contains(t, out, "3 checks ran with zero findings")
 	assert.Contains(t, out, "`automount-token`")
 	assert.Contains(t, out, "`host-network`")
 	assert.Contains(t, out, "`run-as-root`")
-	// The failing check should NOT be in the passed list.
 	assert.NotContains(t, out, "`privileged`")
 }
 
@@ -211,8 +170,6 @@ func TestMarkdownReporter_AggregationSingleResource(t *testing.T) {
 	}
 	require.NoError(t, r.Generate(context.Background(), result, &buf))
 	out := buf.String()
-
-	// Single resource: shows resource name inline, no "N resources".
 	assert.Contains(t, out, "default/Deployment/nginx")
 	assert.NotContains(t, out, "**1 resources**")
 	assert.NotContains(t, out, "affected resources")
@@ -221,31 +178,13 @@ func TestMarkdownReporter_AggregationSingleResource(t *testing.T) {
 func TestMarkdownReporter_FindingsByCheckCollapsible(t *testing.T) {
 	r := &MarkdownReporter{}
 	var buf bytes.Buffer
-
-	// Create 12 findings with different checkers to trigger collapsible behavior.
 	var findings []checker.Finding
 	for i := 0; i < 12; i++ {
-		findings = append(findings, checker.Finding{
-			Checker:   fmt.Sprintf("check-%02d", i),
-			Severity:  checker.SeverityMedium,
-			Resource:  fmt.Sprintf("res-%d", i),
-			Namespace: "default",
-			Kind:      "Deployment",
-			Message:   fmt.Sprintf("issue %d", i),
-		})
+		findings = append(findings, checker.Finding{Checker: fmt.Sprintf("check-%02d", i), Severity: checker.SeverityMedium, Resource: fmt.Sprintf("res-%d", i), Namespace: "default", Kind: "Deployment", Message: fmt.Sprintf("issue %d", i)})
 	}
-
-	result := &checker.ScanResult{
-		Findings: findings,
-		ScanMeta: checker.ScanMeta{
-			ScanMode:  checker.ScanModeManifest,
-			ChecksRun: 12,
-		},
-	}
+	result := &checker.ScanResult{Findings: findings, ScanMeta: checker.ScanMeta{ScanMode: checker.ScanModeManifest, ChecksRun: 12}}
 	require.NoError(t, r.Generate(context.Background(), result, &buf))
 	out := buf.String()
-
-	// With > 10 check aggregates, the table should be in a collapsible details block.
 	assert.Contains(t, out, "<details>")
 	assert.Contains(t, out, "Findings by Check (12)")
 	assert.Contains(t, out, "</details>")
@@ -259,15 +198,10 @@ func TestMarkdownReporter_FindingsByCheckFlatWhenSmall(t *testing.T) {
 			{Checker: "privileged", Severity: checker.SeverityCritical, Resource: "nginx", Namespace: "default", Kind: "Deployment", Message: "priv"},
 			{Checker: "run-as-root", Severity: checker.SeverityHigh, Resource: "api", Namespace: "default", Kind: "Deployment", Message: "root"},
 		},
-		ScanMeta: checker.ScanMeta{
-			ScanMode:  checker.ScanModeManifest,
-			ChecksRun: 5,
-		},
+		ScanMeta: checker.ScanMeta{ScanMode: checker.ScanModeManifest, ChecksRun: 5},
 	}
 	require.NoError(t, r.Generate(context.Background(), result, &buf))
 	out := buf.String()
-
-	// With <= 10 check aggregates, it should be a plain heading, not collapsible.
 	assert.Contains(t, out, "### Findings by Check")
 }
 
@@ -284,8 +218,6 @@ func TestMarkdownReporter_CategoryBreakdown(t *testing.T) {
 	}
 	require.NoError(t, r.Generate(context.Background(), result, &buf))
 	out := buf.String()
-
-	// Should have category breakdown table.
 	assert.Contains(t, out, "Category Breakdown")
 	assert.Contains(t, out, "Application")
 	assert.Contains(t, out, "Cluster-Scoped")
@@ -303,8 +235,6 @@ func TestMarkdownReporter_NamespaceHeaderCounts(t *testing.T) {
 	}
 	require.NoError(t, r.Generate(context.Background(), result, &buf))
 	out := buf.String()
-
-	// Namespace header should include finding count.
 	assert.Contains(t, out, "default (2 findings")
 }
 
@@ -313,37 +243,89 @@ func TestMarkdownReporter_ComplianceSummary(t *testing.T) {
 	var buf bytes.Buffer
 	result := &checker.ScanResult{
 		Findings: []checker.Finding{
-			{
-				Checker: "privileged", Severity: checker.SeverityCritical,
-				Resource: "nginx", Namespace: "default", Kind: "Deployment",
-				Message: "priv",
-				Frameworks: []checker.FrameworkRef{
-					{Framework: "cis", Version: "1.8", ControlID: "5.2.1", Title: "Minimize privileged"},
-					{Framework: "nsa", Version: "1.2", ControlID: "3.1", Title: "Pod Security"},
-				},
-			},
-			{
-				Checker: "run-as-root", Severity: checker.SeverityHigh,
-				Resource: "api", Namespace: "backend", Kind: "Deployment",
-				Message: "root",
-				Frameworks: []checker.FrameworkRef{
-					{Framework: "cis", Version: "1.8", ControlID: "5.2.6", Title: "Minimize root"},
-					{Framework: "mitre", Version: "v14", ControlID: "T1611", Title: "Escape to Host"},
-				},
-			},
+			{Checker: "privileged", Severity: checker.SeverityCritical, Resource: "nginx", Namespace: "default", Kind: "Deployment", Message: "priv", Frameworks: []checker.FrameworkRef{{Framework: "cis", Version: "1.8", ControlID: "5.2.1", Title: "Minimize privileged"}, {Framework: "nsa", Version: "1.2", ControlID: "3.1", Title: "Pod Security"}}},
+			{Checker: "run-as-root", Severity: checker.SeverityHigh, Resource: "api", Namespace: "backend", Kind: "Deployment", Message: "root", Frameworks: []checker.FrameworkRef{{Framework: "cis", Version: "1.8", ControlID: "5.2.6", Title: "Minimize root"}, {Framework: "mitre", Version: "v14", ControlID: "T1611", Title: "Escape to Host"}}},
 		},
 		ScanMeta: checker.ScanMeta{ScanMode: checker.ScanModeManifest},
 	}
 	require.NoError(t, r.Generate(context.Background(), result, &buf))
 	out := buf.String()
-
-	// Should have compliance summary section.
 	assert.Contains(t, out, "Compliance Summary")
 	assert.Contains(t, out, "CIS")
 	assert.Contains(t, out, "5.2.1")
 	assert.Contains(t, out, "MITRE")
 	assert.Contains(t, out, "T1611")
 	assert.Contains(t, out, "NSA")
+}
+
+func TestMarkdownReporter_TopRisks(t *testing.T) {
+	r := &MarkdownReporter{}
+	var buf bytes.Buffer
+	result := &checker.ScanResult{
+		Findings: []checker.Finding{
+			{Checker: "privileged", Severity: checker.SeverityCritical, Resource: "nginx", Namespace: "default", Kind: "Deployment", Container: "nginx", Message: "Container runs in privileged mode"},
+			{Checker: "run-as-root", Severity: checker.SeverityHigh, Resource: "api", Namespace: "backend", Kind: "Deployment", Container: "api", Message: "Container runs as root"},
+			{Checker: "read-only-rootfs", Severity: checker.SeverityMedium, Resource: "worker", Namespace: "default", Kind: "StatefulSet", Container: "worker", Message: "Root filesystem is not read-only"},
+		},
+		ScanMeta: checker.ScanMeta{ScanMode: checker.ScanModeManifest, ChecksRun: 10},
+	}
+	require.NoError(t, r.Generate(context.Background(), result, &buf))
+	out := buf.String()
+	assert.Contains(t, out, "### Top Risks")
+	assert.Contains(t, out, "| # | Severity | Check | Resource | Message |")
+	assert.Contains(t, out, "| 1 |")
+	assert.Contains(t, out, "Critical | privileged | default/Deployment/nginx |")
+	assert.Contains(t, out, "Container runs in privileged mode")
+	assert.Contains(t, out, "| 2 |")
+	assert.Contains(t, out, "High | run-as-root | backend/Deployment/api |")
+	assert.Contains(t, out, "Container runs as root")
+	assert.Contains(t, out, "| 3 |")
+	assert.Contains(t, out, "Medium | read-only-rootfs | default/StatefulSet/worker |")
+	findingsByCheckIdx := strings.Index(out, "Findings by Check")
+	topRisksIdx := strings.Index(out, "### Top Risks")
+	findingsIdx := strings.Index(out, "## Findings (")
+	assert.Greater(t, topRisksIdx, findingsByCheckIdx, "Top Risks should appear after Findings by Check")
+	assert.Greater(t, findingsIdx, 0, "## Findings section should exist")
+	assert.Less(t, topRisksIdx, findingsIdx, "Top Risks should appear before ## Findings")
+}
+
+func TestMarkdownReporter_TopRisksEmpty(t *testing.T) {
+	r := &MarkdownReporter{}
+	var buf bytes.Buffer
+	result := &checker.ScanResult{ScanMeta: checker.ScanMeta{Duration: 10 * time.Millisecond, ScanMode: checker.ScanModeManifest}}
+	require.NoError(t, r.Generate(context.Background(), result, &buf))
+	out := buf.String()
+	assert.NotContains(t, out, "### Top Risks")
+	assert.NotContains(t, out, "| # | Severity | Check | Resource | Message |")
+}
+
+func TestMarkdownReporter_PerTierPostureScores(t *testing.T) {
+	r := &MarkdownReporter{}
+	var buf bytes.Buffer
+	result := &checker.ScanResult{
+		Findings: []checker.Finding{
+			{Checker: "privileged", Severity: checker.SeverityCritical, Resource: "nginx", Namespace: "default", Kind: "Deployment", Message: "Container runs in privileged mode"},
+			{Checker: "run-as-root", Severity: checker.SeverityHigh, Resource: "api", Namespace: "backend", Kind: "Deployment", Message: "Container runs as root"},
+		},
+		ScanMeta: checker.ScanMeta{ScanMode: checker.ScanModeManifest, ChecksRun: 10},
+	}
+	require.NoError(t, r.Generate(context.Background(), result, &buf))
+	out := buf.String()
+	assert.Contains(t, out, "| App Posture Score |")
+	assert.Contains(t, out, "/100 |")
+	execSummaryIdx := strings.Index(out, "## Executive Summary")
+	appScoreIdx := strings.Index(out, "| App Posture Score |")
+	assert.Greater(t, appScoreIdx, execSummaryIdx, "App Posture Score should be in Executive Summary metrics")
+}
+
+func TestMarkdownReporter_PerTierPostureScoresZero(t *testing.T) {
+	r := &MarkdownReporter{}
+	var buf bytes.Buffer
+	result := &checker.ScanResult{ScanMeta: checker.ScanMeta{Duration: 10 * time.Millisecond, ScanMode: checker.ScanModeManifest}}
+	require.NoError(t, r.Generate(context.Background(), result, &buf))
+	out := buf.String()
+	assert.NotContains(t, out, "| App Posture Score |")
+	assert.NotContains(t, out, "| Infra Posture Score |")
 }
 
 func TestMarkdownReporter_CancelledContext(t *testing.T) {

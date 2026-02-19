@@ -200,7 +200,7 @@ func TestCreateGitOpsPR_FailsOnPush(t *testing.T) {
 		ModifiedFiles: []string{"deploy.yaml"},
 	}
 
-	_, err := CreateGitOpsPR(cfg)
+	_, err := CreateGitOpsPR(&cfg)
 	require.Error(t, err)
 	// Should fail at the push step since there is no remote configured.
 	assert.True(t, strings.Contains(err.Error(), "pushing branch") || strings.Contains(err.Error(), "push"),
@@ -235,7 +235,7 @@ func TestCreateGitOpsPR_NoGitCLIAvailable(t *testing.T) {
 		ModifiedFiles: []string{"deploy.yaml"},
 	}
 
-	_, err := CreateGitOpsPR(cfg)
+	_, err := CreateGitOpsPR(&cfg)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "detecting git CLI")
 	// Should also have the install hint.
@@ -290,7 +290,7 @@ func TestCreateGitOpsPR_BranchCreationFails(t *testing.T) {
 		ModifiedFiles: []string{"deploy.yaml"},
 	}
 
-	_, err := CreateGitOpsPR(cfg)
+	_, err := CreateGitOpsPR(&cfg)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "creating branch")
 }

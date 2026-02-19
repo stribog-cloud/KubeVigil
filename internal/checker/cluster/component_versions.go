@@ -17,20 +17,30 @@ var versionRe = regexp.MustCompile(`v?(\d+)\.(\d+)`)
 // ComponentVersionsChecker detects version skew between control plane and kubelets.
 type ComponentVersionsChecker struct{}
 
+// Name returns the kebab-case identifier for this check.
 func (c *ComponentVersionsChecker) Name() string { return "component-versions" }
+
+// Description returns a human-readable summary of what this check detects.
 func (c *ComponentVersionsChecker) Description() string {
 	return "Detects kubelet version skew exceeding the supported range relative to other nodes."
 }
+
+// Categories returns the security categories this check belongs to.
 func (c *ComponentVersionsChecker) Categories() []checker.Category {
 	return []checker.Category{checker.CategoryClusterConfig}
 }
+
+// SupportedModes returns the scan modes (manifest, live, or both) that support this check.
 func (c *ComponentVersionsChecker) SupportedModes() []checker.ScanMode {
 	return []checker.ScanMode{checker.ScanModeLive}
 }
+
+// RequiredResources returns the Kubernetes GVRs this check needs to operate.
 func (c *ComponentVersionsChecker) RequiredResources() []schema.GroupVersionResource {
 	return []schema.GroupVersionResource{NodeGVR}
 }
 
+// Run executes the check against cached resources and returns any findings.
 func (c *ComponentVersionsChecker) Run(ctx context.Context, resources *checker.ResourceCache) ([]checker.Finding, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("component-versions check: %w", err)

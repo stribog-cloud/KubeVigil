@@ -1,0 +1,41 @@
+# ConfigMap with sensitive-looking data
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: app-ns
+data:
+  database_url: "postgres://admin:password123@postgres-svc:5432/mydb"
+  api_endpoint: "https://api.example.com/v1"
+  log_level: "debug"
+---
+# Nginx configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: app-ns
+data:
+  nginx.conf: |
+    server {
+      listen 80;
+      server_name _;
+      location / {
+        proxy_pass http://api-server:8080;
+      }
+    }
+---
+# Monitoring configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring-ns
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+    scrape_configs:
+      - job_name: 'kubernetes-nodes'
+        kubernetes_sd_configs:
+          - role: node

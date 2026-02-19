@@ -52,7 +52,7 @@ func TestGenerateFixReport_Basic(t *testing.T) {
 		SourcePath: "/app",
 	}
 
-	report, err := GenerateFixReport(plan, opts)
+	report, err := GenerateFixReport(plan, &opts)
 	if err != nil {
 		t.Fatalf("GenerateFixReport() error = %v", err)
 	}
@@ -98,7 +98,7 @@ func TestGenerateFixReport_EmptyPlan(t *testing.T) {
 		RiskLevel: RiskLevelSafe,
 	}
 
-	report, err := GenerateFixReport(plan, opts)
+	report, err := GenerateFixReport(plan, &opts)
 	if err != nil {
 		t.Fatalf("GenerateFixReport() error = %v", err)
 	}
@@ -122,7 +122,7 @@ func TestGenerateFixReport_WhatCouldBreak(t *testing.T) {
 		Applied:   true,
 	}
 
-	report, err := GenerateFixReport(plan, opts)
+	report, err := GenerateFixReport(plan, &opts)
 	if err != nil {
 		t.Fatalf("GenerateFixReport() error = %v", err)
 	}
@@ -166,7 +166,7 @@ func TestGenerateFixReport_NoWhatCouldBreak(t *testing.T) {
 		Applied:   true,
 	}
 
-	report, err := GenerateFixReport(plan, opts)
+	report, err := GenerateFixReport(plan, &opts)
 	if err != nil {
 		t.Fatalf("GenerateFixReport() error = %v", err)
 	}
@@ -185,7 +185,7 @@ func TestGenerateFixReport_SkippedSection(t *testing.T) {
 		RiskLevel: RiskLevelSafe,
 	}
 
-	report, err := GenerateFixReport(plan, opts)
+	report, err := GenerateFixReport(plan, &opts)
 	if err != nil {
 		t.Fatalf("GenerateFixReport() error = %v", err)
 	}
@@ -210,7 +210,7 @@ func TestGenerateFixReport_RestoreWithBackup(t *testing.T) {
 		BackupDir: "/tmp/kubevigil-backup-123",
 	}
 
-	report, err := GenerateFixReport(plan, opts)
+	report, err := GenerateFixReport(plan, &opts)
 	if err != nil {
 		t.Fatalf("GenerateFixReport() error = %v", err)
 	}
@@ -234,7 +234,7 @@ func TestGenerateFixReport_RestoreWithoutBackup(t *testing.T) {
 		BackupDir: "",
 	}
 
-	report, err := GenerateFixReport(plan, opts)
+	report, err := GenerateFixReport(plan, &opts)
 	if err != nil {
 		t.Fatalf("GenerateFixReport() error = %v", err)
 	}
@@ -276,7 +276,7 @@ func TestGenerateFixReport_FileGrouping(t *testing.T) {
 		RiskLevel: RiskLevelSafe,
 	}
 
-	report, err := GenerateFixReport(plan, opts)
+	report, err := GenerateFixReport(plan, &opts)
 	if err != nil {
 		t.Fatalf("GenerateFixReport() error = %v", err)
 	}
@@ -306,12 +306,12 @@ func TestGenerateFixReport_DeterministicOrder(t *testing.T) {
 		RiskLevel: RiskLevelSafe,
 	}
 
-	report1, err := GenerateFixReport(plan, opts)
+	report1, err := GenerateFixReport(plan, &opts)
 	if err != nil {
 		t.Fatalf("GenerateFixReport() first call error = %v", err)
 	}
 
-	report2, err := GenerateFixReport(plan, opts)
+	report2, err := GenerateFixReport(plan, &opts)
 	if err != nil {
 		t.Fatalf("GenerateFixReport() second call error = %v", err)
 	}
@@ -329,7 +329,7 @@ func TestGenerateFixReport_TimestampInjection(t *testing.T) {
 		RiskLevel: RiskLevelSafe,
 	}
 
-	report, err := GenerateFixReport(plan, opts)
+	report, err := GenerateFixReport(plan, &opts)
 	if err != nil {
 		t.Fatalf("GenerateFixReport() error = %v", err)
 	}
@@ -354,7 +354,7 @@ func TestWriteFixReport(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "FIX-REPORT.md")
 
-	if err := WriteFixReport(plan, opts, path); err != nil {
+	if err := WriteFixReport(plan, &opts, path); err != nil {
 		t.Fatalf("WriteFixReport() error = %v", err)
 	}
 
@@ -398,7 +398,7 @@ func TestGenerateFixReport_RiskLevelDisplay(t *testing.T) {
 				RiskLevel: tt.riskLevel,
 			}
 
-			report, err := GenerateFixReport(plan, opts)
+			report, err := GenerateFixReport(plan, &opts)
 			if err != nil {
 				t.Fatalf("GenerateFixReport() error = %v", err)
 			}
@@ -431,7 +431,7 @@ func TestGenerateFixReport_ManualRemediation(t *testing.T) {
 		RiskLevel: RiskLevelSafe,
 	}
 
-	report, err := GenerateFixReport(plan, opts)
+	report, err := GenerateFixReport(plan, &opts)
 	if err != nil {
 		t.Fatalf("GenerateFixReport() error = %v", err)
 	}
@@ -454,7 +454,7 @@ func TestGenerateFixReport_TimestampDefaultsToNow(t *testing.T) {
 	}
 
 	before := time.Now()
-	report, err := GenerateFixReport(plan, opts)
+	report, err := GenerateFixReport(plan, &opts)
 	if err != nil {
 		t.Fatalf("GenerateFixReport() error = %v", err)
 	}
@@ -504,7 +504,7 @@ func TestWriteFixReport_InvalidPath(t *testing.T) {
 		RiskLevel: RiskLevelSafe,
 	}
 
-	err := WriteFixReport(plan, opts, "/nonexistent/dir/subdir/FIX-REPORT.md")
+	err := WriteFixReport(plan, &opts, "/nonexistent/dir/subdir/FIX-REPORT.md")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "writing fix report")
 }
@@ -527,7 +527,7 @@ func TestWriteFixReport_EmptyResult(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "FIX-REPORT.md")
 
-	err := WriteFixReport(plan, opts, path)
+	err := WriteFixReport(plan, &opts, path)
 	require.NoError(t, err)
 
 	data, err := os.ReadFile(path)
@@ -573,7 +573,7 @@ func TestWriteFixReport_MixedSafeAndModerate(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "FIX-REPORT.md")
 
-	err := WriteFixReport(plan, opts, path)
+	err := WriteFixReport(plan, &opts, path)
 	require.NoError(t, err)
 
 	data, err := os.ReadFile(path)

@@ -470,3 +470,186 @@ func TestPolicies_Helpers(t *testing.T) {
 		assert.True(t, p.HasBlockedRegistries())
 	})
 }
+
+func TestResourceCache_CachedResult(t *testing.T) {
+	t.Run("computes once and reuses", func(t *testing.T) {
+		cache := NewResourceCache()
+		callCount := 0
+		compute := func() any {
+			callCount++
+			return []string{"a", "b", "c"}
+		}
+
+		result1 := cache.CachedResult("test-key", compute)
+		result2 := cache.CachedResult("test-key", compute)
+
+		assert.Equal(t, 1, callCount, "compute should be called exactly once")
+		assert.Equal(t, result1, result2, "both calls should return same result")
+		assert.Equal(t, []string{"a", "b", "c"}, result1.([]string))
+	})
+
+	t.Run("different keys compute independently", func(t *testing.T) {
+		cache := NewResourceCache()
+
+		r1 := cache.CachedResult("key-a", func() any { return "alpha" })
+		r2 := cache.CachedResult("key-b", func() any { return "beta" })
+
+		assert.Equal(t, "alpha", r1.(string))
+		assert.Equal(t, "beta", r2.(string))
+	})
+
+	t.Run("nil result is cached", func(t *testing.T) {
+		cache := NewResourceCache()
+		callCount := 0
+		compute := func() any {
+			callCount++
+			return nil
+		}
+
+		r1 := cache.CachedResult("nil-key", compute)
+		r2 := cache.CachedResult("nil-key", compute)
+
+		assert.Nil(t, r1)
+		assert.Nil(t, r2)
+		assert.Equal(t, 1, callCount)
+	})
+
+	t.Run("ClearCachedResults allows recomputation", func(t *testing.T) {
+		cache := NewResourceCache()
+		callCount := 0
+		compute := func() any {
+			callCount++
+			return callCount
+		}
+
+		r1 := cache.CachedResult("counter", compute)
+		assert.Equal(t, 1, r1.(int))
+
+		cache.ClearCachedResults()
+
+		r2 := cache.CachedResult("counter", compute)
+		assert.Equal(t, 2, r2.(int))
+		assert.Equal(t, 2, callCount)
+	})
+}
+
+func TestResourceCache_Freeze(t *testing.T) {
+	t.Run("frozen List returns precomputed slice with zero allocation", func(t *testing.T) {
+		cache := NewResourceCache()
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-a", "default"))
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-b", "default"))
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-c", "kube-system"))
+
+		cache.Freeze()
+
+		result := cache.List(podGVR)
+		require.Len(t, result, 3)
+
+		// After freeze, List should return the exact same slice (pointer equality).
+		result2 := cache.List(podGVR)
+		assert.Equal(t, result, result2)
+	})
+
+	t.Run("frozen List returns nil for unknown GVR", func(t *testing.T) {
+		cache := NewResourceCache()
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-a", "default"))
+		cache.Freeze()
+
+		result := cache.List(deployGVR)
+		assert.Nil(t, result)
+	})
+
+	t.Run("unfrozen List still works normally", func(t *testing.T) {
+		cache := NewResourceCache()
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-a", "default"))
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-b", "kube-system"))
+
+		result := cache.List(podGVR)
+		assert.Len(t, result, 2)
+	})
+
+	t.Run("Freeze is idempotent", func(t *testing.T) {
+		cache := NewResourceCache()
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-a", "default"))
+
+		cache.Freeze()
+		cache.Freeze() // second freeze should not panic or change behavior
+
+		result := cache.List(podGVR)
+		require.Len(t, result, 1)
+		assert.Equal(t, "pod-a", result[0].GetName())
+	})
+
+	t.Run("Add panics after Freeze", func(t *testing.T) {
+		cache := NewResourceCache()
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-a", "default"))
+		cache.Freeze()
+
+		assert.Panics(t, func() {
+			cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-b", "default"))
+		})
+	})
+
+	t.Run("frozen cache preserves all GVRs", func(t *testing.T) {
+		cache := NewResourceCache()
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-a", "default"))
+		cache.Add(deployGVR, makeUnstructured("apps/v1", "Deployment", "deploy-a", "default"))
+		cache.Freeze()
+
+		pods := cache.List(podGVR)
+		assert.Len(t, pods, 1)
+		deploys := cache.List(deployGVR)
+		assert.Len(t, deploys, 1)
+	})
+
+	t.Run("frozen empty cache", func(t *testing.T) {
+		cache := NewResourceCache()
+		cache.Freeze()
+
+		result := cache.List(podGVR)
+		assert.Nil(t, result)
+	})
+
+	t.Run("ListNamespaced still works after Freeze", func(t *testing.T) {
+		cache := NewResourceCache()
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-a", "default"))
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-b", "kube-system"))
+		cache.Freeze()
+
+		result := cache.ListNamespaced(podGVR, "default")
+		assert.Len(t, result, 1)
+		assert.Equal(t, "pod-a", result[0].GetName())
+	})
+
+	t.Run("GVRs still works after Freeze", func(t *testing.T) {
+		cache := NewResourceCache()
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-a", "default"))
+		cache.Add(deployGVR, makeUnstructured("apps/v1", "Deployment", "deploy-a", "default"))
+		cache.Freeze()
+
+		gvrs := cache.GVRs()
+		assert.Len(t, gvrs, 2)
+		assert.Contains(t, gvrs, podGVR)
+		assert.Contains(t, gvrs, deployGVR)
+	})
+
+	t.Run("Len still works after Freeze", func(t *testing.T) {
+		cache := NewResourceCache()
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-a", "default"))
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-b", "kube-system"))
+		cache.Freeze()
+
+		assert.Equal(t, 2, cache.Len())
+	})
+}
+
+func BenchmarkCacheListFrozen(b *testing.B) {
+	cache := benchCache(b)
+	cache.Freeze()
+	gvr := schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		items := cache.List(gvr)
+		_ = items
+	}
+}

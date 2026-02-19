@@ -16,12 +16,15 @@ import (
 
 // GVR constants for scheduling-related resources.
 var (
+	// PodDisruptionBudgetGVR is the GroupVersionResource for policy/v1 PodDisruptionBudget objects.
 	PodDisruptionBudgetGVR = schema.GroupVersionResource{
 		Group: "policy", Version: "v1", Resource: "poddisruptionbudgets",
 	}
+	// HorizontalPodAutoscalerGVR is the GroupVersionResource for autoscaling/v2 HPA objects.
 	HorizontalPodAutoscalerGVR = schema.GroupVersionResource{
 		Group: "autoscaling", Version: "v2", Resource: "horizontalpodautoscalers",
 	}
+	// PriorityClassGVR is the GroupVersionResource for scheduling.k8s.io/v1 PriorityClass objects.
 	PriorityClassGVR = schema.GroupVersionResource{
 		Group: "scheduling.k8s.io", Version: "v1", Resource: "priorityclasses",
 	}

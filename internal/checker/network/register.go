@@ -1,3 +1,9 @@
+// Package network implements network security checks for Kubernetes network policies, ingresses, and services.
+//
+// It covers 12 checks spanning network policy enforcement, ingress TLS configuration,
+// service exposure, DNS security, and service mesh mTLS.
+// All checkers implement the [checker.Checker] interface and are registered
+// via [Register].
 package network
 
 import "github.com/stribog-cloud/kubevigil/internal/checker"

@@ -1,0 +1,274 @@
+# Deployment 1: Frontend with multiple security issues
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: web-team
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      serviceAccountName: default
+      automountServiceAccountToken: true
+      containers:
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+          securityContext:
+            allowPrivilegeEscalation: true
+            runAsUser: 0
+          env:
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: frontend-creds
+                  key: api-key
+---
+# Deployment 2: API server with host access
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-backend
+  namespace: web-team
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-backend
+  template:
+    metadata:
+      labels:
+        app: api-backend
+    spec:
+      hostNetwork: true
+      containers:
+        - name: api
+          image: myregistry.io/api
+          ports:
+            - containerPort: 8080
+              hostPort: 8080
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+      volumes:
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+---
+# Deployment 3: Worker with no security context at all
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: data-team
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+        - name: worker
+          image: python:3.11
+          command: ["python", "-m", "worker"]
+---
+# StatefulSet 1: Database with hostPID
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-primary
+  namespace: data-team
+spec:
+  serviceName: postgres
+  replicas: 3
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      hostPID: true
+      containers:
+        - name: postgres
+          image: postgres:latest
+          ports:
+            - containerPort: 5432
+          securityContext:
+            runAsUser: 0
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pg-secret
+                  key: password
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 50Gi
+---
+# StatefulSet 2: Redis with no resource limits
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-cluster
+  namespace: data-team
+spec:
+  serviceName: redis
+  replicas: 6
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis
+          ports:
+            - containerPort: 6379
+          securityContext:
+            allowPrivilegeEscalation: true
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 20Gi
+---
+# DaemonSet: Log collector with hostPath
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: log-agent
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: log-agent
+  template:
+    metadata:
+      labels:
+        app: log-agent
+    spec:
+      hostPID: true
+      hostIPC: true
+      containers:
+        - name: fluent-bit
+          image: fluent/fluent-bit:latest
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: varlog
+              mountPath: /var/log
+            - name: containers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+      volumes:
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: containers
+          hostPath:
+            path: /var/lib/docker/containers
+---
+# Job: Data migration with no security
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migrate
+  namespace: data-team
+spec:
+  template:
+    metadata:
+      labels:
+        app: db-migrate
+    spec:
+      serviceAccountName: default
+      containers:
+        - name: migrate
+          image: myregistry.io/migrate:latest
+          command: ["./migrate", "--up"]
+          securityContext:
+            runAsUser: 0
+      restartPolicy: Never
+  backoffLimit: 3
+---
+# CronJob: Backup with privilege escalation
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nightly-backup
+  namespace: data-team
+spec:
+  schedule: "0 2 * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: nightly-backup
+        spec:
+          containers:
+            - name: backup
+              image: backup-tool
+              command: ["./backup.sh"]
+              securityContext:
+                allowPrivilegeEscalation: true
+                capabilities:
+                  add: ["SYS_ADMIN", "NET_RAW"]
+              volumeMounts:
+                - name: host-data
+                  mountPath: /backup-source
+          volumes:
+            - name: host-data
+              hostPath:
+                path: /var/data
+          restartPolicy: OnFailure
+---
+# Service: LoadBalancer exposed
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-lb
+  namespace: web-team
+spec:
+  type: LoadBalancer
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80
+---
+# ServiceAccount: with automount true
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app-sa
+  namespace: web-team
+automountServiceAccountToken: true
