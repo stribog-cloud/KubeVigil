@@ -25,12 +25,49 @@ SARIF for GitHub Security.
   YAML edits and a five-ring safety model.
 - **CI-ready exit codes.** Clean integration with any CI/CD pipeline.
 
+## Installation
+
+### Homebrew (macOS / Linux)
+
+```bash
+brew install stribog-cloud/tap/kubevigil
+```
+
+### Krew (kubectl plugin)
+
+```bash
+kubectl krew install vigil
+```
+
+### Install script
+
+```bash
+curl -sSL https://raw.githubusercontent.com/stribog-cloud/KubeVigil/master/install.sh | bash
+```
+
+### Download from GitHub Releases
+
+Pre-built binaries for Linux, macOS, and Windows are available on the
+[Releases page](https://github.com/stribog-cloud/KubeVigil/releases).
+
+### Docker
+
+```bash
+docker run --rm -v $(pwd):/manifests ghcr.io/stribog-cloud/kubevigil scan -f /manifests/
+
+# Scan a live cluster
+docker run --rm -v ~/.kube/config:/root/.kube/config ghcr.io/stribog-cloud/kubevigil scan
+```
+
+### From source
+
+```bash
+go install github.com/stribog-cloud/kubevigil/cmd/kubevigil@latest
+```
+
 ## Quick Start
 
 ```bash
-# Install
-go install github.com/stribog-cloud/kubevigil/cmd/kubevigil@latest
-
 # Scan manifests (no cluster needed)
 kubevigil scan -f ./manifests/
 
