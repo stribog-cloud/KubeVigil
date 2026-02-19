@@ -1,0 +1,9 @@
+.git
+bin/
+dist/
+coverage.out
+*.out
+test/
+docs/
+.github/
+.golangci.yml
