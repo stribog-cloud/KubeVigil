@@ -1947,3 +1947,104 @@ func TestHTMLReporter_ColumnarFindingsJSON(t *testing.T) {
 	assert.Equal(t, []string{"nginx"}, data["t"])
 	assert.Equal(t, []string{"priv"}, data["m"])
 }
+
+func TestFormatWithCommas(t *testing.T) {
+	testCases := []struct {
+		name string
+		n    int
+		want string
+	}{
+		{name: "zero", n: 0, want: "0"},
+		{name: "single digit", n: 5, want: "5"},
+		{name: "three digits", n: 100, want: "100"},
+		{name: "boundary 999", n: 999, want: "999"},
+		{name: "boundary 1000", n: 1000, want: "1,000"},
+		{name: "four digits", n: 6965, want: "6,965"},
+		{name: "one million", n: 1000000, want: "1,000,000"},
+		{name: "large number", n: 1234567890, want: "1,234,567,890"},
+		{name: "exact multiple of 3 digits", n: 123456, want: "123,456"},
+		{name: "two digits", n: 42, want: "42"},
+		{name: "one digit", n: 1, want: "1"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := formatWithCommas(tc.n)
+			assert.Equal(t, tc.want, got, "formatWithCommas(%d)", tc.n)
+		})
+	}
+}
+
+func TestParseSev(t *testing.T) {
+	testCases := []struct {
+		name string
+		s    string
+		want checker.Severity
+	}{
+		{name: "critical", s: "Critical", want: checker.SeverityCritical},
+		{name: "high", s: "High", want: checker.SeverityHigh},
+		{name: "medium", s: "Medium", want: checker.SeverityMedium},
+		{name: "low", s: "Low", want: checker.SeverityLow},
+		{name: "info", s: "Info", want: checker.SeverityInfo},
+		{name: "lowercase critical", s: "critical", want: checker.SeverityCritical},
+		{name: "unknown severity defaults to Info", s: "extreme", want: checker.SeverityInfo},
+		{name: "empty string defaults to Info", s: "", want: checker.SeverityInfo},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := parseSev(tc.s)
+			assert.Equal(t, tc.want, got, "parseSev(%q)", tc.s)
+		})
+	}
+}
+
+func TestBarPct(t *testing.T) {
+	testCases := []struct {
+		name  string
+		part  int
+		total int
+		want  int
+	}{
+		{name: "zero total returns 0", part: 5, total: 0, want: 0},
+		{name: "zero part returns 0", part: 0, total: 100, want: 0},
+		{name: "both zero returns 0", part: 0, total: 0, want: 0},
+		{name: "50%", part: 50, total: 100, want: 50},
+		{name: "100%", part: 100, total: 100, want: 100},
+		{name: "small fraction gets min floor of 1", part: 1, total: 1000, want: 1},
+		{name: "normal case", part: 25, total: 100, want: 25},
+		{name: "part equals total", part: 10, total: 10, want: 100},
+		{name: "very small gets min floor", part: 1, total: 200, want: 1},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := barPct(tc.part, tc.total)
+			assert.Equal(t, tc.want, got, "barPct(%d, %d)", tc.part, tc.total)
+		})
+	}
+}
+
+func TestStripNamespacePrefix(t *testing.T) {
+	testCases := []struct {
+		name string
+		path string
+		ns   string
+		want string
+	}{
+		{name: "empty namespace returns path unchanged", path: "ClusterRole/admin", ns: "", want: "ClusterRole/admin"},
+		{name: "path with prefix stripped", path: "default/Deployment/nginx", ns: "default", want: "Deployment/nginx"},
+		{name: "path without prefix unchanged", path: "Deployment/nginx", ns: "default", want: "Deployment/nginx"},
+		{name: "empty path returns empty", path: "", ns: "default", want: ""},
+		{name: "namespace does not match prefix", path: "prod/Deployment/nginx", ns: "default", want: "prod/Deployment/nginx"},
+		{name: "both empty", path: "", ns: "", want: ""},
+		{name: "exact namespace match only strips once", path: "default/default/Deployment/nginx", ns: "default", want: "default/Deployment/nginx"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := stripNamespacePrefix(tc.path, tc.ns)
+			assert.Equal(t, tc.want, got, "stripNamespacePrefix(%q, %q)", tc.path, tc.ns)
+		})
+	}
+}

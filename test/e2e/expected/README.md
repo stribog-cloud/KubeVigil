@@ -515,3 +515,99 @@ kubevigil scan --file test/e2e/scenarios/clean/
 5. **PVC reclaim findings.** `pvc-reclaim-retain` may only fire in live mode when
    a PV enters the Released state. In manifest mode, the PV exists but is not in
    that state.
+
+---
+
+## Fix Scenarios — Expected Findings (Before/After)
+
+The fix scenarios test the `kubevigil fix` command. Each scenario has expected
+findings before the fix and expected results after applying fixes at each risk level.
+
+### fix-safe
+
+**Before fix:**
+
+| Check ID | Severity | Resource | Fix Safety |
+|----------|----------|----------|------------|
+| `privileged` | Critical | privileged-deploy, multi-container-insecure | Safe |
+| `privilege-escalation` | High | privileged-deploy, multi-container-insecure | Safe |
+| `host-pid` | Critical | multi-container-insecure | Safe |
+| `host-ipc` | Critical | multi-container-insecure | Safe |
+
+**After fix (--risk-level safe):** All above findings resolved. Other findings
+(capabilities-not-dropped, run-as-root, etc.) remain because they require moderate risk level.
+
+### fix-moderate
+
+**Before fix:**
+
+| Check ID | Severity | Resource | Fix Safety |
+|----------|----------|----------|------------|
+| `privilege-escalation` | High | missing-sec-ctx | Safe |
+| `run-as-root` | High | missing-sec-ctx | Likely Safe |
+| `read-only-rootfs` | Medium | missing-sec-ctx | Likely Safe |
+| `capabilities-not-dropped` | Medium | missing-sec-ctx | Likely Safe |
+| `seccomp-profile` | Medium | missing-sec-ctx | Likely Safe |
+
+**After fix (--risk-level safe):** Only `privilege-escalation` resolved.
+**After fix (--risk-level moderate):** All above findings resolved.
+
+### fix-aggressive
+
+**Before fix:**
+
+| Check ID | Severity | Resource | Fix Safety |
+|----------|----------|----------|------------|
+| `resource-limits-missing` | Medium | missing-resources | Potentially Breaking |
+| `resource-requests-missing` | Medium | missing-resources | Potentially Breaking |
+| `ephemeral-storage-limits` | Low | missing-resources | Potentially Breaking |
+| `host-ports` | High | host-port-deploy | Potentially Breaking |
+
+**After fix (--risk-level safe):** No findings resolved (all potentially breaking).
+**After fix (--risk-level moderate):** No findings resolved (all potentially breaking).
+**After fix (--risk-level aggressive):** All above findings resolved.
+
+### fix-system-ns
+
+**Before fix:**
+
+| Check ID | Severity | Resource | Fix Safety |
+|----------|----------|----------|------------|
+| `privileged` | Critical | system-daemon (kube-system) | Safe |
+| `privilege-escalation` | High | system-daemon (kube-system) | Safe |
+
+**After fix (any risk level, no --i-understand-system-namespaces):**
+No findings resolved — system namespace protection blocks all fixes.
+
+### fix-known-workloads
+
+| Resource | Image | Detection | Expected Behavior |
+|----------|-------|-----------|-------------------|
+| calico-node | `calico/node:v3.27.0` | CNI plugin | Skip — needs privileged, hostNetwork |
+| coredns | `registry.k8s.io/coredns/coredns:v1.11.1` | Core DNS | Skip — system workload |
+| node-exporter | `prom/node-exporter:v1.7.0` | Monitoring | Skip — needs hostPID, hostNetwork |
+
+All three resources should be skipped (known workloads + system namespaces).
+
+### fix-multi-doc
+
+Three documents: insecure Deployment, Service, insecure Deployment.
+After fix: Both deployments have `privileged: false`. Service unchanged.
+Document separators (`---`) preserved.
+
+### fix-comments
+
+Single deployment with extensive comments. After fix: `privileged: true` changed
+to `privileged: false`. All comments preserved (head, inline, block).
+
+### fix-clean
+
+Fully hardened deployment. `kubevigil fix` reports "No fixable findings" and
+exits with code 4.
+
+### fix-partial-failure
+
+Three files: valid insecure, malformed YAML, read-only insecure.
+After fix (--apply): valid file fixed, malformed skipped (parse error),
+read-only skipped (permission denied). Exit code 5 (partial success) when
+read-only file is actually chmod 444.

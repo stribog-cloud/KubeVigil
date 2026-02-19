@@ -89,7 +89,15 @@ func (c *ResourceRequestsMissingChecker) Run(ctx context.Context, resources *che
 					"## Learn More\n\n" +
 					"Resource requests determine the pod's QoS class and scheduling behavior. Pods with requests equal to limits " +
 					"receive Guaranteed QoS. Use Vertical Pod Autoscaler (VPA) to automatically recommend request values.",
-				FieldPath: fieldPath,
+				FieldPath:    fieldPath,
+				CurrentValue: nil,
+				DesiredValue: map[string]string{"cpu": "100m", "memory": "128Mi"},
+				FixHint: &checker.FixHint{
+					Safety:      checker.FixPotentiallyBreaking,
+					Description: "Adds default resource requests.",
+					Impact:      "May affect scheduling if cluster resources are constrained.",
+					Operation:   checker.FixOpSet,
+				},
 			})
 		})
 	}

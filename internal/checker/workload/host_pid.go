@@ -73,7 +73,15 @@ func (c *HostPIDChecker) Run(ctx context.Context, resources *checker.ResourceCac
 				"## Learn More\n\n" +
 				"This check aligns with CIS Benchmark 5.2.2 and the Pod Security Standards \"Baseline\" profile, " +
 				"which prohibits hostPID. Process namespace isolation is a fundamental container security boundary.",
-			FieldPath: ".spec.hostPID",
+			FieldPath:    ".spec.hostPID",
+			CurrentValue: true,
+			DesiredValue: false,
+			FixHint: &checker.FixHint{
+				Safety:      checker.FixSafe,
+				Description: "Disables host PID namespace sharing.",
+				Impact:      "None unless container specifically needs host PID visibility.",
+				Operation:   checker.FixOpSet,
+			},
 		})
 	}
 

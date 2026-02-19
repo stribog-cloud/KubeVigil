@@ -1,0 +1,49 @@
+# =============================================================================
+# KubeVigil E2E — Fix Comments: Commented Deployment
+# =============================================================================
+#
+# Tests that the YAML round-trip patcher preserves ALL comments:
+#   - Head comments (above a key)
+#   - Inline comments (after a value)
+#   - Block comments (between sections)
+#   - Multi-line comment blocks
+#
+# Triggers safe-level fix:
+#   - privileged (Critical → Safe fix): privileged: true
+#
+# After fix, ALL comments below must be preserved exactly.
+# =============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  # This is the deployment name — do NOT change
+  name: commented-deploy  # deployment name inline
+  namespace: default
+  labels:
+    app: commented-deploy
+    # Custom label for tracking
+    team: platform  # owned by platform team
+
+# ---- Spec Section ----
+# The spec defines the desired state of the Deployment.
+spec:
+  replicas: 1  # single replica for dev
+  selector:
+    matchLabels:
+      app: commented-deploy
+  template:
+    metadata:
+      labels:
+        app: commented-deploy
+      # Annotations would go here if needed
+    spec:
+      # Container definitions follow
+      containers:
+        # Primary application container
+        - name: app
+          image: registry.k8s.io/pause:3.9  # lightweight test image
+          # Security context — this is what gets fixed
+          securityContext:
+            # THIS VALUE SHOULD BE CHANGED TO false
+            privileged: true  # INSECURE: grants full host access

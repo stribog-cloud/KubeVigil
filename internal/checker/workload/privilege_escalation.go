@@ -78,7 +78,15 @@ func (c *PrivilegeEscalationChecker) Run(ctx context.Context, resources *checker
 					"## Learn More\n\n" +
 					"This is required by the Pod Security Standards \"Restricted\" profile and CIS Benchmark 5.2.5. " +
 					"Disabling privilege escalation is one of the most impactful single-line security improvements you can make.",
-				FieldPath: fieldPath,
+				FieldPath:    fieldPath,
+				CurrentValue: nil,
+				DesiredValue: false,
+				FixHint: &checker.FixHint{
+					Safety:      checker.FixSafe,
+					Description: "Disables privilege escalation.",
+					Impact:      "None for standard workloads.",
+					Operation:   checker.FixOpSet,
+				},
 			})
 		})
 	}

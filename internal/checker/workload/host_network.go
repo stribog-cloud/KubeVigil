@@ -73,7 +73,15 @@ func (c *HostNetworkChecker) Run(ctx context.Context, resources *checker.Resourc
 				"## Learn More\n\n" +
 				"This aligns with CIS Benchmark 5.2.4 and the Pod Security Standards \"Baseline\" profile. " +
 				"Network namespace isolation is essential for NetworkPolicy enforcement and cluster network segmentation.",
-			FieldPath: ".spec.hostNetwork",
+			FieldPath:    ".spec.hostNetwork",
+			CurrentValue: true,
+			DesiredValue: false,
+			FixHint: &checker.FixHint{
+				Safety:      checker.FixLikelySafe,
+				Description: "Disables host network sharing.",
+				Impact:      "Containers binding to host ports will lose network access.",
+				Operation:   checker.FixOpSet,
+			},
 		})
 	}
 

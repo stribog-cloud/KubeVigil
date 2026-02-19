@@ -150,6 +150,46 @@ func (m *ScanMode) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// FixSafety classifies the risk level of a fix operation.
+type FixSafety string
+
+const (
+	// FixSafe indicates a fix with zero risk of breaking functionality.
+	FixSafe FixSafety = "safe"
+	// FixLikelySafe indicates a fix with very low risk that could theoretically break edge cases.
+	FixLikelySafe FixSafety = "likely_safe"
+	// FixPotentiallyBreaking indicates a fix that could impact functionality.
+	FixPotentiallyBreaking FixSafety = "potentially_breaking"
+	// FixManualOnly indicates a fix that cannot be automated and requires manual intervention.
+	FixManualOnly FixSafety = "manual_only"
+)
+
+// FixOp describes the type of YAML modification a fix performs.
+type FixOp string
+
+const (
+	// FixOpSet sets a field to a specific value.
+	FixOpSet FixOp = "set"
+	// FixOpAdd adds a new field that doesn't exist yet.
+	FixOpAdd FixOp = "add"
+	// FixOpRemove removes a field entirely.
+	FixOpRemove FixOp = "remove"
+	// FixOpMerge merges into an existing map or list.
+	FixOpMerge FixOp = "merge"
+)
+
+// FixHint provides structured metadata for auto-remediation.
+type FixHint struct {
+	// Safety classifies the risk level of applying this fix.
+	Safety FixSafety `json:"safety" yaml:"safety"`
+	// Description explains what the fix does.
+	Description string `json:"description" yaml:"description"`
+	// Impact explains what could break if this fix is applied.
+	Impact string `json:"impact,omitempty" yaml:"impact"`
+	// Operation describes the type of YAML modification.
+	Operation FixOp `json:"operation" yaml:"operation"`
+}
+
 // FrameworkRef links a finding to a specific compliance framework control.
 type FrameworkRef struct {
 	// Framework is the identifier (e.g., "cis", "mitre", "nsa").
@@ -184,6 +224,12 @@ type Finding struct {
 	FieldPath string `json:"field_path,omitempty" yaml:"field_path"`
 	// Frameworks lists compliance framework references for this finding.
 	Frameworks []FrameworkRef `json:"frameworks,omitempty" yaml:"frameworks"`
+	// CurrentValue is the current insecure value of the field (e.g., true for privileged).
+	CurrentValue any `json:"current_value,omitempty" yaml:"current_value,omitempty"`
+	// DesiredValue is the recommended secure value (e.g., false for privileged).
+	DesiredValue any `json:"desired_value,omitempty" yaml:"desired_value,omitempty"`
+	// FixHint provides structured metadata for auto-remediation.
+	FixHint *FixHint `json:"fix_hint,omitempty" yaml:"fix_hint,omitempty"`
 }
 
 // ClusterInfo holds metadata about the scanned cluster.

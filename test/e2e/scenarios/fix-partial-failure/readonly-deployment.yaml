@@ -1,0 +1,27 @@
+# KubeVigil E2E — Fix Partial Failure: Read-Only Deployment
+#
+# A valid insecure YAML file. During testing, this file's permissions
+# are changed to read-only (chmod 444) to simulate a permission denied error.
+# The fixer should report the error and continue with other files.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: readonly-insecure
+  namespace: default
+  labels:
+    app: readonly-insecure
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: readonly-insecure
+  template:
+    metadata:
+      labels:
+        app: readonly-insecure
+    spec:
+      containers:
+        - name: app
+          image: registry.k8s.io/pause:3.9
+          securityContext:
+            privileged: true

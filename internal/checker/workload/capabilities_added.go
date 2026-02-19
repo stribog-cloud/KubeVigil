@@ -110,7 +110,15 @@ func (c *CapabilitiesAddedChecker) Run(ctx context.Context, resources *checker.R
 					"## Learn More\n\n" +
 					"The Pod Security Standards \"Restricted\" profile only allows NET_BIND_SERVICE. Refer to the Linux capabilities " +
 					"man page (capabilities(7)) and CIS Benchmark 5.2.7-5.2.9 for guidance on acceptable capabilities.",
-				FieldPath: fieldPath,
+				FieldPath:    fieldPath,
+				CurrentValue: dangerous,
+				DesiredValue: nil,
+				FixHint: &checker.FixHint{
+					Safety:      checker.FixLikelySafe,
+					Description: "Removes dangerous added capabilities.",
+					Impact:      "Containers requiring specific capabilities will fail.",
+					Operation:   checker.FixOpRemove,
+				},
 			})
 		})
 	}

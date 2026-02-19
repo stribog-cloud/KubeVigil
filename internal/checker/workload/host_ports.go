@@ -73,7 +73,15 @@ func (c *HostPortsChecker) Run(ctx context.Context, resources *checker.ResourceC
 							"## Learn More\n\n" +
 							"Host ports are prohibited by the Pod Security Standards \"Baseline\" profile. The only common " +
 							"legitimate use is for DaemonSets that must bind to a well-known port on every node (e.g., log collectors).",
-						FieldPath: containerFieldPath(ct, idx, "ports"),
+						FieldPath:    containerFieldPath(ct, idx, "ports"),
+						CurrentValue: port.HostPort,
+						DesiredValue: nil,
+						FixHint: &checker.FixHint{
+							Safety:      checker.FixPotentiallyBreaking,
+							Description: "Removes hostPort from container ports.",
+							Impact:      "External traffic routing via host ports will stop working.",
+							Operation:   checker.FixOpRemove,
+						},
 					})
 				}
 			}

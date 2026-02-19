@@ -80,7 +80,15 @@ func (c *PrivilegedChecker) Run(ctx context.Context, resources *checker.Resource
 					"## Learn More\n\n" +
 					"This check aligns with CIS Kubernetes Benchmark 5.2.1 and the Pod Security Standards \"Baseline\" profile, " +
 					"which both prohibit privileged containers. See the Kubernetes documentation on Pod Security Standards for details.",
-				FieldPath: fieldPath,
+				FieldPath:    fieldPath,
+				CurrentValue: true,
+				DesiredValue: false,
+				FixHint: &checker.FixHint{
+					Safety:      checker.FixSafe,
+					Description: "Disables privileged mode.",
+					Impact:      "None — containers should never run privileged unless they are known system components.",
+					Operation:   checker.FixOpSet,
+				},
 			})
 		})
 	}

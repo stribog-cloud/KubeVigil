@@ -90,7 +90,15 @@ func (c *ResourceLimitsMissingChecker) Run(ctx context.Context, resources *check
 					"## Learn More\n\n" +
 					"Use LimitRange objects to enforce default limits at the namespace level. Resource limits also determine " +
 					"the pod's QoS class: pods with equal requests and limits get Guaranteed QoS and are last to be evicted.",
-				FieldPath: fieldPath,
+				FieldPath:    fieldPath,
+				CurrentValue: nil,
+				DesiredValue: map[string]string{"cpu": "500m", "memory": "256Mi"},
+				FixHint: &checker.FixHint{
+					Safety:      checker.FixPotentiallyBreaking,
+					Description: "Adds default resource limits.",
+					Impact:      "Applications exceeding limits will be throttled or OOMKilled.",
+					Operation:   checker.FixOpSet,
+				},
 			})
 		})
 	}

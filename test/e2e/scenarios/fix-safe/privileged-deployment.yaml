@@ -1,0 +1,29 @@
+# KubeVigil E2E — Fix Safe: Privileged Deployment
+#
+# Triggers safe-level fix strategies:
+#   - privileged (Critical → Safe fix): privileged: true
+#   - privilege-escalation (High → Safe fix): missing allowPrivilegeEscalation: false
+#   - automount-token (High → Safe fix): automountServiceAccountToken not set to false
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: privileged-deploy
+  namespace: kv-e2e-fix-safe
+  labels:
+    app: privileged-deploy
+    kubevigil.stribog.cloud/scenario: fix-safe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: privileged-deploy
+  template:
+    metadata:
+      labels:
+        app: privileged-deploy
+    spec:
+      containers:
+        - name: insecure-app
+          image: registry.k8s.io/pause:3.9
+          securityContext:
+            privileged: true

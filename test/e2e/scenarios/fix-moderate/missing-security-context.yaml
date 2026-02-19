@@ -1,0 +1,32 @@
+# KubeVigil E2E — Fix Moderate: Missing Security Context
+#
+# Triggers likely-safe fix strategies (require --risk-level moderate):
+#   - run-as-root (High → Likely Safe fix): no runAsNonRoot set
+#   - read-only-rootfs (Medium → Likely Safe fix): no readOnlyRootFilesystem
+#   - capabilities-not-dropped (Medium → Likely Safe fix): no drop: ["ALL"]
+#   - seccomp-profile (Medium → Likely Safe fix): no seccomp profile
+#
+# Also triggers safe-level fixes:
+#   - privilege-escalation (High → Safe fix): no allowPrivilegeEscalation: false
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: missing-sec-ctx
+  namespace: kv-e2e-fix-moderate
+  labels:
+    app: missing-sec-ctx
+    kubevigil.stribog.cloud/scenario: fix-moderate
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: missing-sec-ctx
+  template:
+    metadata:
+      labels:
+        app: missing-sec-ctx
+    spec:
+      containers:
+        - name: app
+          image: registry.k8s.io/pause:3.9
+          # No securityContext at all — triggers multiple likely-safe fixes

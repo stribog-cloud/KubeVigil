@@ -93,7 +93,15 @@ func (c *PullPolicyChecker) Run(ctx context.Context, resources *checker.Resource
 				"## Learn More\n\n" +
 				"See the Kubernetes documentation on image pull policies and " +
 				"CIS Kubernetes Benchmark 5.4.2 for pull policy guidance.",
-			FieldPath: containerFieldPath(img.ContainerType, img.ContainerIdx, "imagePullPolicy"),
+			FieldPath:    containerFieldPath(img.ContainerType, img.ContainerIdx, "imagePullPolicy"),
+			CurrentValue: effectivePolicy,
+			DesiredValue: "Always",
+			FixHint: &checker.FixHint{
+				Safety:      checker.FixLikelySafe,
+				Description: "Sets imagePullPolicy to Always.",
+				Impact:      "Slightly slower pod starts due to image verification.",
+				Operation:   checker.FixOpSet,
+			},
 		})
 	}
 

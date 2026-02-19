@@ -1,0 +1,50 @@
+# This deployment runs the API backend service.
+# Maintained by: backend-team@example.com
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-server
+  namespace: backend
+  labels:
+    # Team ownership label
+    team: backend
+    app: api-server  # Main API application
+  annotations:
+    # Deployment tracking
+    deploy.kubernetes.io/revision: "5"
+spec:
+  replicas: 2  # Scale based on load testing results
+  selector:
+    matchLabels:
+      app: api-server
+  template:
+    metadata:
+      labels:
+        app: api-server
+    spec:
+      # Service account for API access
+      serviceAccountName: api-sa
+      containers:
+      - name: api
+        image: myregistry.io/api-server:v2.3.1
+        # Port configuration
+        ports:
+        - containerPort: 8080  # HTTP
+        - containerPort: 8443  # HTTPS
+        env:
+        - name: LOG_LEVEL
+          value: "info"  # Change to debug for troubleshooting
+        securityContext:
+          privileged: true  # TODO: Fix this! Should be false
+          allowPrivilegeEscalation: true
+        # Resource limits need tuning
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+      # Init container for DB migrations
+      initContainers:
+      - name: migrate
+        image: myregistry.io/migrate:v1.0.0
+        command: ["./migrate", "up"]
+# End of deployment configuration

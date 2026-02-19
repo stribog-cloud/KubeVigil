@@ -1,0 +1,31 @@
+# KubeVigil E2E — Fix System Namespace: kube-system DaemonSet
+#
+# Resources in system namespaces should be SKIPPED by default.
+# The fix engine must not modify these unless --i-understand-system-namespaces is set.
+#
+# Triggers:
+#   - privileged (Critical): container runs privileged
+#   - privilege-escalation (High): no allowPrivilegeEscalation: false
+# Expected behavior: both fixes skipped due to system namespace protection.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: system-daemon
+  namespace: kube-system
+  labels:
+    app: system-daemon
+    kubevigil.stribog.cloud/scenario: fix-system-ns
+spec:
+  selector:
+    matchLabels:
+      app: system-daemon
+  template:
+    metadata:
+      labels:
+        app: system-daemon
+    spec:
+      containers:
+        - name: daemon
+          image: registry.k8s.io/pause:3.9
+          securityContext:
+            privileged: true

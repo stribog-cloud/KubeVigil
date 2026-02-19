@@ -1,0 +1,30 @@
+# KubeVigil E2E — Fix Known Workloads: Prometheus Node Exporter
+#
+# Node exporter legitimately needs hostPID and hostNetwork.
+# The fix engine should detect this as a known system workload
+# and skip remediation.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: node-exporter
+    kubevigil.stribog.cloud/scenario: fix-known-workloads
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: node-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: node-exporter
+    spec:
+      hostPID: true
+      hostNetwork: true
+      containers:
+        - name: node-exporter
+          image: prom/node-exporter:v1.7.0
+          ports:
+            - containerPort: 9100
+              hostPort: 9100

@@ -74,7 +74,15 @@ func (c *ShareProcessNamespaceChecker) Run(ctx context.Context, resources *check
 				"## Learn More\n\n" +
 				"Shared PID namespaces also make PID 1 the pause container rather than your application, which changes " +
 				"signal handling behavior. See the Kubernetes documentation on sharing process namespace between containers.",
-			FieldPath: ".spec.shareProcessNamespace",
+			FieldPath:    ".spec.shareProcessNamespace",
+			CurrentValue: true,
+			DesiredValue: false,
+			FixHint: &checker.FixHint{
+				Safety:      checker.FixSafe,
+				Description: "Disables process namespace sharing between containers.",
+				Impact:      "None unless containers need to share process visibility.",
+				Operation:   checker.FixOpSet,
+			},
 		})
 	}
 

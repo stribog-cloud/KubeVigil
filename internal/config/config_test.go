@@ -357,3 +357,41 @@ func TestLoad_ValidFile(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "1", cfg.Version)
 }
+
+func TestDiscover_ReturnsEmptyForCleanDir(t *testing.T) {
+	// Verify that Discover returns empty string when no config exists
+	// in a temp dir with no config files.
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = os.Chdir(origDir)
+	})
+
+	tmpDir := t.TempDir()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	found, err := Discover()
+	require.NoError(t, err)
+	assert.Equal(t, "", found, "should return empty when no config file exists")
+}
+
+func TestDiscover_FindsConfigInCwd(t *testing.T) {
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = os.Chdir(origDir)
+	})
+
+	tmpDir := t.TempDir()
+	// Resolve symlinks for macOS where /var -> /private/var.
+	tmpDir, err = filepath.EvalSymlinks(tmpDir)
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tmpDir))
+
+	configPath := filepath.Join(tmpDir, ".kubevigil.yaml")
+	require.NoError(t, os.WriteFile(configPath, []byte(`version: "1"`), 0o644))
+
+	found, err := Discover()
+	require.NoError(t, err)
+	assert.Equal(t, configPath, found, "should find .kubevigil.yaml in current directory")
+}
