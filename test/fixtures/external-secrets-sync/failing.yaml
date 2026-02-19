@@ -1,0 +1,17 @@
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: failing-external-secret
+  namespace: default
+spec:
+  secretStoreRef:
+    name: my-store
+    kind: SecretStore
+  target:
+    name: my-secret
+status:
+  conditions:
+    - type: Ready
+      status: "False"
+      reason: SecretSyncError
+      message: "unable to sync secret"

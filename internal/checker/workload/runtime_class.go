@@ -54,14 +54,27 @@ func (c *RuntimeClassChecker) Run(ctx context.Context, resources *checker.Resour
 		}
 
 		findings = append(findings, checker.Finding{
-			Checker:     "runtime-class",
-			Severity:    checker.SeverityLow,
-			Resource:    info.ResourceName,
-			Namespace:   info.Namespace,
-			Kind:        info.Kind,
-			Message:     fmt.Sprintf("Pod %q does not specify a RuntimeClass, using the default (unsandboxed) runtime.", info.ResourceName),
-			Remediation: "Specify a RuntimeClass for sandboxed container execution (e.g., gVisor, Kata).",
-			FieldPath:   ".spec.runtimeClassName",
+			Checker:   "runtime-class",
+			Severity:  checker.SeverityLow,
+			Resource:  info.ResourceName,
+			Namespace: info.Namespace,
+			Kind:      info.Kind,
+			Message:   fmt.Sprintf("Pod %q does not specify a RuntimeClass, using the default (unsandboxed) runtime.", info.ResourceName),
+			Remediation: "## Why This Matters\n\n" +
+				"Without a RuntimeClass, pods use the default container runtime (typically runc), which shares the host kernel " +
+				"directly with containers. A kernel vulnerability can allow container escape to the host. Sandboxed runtimes like " +
+				"gVisor or Kata Containers add an additional isolation layer that intercepts system calls or runs containers in " +
+				"lightweight VMs.\n\n" +
+				"## How to Fix\n\n" +
+				"Specify a sandboxed RuntimeClass in the pod spec:\n\n" +
+				"```yaml\nspec:\n  runtimeClassName: gvisor\n```\n\n" +
+				"Available RuntimeClasses depend on your cluster configuration. Common options include `gvisor` (user-space kernel), " +
+				"`kata` (micro-VMs), and `firecracker`. Check your cluster's available RuntimeClasses with " +
+				"`kubectl get runtimeclasses`.\n\n" +
+				"## Learn More\n\n" +
+				"Sandboxed runtimes are especially important for multi-tenant clusters and workloads processing untrusted input. " +
+				"They add latency overhead, so evaluate performance requirements. See the Kubernetes RuntimeClass documentation.",
+			FieldPath: ".spec.runtimeClassName",
 		})
 	}
 

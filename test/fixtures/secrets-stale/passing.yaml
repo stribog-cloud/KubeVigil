@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: recent-database-creds
+  namespace: production
+  creationTimestamp: "2026-02-01T00:00:00Z"
+type: Opaque
+data:
+  password: cGFzc3dvcmQxMjM=

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: automount-false-pod
+  namespace: default
+spec:
+  automountServiceAccountToken: false
+  containers:
+    - name: app
+      image: nginx:1.25

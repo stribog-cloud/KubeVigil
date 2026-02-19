@@ -1,0 +1,21 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: encrypted-gp3
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  encrypted: "true"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-encrypted
+  namespace: default
+spec:
+  storageClassName: encrypted-gp3
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

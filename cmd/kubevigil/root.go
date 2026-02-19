@@ -27,7 +27,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&flagConfig, "config", "", "config file path (default: auto-discover)")
-	rootCmd.PersistentFlags().StringVarP(&flagOutput, "output", "o", "text", "output format (text, json)")
+	rootCmd.PersistentFlags().StringVarP(&flagOutput, "output", "o", "text", "output format or file path (text, json, markdown, yaml, html, sarif, junit, csv; or report.html, report.json, etc.)")
 	rootCmd.PersistentFlags().BoolVar(&flagNoColor, "no-color", false, "disable colored output")
 	rootCmd.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "enable verbose logging")
 }

@@ -66,15 +66,26 @@ func (c *RunAsGroupChecker) Run(ctx context.Context, resources *checker.Resource
 			if effectiveGID == nil {
 				// runAsGroup is not set at any level.
 				findings = append(findings, checker.Finding{
-					Checker:     "run-as-group",
-					Severity:    checker.SeverityMedium,
-					Resource:    info.ResourceName,
-					Namespace:   info.Namespace,
-					Kind:        info.Kind,
-					Container:   container.Name,
-					Message:     fmt.Sprintf("Container %q does not set runAsGroup; the process will run as GID 0 (root group) by default.", container.Name),
-					Remediation: "Set securityContext.runAsGroup to a non-zero GID (e.g., 1000) to avoid running as the root group.",
-					FieldPath:   fieldPath,
+					Checker:   "run-as-group",
+					Severity:  checker.SeverityMedium,
+					Resource:  info.ResourceName,
+					Namespace: info.Namespace,
+					Kind:      info.Kind,
+					Container: container.Name,
+					Message:   fmt.Sprintf("Container %q does not set runAsGroup; the process will run as GID 0 (root group) by default.", container.Name),
+					Remediation: "## Why This Matters\n\n" +
+						"Without an explicit runAsGroup, the container process defaults to GID 0 (the root group). " +
+						"Files and sockets owned by the root group become accessible to the container, including " +
+						"potentially sensitive host files if volumes are mounted. This widens the attack surface unnecessarily.\n\n" +
+						"## How to Fix\n\n" +
+						"Set an explicit non-root group in the securityContext:\n\n" +
+						"```yaml\nsecurityContext:\n  runAsGroup: 1000\n  runAsUser: 1000\n  runAsNonRoot: true\n```\n\n" +
+						"Ensure the container image's application files and directories are readable by the specified GID. " +
+						"You may need to adjust file ownership in your Dockerfile with `chown`.\n\n" +
+						"## Learn More\n\n" +
+						"This aligns with CIS Benchmark 5.2.6 and the Pod Security Standards \"Restricted\" profile. " +
+						"Always set runAsUser, runAsGroup, and runAsNonRoot together for comprehensive identity control.",
+					FieldPath: fieldPath,
 				})
 				return
 			}
@@ -82,15 +93,26 @@ func (c *RunAsGroupChecker) Run(ctx context.Context, resources *checker.Resource
 			if *effectiveGID == 0 {
 				// runAsGroup is explicitly set to 0.
 				findings = append(findings, checker.Finding{
-					Checker:     "run-as-group",
-					Severity:    checker.SeverityMedium,
-					Resource:    info.ResourceName,
-					Namespace:   info.Namespace,
-					Kind:        info.Kind,
-					Container:   container.Name,
-					Message:     fmt.Sprintf("Container %q is explicitly configured to run as the root group (GID 0).", container.Name),
-					Remediation: "Set securityContext.runAsGroup to a non-zero GID (e.g., 1000) to avoid running as the root group.",
-					FieldPath:   fieldPath,
+					Checker:   "run-as-group",
+					Severity:  checker.SeverityMedium,
+					Resource:  info.ResourceName,
+					Namespace: info.Namespace,
+					Kind:      info.Kind,
+					Container: container.Name,
+					Message:   fmt.Sprintf("Container %q is explicitly configured to run as the root group (GID 0).", container.Name),
+					Remediation: "## Why This Matters\n\n" +
+						"Explicitly setting runAsGroup to 0 runs the container as the root group, granting access to " +
+						"any files and resources owned by GID 0. This includes many system files on the host if volumes are " +
+						"mounted, and it increases the potential damage from a container compromise or escape.\n\n" +
+						"## How to Fix\n\n" +
+						"Change runAsGroup to a non-root GID:\n\n" +
+						"```yaml\nsecurityContext:\n  runAsGroup: 1000\n  runAsUser: 1000\n  runAsNonRoot: true\n```\n\n" +
+						"Ensure the container image's application files are accessible to the new GID. " +
+						"Update file ownership in your Dockerfile with `RUN chown -R 1000:1000 /app` if needed.\n\n" +
+						"## Learn More\n\n" +
+						"This aligns with CIS Benchmark 5.2.6. Running as a non-root group is part of a complete " +
+						"least-privilege configuration alongside runAsNonRoot and runAsUser.",
+					FieldPath: fieldPath,
 				})
 			}
 		})

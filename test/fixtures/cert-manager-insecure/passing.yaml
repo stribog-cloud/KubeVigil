@@ -1,0 +1,16 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: strong-cert
+  namespace: default
+spec:
+  secretName: strong-tls
+  duration: "2160h"
+  issuerRef:
+    name: letsencrypt
+    kind: ClusterIssuer
+  privateKey:
+    algorithm: RSA
+    size: 4096
+  dnsNames:
+    - example.com

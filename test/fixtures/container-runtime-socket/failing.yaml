@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docker-in-docker
+  namespace: ci
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dind
+  template:
+    metadata:
+      labels:
+        app: dind
+    spec:
+      containers:
+        - name: builder
+          image: docker:24-dind
+          volumeMounts:
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+      volumes:
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock

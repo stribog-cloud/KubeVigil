@@ -55,14 +55,26 @@ func (c *ShareProcessNamespaceChecker) Run(ctx context.Context, resources *check
 		}
 
 		findings = append(findings, checker.Finding{
-			Checker:     "share-process-namespace",
-			Severity:    checker.SeverityMedium,
-			Resource:    info.ResourceName,
-			Namespace:   info.Namespace,
-			Kind:        info.Kind,
-			Message:     fmt.Sprintf("Pod %q has shareProcessNamespace enabled, allowing all containers to see each other's processes.", info.ResourceName),
-			Remediation: "Set shareProcessNamespace to false unless process sharing is explicitly required.",
-			FieldPath:   ".spec.shareProcessNamespace",
+			Checker:   "share-process-namespace",
+			Severity:  checker.SeverityMedium,
+			Resource:  info.ResourceName,
+			Namespace: info.Namespace,
+			Kind:      info.Kind,
+			Message:   fmt.Sprintf("Pod %q has shareProcessNamespace enabled, allowing all containers to see each other's processes.", info.ResourceName),
+			Remediation: "## Why This Matters\n\n" +
+				"When shareProcessNamespace is enabled, all containers in the pod share the same PID namespace and can see each " +
+				"other's processes, access their /proc entries, and send signals. If one container is compromised, the attacker " +
+				"can inspect environment variables, read memory via /proc/[pid]/mem, or kill processes in sibling containers.\n\n" +
+				"## How to Fix\n\n" +
+				"Disable process namespace sharing unless explicitly required:\n\n" +
+				"```yaml\nspec:\n  shareProcessNamespace: false\n```\n\n" +
+				"Legitimate use cases for shared PID namespaces include sidecar containers that need to monitor the main " +
+				"application process, or debug containers that need process visibility. Evaluate whether your sidecar pattern " +
+				"truly requires this access.\n\n" +
+				"## Learn More\n\n" +
+				"Shared PID namespaces also make PID 1 the pause container rather than your application, which changes " +
+				"signal handling behavior. See the Kubernetes documentation on sharing process namespace between containers.",
+			FieldPath: ".spec.shareProcessNamespace",
 		})
 	}
 

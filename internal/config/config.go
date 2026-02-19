@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/stribog-cloud/kubevigil/internal/checker"
 )
 
 // validSeverities is the set of accepted severity strings.
@@ -30,6 +32,8 @@ type Config struct {
 	Checks ChecksConfig `yaml:"checks"`
 	// Exemptions lists resources that should be skipped during scanning.
 	Exemptions []Exemption `yaml:"exemptions"`
+	// Policies holds policy configuration for policy-based checks (e.g., image registry allowlists).
+	Policies checker.Policies `yaml:"policies"`
 }
 
 // Settings contains global scan settings.
@@ -42,6 +46,19 @@ type Settings struct {
 	Concurrency int `yaml:"concurrency"`
 	// Timeout is the maximum duration for the scan (e.g., "5m", "30s").
 	Timeout string `yaml:"timeout"`
+	// IncludeManaged includes managed Pods and ReplicaSets in scan results.
+	// By default, managed resources are filtered out to avoid duplicate findings.
+	IncludeManaged bool `yaml:"include_managed"`
+	// IncludeSystemNamespaces includes system namespaces (kube-system, kube-public, kube-node-lease)
+	// in scan results. By default, system namespaces are excluded to reduce noise.
+	IncludeSystemNamespaces bool `yaml:"include_system_namespaces"`
+	// ExcludeInfra excludes infrastructure namespaces from scan results.
+	ExcludeInfra bool `yaml:"exclude_infra"`
+	// InfraNamespaces is a list of additional namespace names to classify as infrastructure.
+	InfraNamespaces []string `yaml:"infra_namespaces"`
+	// NoAggregate disables finding aggregation in reports. When false (default),
+	// findings with the same check and message are grouped per namespace.
+	NoAggregate bool `yaml:"no_aggregate"`
 }
 
 // ChecksConfig configures which checks to run and their overrides.
@@ -152,6 +169,19 @@ func SeverityOverride(cfg *Config, name string) (string, bool) {
 		return override.Severity, true
 	}
 	return "", false
+}
+
+// DefaultSystemNamespaces are Kubernetes system namespaces excluded by default.
+// These contain components that legitimately need elevated privileges.
+var DefaultSystemNamespaces = map[string]bool{
+	"kube-system":     true,
+	"kube-public":     true,
+	"kube-node-lease": true,
+}
+
+// IsSystemNamespace returns true if the namespace is a Kubernetes system namespace.
+func IsSystemNamespace(ns string) bool {
+	return DefaultSystemNamespaces[ns]
 }
 
 // FailOnSeverity returns the configured fail-on severity string.

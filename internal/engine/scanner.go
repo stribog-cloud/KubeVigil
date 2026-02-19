@@ -15,6 +15,7 @@ import (
 
 	"github.com/stribog-cloud/kubevigil/internal/checker"
 	"github.com/stribog-cloud/kubevigil/internal/config"
+	"github.com/stribog-cloud/kubevigil/internal/frameworks"
 	"github.com/stribog-cloud/kubevigil/internal/k8s"
 )
 
@@ -47,22 +48,28 @@ func (s *Scanner) ScanManifest(ctx context.Context, path string) (*checker.ScanR
 		return nil, fmt.Errorf("scanning manifests at %s: %w", path, parseErrs[0])
 	}
 
+	cache.SetPolicies(&s.config.Policies)
+
 	annotations := collectAnnotations(cache)
 	findings, errCount := s.runChecks(ctx, enabled, cache)
 	findings = s.applySeverityOverrides(findings)
 	findings = config.FilterFindings(findings, s.config.Exemptions, annotations)
+	frameworks.AttachFrameworks(findings)
 
 	skipped := s.registry.Len() - len(enabled)
 
 	return &checker.ScanResult{
 		Findings: findings,
 		ScanMeta: checker.ScanMeta{
-			StartTime:     start,
-			Duration:      time.Since(start),
-			ChecksRun:     len(enabled),
-			ChecksSkipped: skipped,
-			ChecksErrored: errCount,
-			ScanMode:      checker.ScanModeManifest,
+			StartTime:         start,
+			Duration:          time.Since(start),
+			ChecksRun:         len(enabled),
+			ChecksSkipped:     skipped,
+			ChecksErrored:     errCount,
+			CheckNames:        checkNames(enabled),
+			CheckDescriptions: checkDescriptions(enabled),
+			CheckCategories:   checkCategories(enabled),
+			ScanMode:          checker.ScanModeManifest,
 		},
 	}, nil
 }
@@ -81,30 +88,77 @@ func (s *Scanner) ScanLive(ctx context.Context, client dynamic.Interface, disc d
 
 	enabled, _ = filterByAvailableGVRs(enabled, skippedGVRs)
 
+	// Filter out managed Pods and ReplicaSets to avoid duplicate findings.
+	if !s.config.Settings.IncludeManaged {
+		filtered := k8s.FilterManagedResources(cache)
+		if filtered > 0 {
+			slog.Info("filtered managed resources", "count", filtered)
+		}
+	}
+
+	cache.SetPolicies(&s.config.Policies)
+
 	annotations := collectAnnotations(cache)
 	findings, errCount := s.runChecks(ctx, enabled, cache)
 	findings = s.applySeverityOverrides(findings)
 	findings = config.FilterFindings(findings, s.config.Exemptions, annotations)
+	frameworks.AttachFrameworks(findings)
 
 	version, err := k8s.ClusterVersion(disc)
 	if err != nil {
 		slog.Warn("could not get cluster version", "error", err)
 	}
 
+	nodeGVR := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "nodes"}
+	nodeCount := len(cache.List(nodeGVR))
+
 	return &checker.ScanResult{
 		Findings: findings,
 		ClusterInfo: checker.ClusterInfo{
 			ServerVersion: version,
+			NodeCount:     nodeCount,
 		},
 		ScanMeta: checker.ScanMeta{
-			StartTime:     start,
-			Duration:      time.Since(start),
-			ChecksRun:     len(enabled),
-			ChecksSkipped: s.registry.Len() - len(enabled),
-			ChecksErrored: errCount,
-			ScanMode:      checker.ScanModeLive,
+			StartTime:         start,
+			Duration:          time.Since(start),
+			ChecksRun:         len(enabled),
+			ChecksSkipped:     s.registry.Len() - len(enabled),
+			ChecksErrored:     errCount,
+			CheckNames:        checkNames(enabled),
+			CheckDescriptions: checkDescriptions(enabled),
+			CheckCategories:   checkCategories(enabled),
+			ScanMode:          checker.ScanModeLive,
 		},
 	}, nil
+}
+
+// checkNames returns the names of the given checkers, sorted for determinism.
+func checkNames(checks []checker.Checker) []string {
+	names := make([]string, len(checks))
+	for i, c := range checks {
+		names[i] = c.Name()
+	}
+	return names
+}
+
+func checkDescriptions(checks []checker.Checker) map[string]string {
+	descs := make(map[string]string, len(checks))
+	for _, c := range checks {
+		descs[c.Name()] = c.Description()
+	}
+	return descs
+}
+
+// checkCategories returns a map from check name to primary category name.
+func checkCategories(checks []checker.Checker) map[string]string {
+	cats := make(map[string]string, len(checks))
+	for _, c := range checks {
+		categories := c.Categories()
+		if len(categories) > 0 {
+			cats[c.Name()] = categories[0].String()
+		}
+	}
+	return cats
 }
 
 // enabledChecks returns checkers that support the given mode and are not disabled in config.

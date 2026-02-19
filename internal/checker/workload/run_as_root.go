@@ -81,15 +81,26 @@ func checkRunAsRoot(info *PodSpecInfo, container *corev1.Container, ct Container
 	// If runAsUser is explicitly 0, always flag regardless of runAsNonRoot.
 	if effectiveRunAsUser != nil && *effectiveRunAsUser == 0 {
 		return checker.Finding{
-			Checker:     "run-as-root",
-			Severity:    checker.SeverityHigh,
-			Resource:    info.ResourceName,
-			Namespace:   info.Namespace,
-			Kind:        info.Kind,
-			Container:   container.Name,
-			Message:     fmt.Sprintf("Container %q is explicitly configured to run as root (UID 0).", container.Name),
-			Remediation: "Set securityContext.runAsUser to a non-zero UID (e.g., 1000) and set runAsNonRoot: true.",
-			FieldPath:   containerFieldPath(ct, idx, "securityContext.runAsUser"),
+			Checker:   "run-as-root",
+			Severity:  checker.SeverityHigh,
+			Resource:  info.ResourceName,
+			Namespace: info.Namespace,
+			Kind:      info.Kind,
+			Container: container.Name,
+			Message:   fmt.Sprintf("Container %q is explicitly configured to run as root (UID 0).", container.Name),
+			Remediation: "## Why This Matters\n\n" +
+				"Running as root (UID 0) gives processes full privileges inside the container. If a container escape occurs, " +
+				"the attacker lands on the host as root, with the ability to access other containers, steal secrets, and " +
+				"compromise the entire node. This is the most common container security misconfiguration.\n\n" +
+				"## How to Fix\n\n" +
+				"Set a non-root user in the securityContext:\n\n" +
+				"```yaml\nsecurityContext:\n  runAsUser: 1000\n  runAsNonRoot: true\n  runAsGroup: 1000\n```\n\n" +
+				"Also add a `USER` directive in your Dockerfile to ensure the image defaults to a non-root user. " +
+				"Most application frameworks (Node.js, Python, Go, Java) work correctly as non-root.\n\n" +
+				"## Learn More\n\n" +
+				"This aligns with CIS Benchmark 5.2.6 and the Pod Security Standards \"Restricted\" profile. " +
+				"Running as non-root is considered a foundational security practice for all container workloads.",
+			FieldPath: containerFieldPath(ct, idx, "securityContext.runAsUser"),
 		}, true
 	}
 
@@ -109,15 +120,26 @@ func checkRunAsRoot(info *PodSpecInfo, container *corev1.Container, ct Container
 	// Neither runAsUser (non-zero) nor runAsNonRoot: true is set.
 	// The container may run as root by default.
 	return checker.Finding{
-		Checker:     "run-as-root",
-		Severity:    checker.SeverityHigh,
-		Resource:    info.ResourceName,
-		Namespace:   info.Namespace,
-		Kind:        info.Kind,
-		Container:   container.Name,
-		Message:     fmt.Sprintf("Container %q does not set runAsNonRoot: true and may run as root.", container.Name),
-		Remediation: "Set securityContext.runAsNonRoot to true and optionally set runAsUser to a non-zero UID.",
-		FieldPath:   containerFieldPath(ct, idx, "securityContext.runAsNonRoot"),
+		Checker:   "run-as-root",
+		Severity:  checker.SeverityHigh,
+		Resource:  info.ResourceName,
+		Namespace: info.Namespace,
+		Kind:      info.Kind,
+		Container: container.Name,
+		Message:   fmt.Sprintf("Container %q does not set runAsNonRoot: true and may run as root.", container.Name),
+		Remediation: "## Why This Matters\n\n" +
+			"Without `runAsNonRoot: true`, Kubernetes does not enforce non-root execution and the container may default " +
+			"to running as UID 0 depending on the image's USER directive. If the image defaults to root, the container " +
+			"process gains full privileges, increasing the blast radius of any compromise or container escape.\n\n" +
+			"## How to Fix\n\n" +
+			"Enforce non-root execution in the securityContext:\n\n" +
+			"```yaml\nsecurityContext:\n  runAsNonRoot: true\n  runAsUser: 1000\n  runAsGroup: 1000\n```\n\n" +
+			"With `runAsNonRoot: true`, Kubernetes will reject the pod at admission time if the container image " +
+			"attempts to run as root. Setting an explicit `runAsUser` provides an additional guarantee.\n\n" +
+			"## Learn More\n\n" +
+			"This aligns with CIS Benchmark 5.2.6 and the Pod Security Standards \"Restricted\" profile. " +
+			"The `runAsNonRoot` field acts as a safety net even when images change their default USER.",
+		FieldPath: containerFieldPath(ct, idx, "securityContext.runAsNonRoot"),
 	}, true
 }
 

@@ -2,11 +2,23 @@
 KubeVigil Scan Report
 ══════════════════════════════════════════════════
 
+──────────────────────────────────────────────────
+Executive Summary
+──────────────────────────────────────────────────
+Posture Score:   89/100
+Total Findings:  3
+  Critical: 1  High: 1  Medium: 1  Low: 0  Info: 0
+Resources:       3 affected across 2 namespaces
+Check Coverage:  25 ran, 3 with findings, 22 clean, 2 skipped, 0 errored
+
+Findings by Check:
+  [Critical] privileged                      1 findings across 1 resources
+  [High] run-as-root                     1 findings across 1 resources
+  [Medium] read-only-rootfs                1 findings across 1 resources
+
+KubeVigil:       dev
 Scan Mode:       Manifest
-Duration:        42ms
-Checks Run:      25
-Checks Skipped:  2
-Checks Errored:  0
+Duration:        50ms
 
 ──────────────────────────────────────────────────
 Findings (3 total)
@@ -18,12 +30,14 @@ Findings (3 total)
   Message:     Container runs in privileged mode
   Remediation: Set securityContext.privileged to false
   Field:       .spec.containers[0].securityContext.privileged
+  Frameworks:  CIS 5.2.1 · MITRE T1611 · NSA 3.1
 
 [High] run-as-root
   Resource:    backend/Deployment/api-server
   Container:   api
   Message:     Container runs as root
   Remediation: Set runAsNonRoot: true
+  Frameworks:  CIS 5.2.6
 
 [Medium] read-only-rootfs
   Resource:    default/StatefulSet/worker
@@ -31,6 +45,7 @@ Findings (3 total)
   Message:     Root filesystem is not read-only
   Remediation: Set readOnlyRootFilesystem: true
   Field:       .spec.containers[0].securityContext.readOnlyRootFilesystem
+  Frameworks:  CIS 5.2.4 · NSA 3.1
 
 ──────────────────────────────────────────────────
 Summary

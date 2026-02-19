@@ -52,10 +52,35 @@ var categoryNames = map[Category]string{
 	CategoryCloudProvider: "CloudProvider",
 }
 
-// String returns the human-readable name of the category.
+// String returns the short identifier of the category (e.g., "ClusterConfig").
 func (c Category) String() string {
 	if name, ok := categoryNames[c]; ok {
 		return name
 	}
 	return fmt.Sprintf("Category(%d)", int(c))
+}
+
+var categoryDisplayNames = map[string]string{
+	"Workload":             "Workload",
+	"Lifecycle":            "Lifecycle",
+	"Image":                "Image",
+	"RBAC":                 "RBAC",
+	"Secrets":              "Secrets",
+	"Network":              "Network",
+	"PodSecurityStandards": "Pod Security Standards",
+	"Storage":              "Storage",
+	"Scheduling":           "Scheduling",
+	"ClusterConfig":        "Cluster Configuration",
+	"SupplyChain":          "Supply Chain",
+	"CRD":                  "CRD",
+	"CloudProvider":        "Cloud Provider",
+}
+
+// CategoryDisplayName returns the human-readable display name for a category
+// string. Unknown categories are returned unchanged.
+func CategoryDisplayName(cat string) string {
+	if dn, ok := categoryDisplayNames[cat]; ok {
+		return dn
+	}
+	return cat
 }

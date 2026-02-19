@@ -200,6 +200,39 @@ func TestTextReporter_ManifestModeNoClusterInfo(t *testing.T) {
 	assert.NotContains(t, out, "Node Count:")
 }
 
+func TestTextReporter_SummaryOnly(t *testing.T) {
+	r := &TextReporter{SummaryOnly: true}
+	var buf bytes.Buffer
+	result := &checker.ScanResult{
+		Findings: []checker.Finding{
+			{Checker: "privileged", Severity: checker.SeverityCritical, Resource: "nginx", Namespace: "default", Kind: "Deployment", Message: "privileged mode"},
+			{Checker: "run-as-root", Severity: checker.SeverityHigh, Resource: "api", Namespace: "backend", Kind: "Deployment", Message: "runs as root"},
+			{Checker: "read-only-rootfs", Severity: checker.SeverityMedium, Resource: "worker", Namespace: "default", Kind: "StatefulSet", Message: "not read-only"},
+			{Checker: "rbac-wildcard", Severity: checker.SeverityCritical, Resource: "admin", Kind: "ClusterRole", Message: "wildcard"},
+		},
+		ScanMeta: checker.ScanMeta{ScanMode: checker.ScanModeManifest},
+	}
+	err := r.Generate(context.Background(), result, &buf)
+	require.NoError(t, err)
+	out := buf.String()
+
+	// Should have the summary table.
+	assert.Contains(t, out, "Summary")
+	assert.Contains(t, out, "Total: 4 findings")
+	assert.Contains(t, out, "Critical: 2")
+	assert.Contains(t, out, "High:     1")
+	assert.Contains(t, out, "Medium:   1")
+
+	// Should have per-namespace breakdown.
+	assert.Contains(t, out, "backend")
+	assert.Contains(t, out, "default")
+
+	// Should NOT have individual finding details.
+	assert.NotContains(t, out, "privileged mode")
+	assert.NotContains(t, out, "runs as root")
+	assert.NotContains(t, out, "Remediation:")
+}
+
 func TestTextReporter_CancelledContext(t *testing.T) {
 	r := &TextReporter{}
 	var buf bytes.Buffer

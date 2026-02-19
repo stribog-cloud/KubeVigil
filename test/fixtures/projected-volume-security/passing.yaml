@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: token-app
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: token
+  template:
+    metadata:
+      labels:
+        app: token
+    spec:
+      volumes:
+        - name: token-volume
+          projected:
+            defaultMode: 0400
+            sources:
+              - serviceAccountToken:
+                  path: token
+                  expirationSeconds: 3600
+      containers:
+        - name: app
+          image: nginx:1.25
+          volumeMounts:
+            - name: token-volume
+              mountPath: /var/run/secrets/tokens

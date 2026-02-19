@@ -60,15 +60,27 @@ func (c *PrivilegedChecker) Run(ctx context.Context, resources *checker.Resource
 			fieldPath := containerFieldPath(ct, idx, "securityContext.privileged")
 
 			findings = append(findings, checker.Finding{
-				Checker:     "privileged",
-				Severity:    checker.SeverityCritical,
-				Resource:    info.ResourceName,
-				Namespace:   info.Namespace,
-				Kind:        info.Kind,
-				Container:   container.Name,
-				Message:     fmt.Sprintf("Container %q is running in privileged mode, granting full host access.", container.Name),
-				Remediation: "Set securityContext.privileged to false. Privileged containers can escape to the host and compromise the entire node.",
-				FieldPath:   fieldPath,
+				Checker:   "privileged",
+				Severity:  checker.SeverityCritical,
+				Resource:  info.ResourceName,
+				Namespace: info.Namespace,
+				Kind:      info.Kind,
+				Container: container.Name,
+				Message:   fmt.Sprintf("Container %q is running in privileged mode, granting full host access.", container.Name),
+				Remediation: "## Why This Matters\n\n" +
+					"A privileged container runs with all Linux capabilities and has direct access to the host's devices, " +
+					"filesystems, and kernel. An attacker who compromises a privileged container can immediately escape to the " +
+					"host node, access secrets from other pods, and pivot across the entire cluster. This is the single most " +
+					"dangerous workload misconfiguration.\n\n" +
+					"## How to Fix\n\n" +
+					"Set `privileged` to `false` in the container's securityContext:\n\n" +
+					"```yaml\nsecurityContext:\n  privileged: false\n  allowPrivilegeEscalation: false\n  capabilities:\n    drop: [\"ALL\"]\n```\n\n" +
+					"If your container requires specific host access (e.g., network configuration), grant only the individual " +
+					"capabilities it needs via `capabilities.add` instead of enabling full privileged mode.\n\n" +
+					"## Learn More\n\n" +
+					"This check aligns with CIS Kubernetes Benchmark 5.2.1 and the Pod Security Standards \"Baseline\" profile, " +
+					"which both prohibit privileged containers. See the Kubernetes documentation on Pod Security Standards for details.",
+				FieldPath: fieldPath,
 			})
 		})
 	}

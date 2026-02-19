@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: disallowed-registry-pod
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: quay.io/some/app:v1

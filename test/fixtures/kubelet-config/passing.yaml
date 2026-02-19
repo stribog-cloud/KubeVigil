@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Node
+metadata:
+  name: node-secure
+status:
+  nodeInfo:
+    kubeletVersion: v1.29.0

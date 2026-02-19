@@ -60,15 +60,26 @@ func (c *EphemeralContainerPolicyChecker) Run(ctx context.Context, resources *ch
 			fieldPath := fmt.Sprintf(".spec.ephemeralContainers[%d].securityContext", j)
 
 			findings = append(findings, checker.Finding{
-				Checker:     "ephemeral-container-policy",
-				Severity:    checker.SeverityMedium,
-				Resource:    info.ResourceName,
-				Namespace:   info.Namespace,
-				Kind:        info.Kind,
-				Container:   ec.Name,
-				Message:     fmt.Sprintf("Ephemeral container %q lacks adequate security restrictions.", ec.Name),
-				Remediation: "Restrict ephemeral container security context. Set runAsNonRoot: true, allowPrivilegeEscalation: false.",
-				FieldPath:   fieldPath,
+				Checker:   "ephemeral-container-policy",
+				Severity:  checker.SeverityMedium,
+				Resource:  info.ResourceName,
+				Namespace: info.Namespace,
+				Kind:      info.Kind,
+				Container: ec.Name,
+				Message:   fmt.Sprintf("Ephemeral container %q lacks adequate security restrictions.", ec.Name),
+				Remediation: "## Why This Matters\n\n" +
+					"Ephemeral containers are added to running pods for debugging via `kubectl debug`. Without security restrictions, " +
+					"they can run as root with full capabilities, effectively creating a privileged backdoor into the pod. An attacker " +
+					"with `kubectl debug` access could bypass all security controls on the original containers.\n\n" +
+					"## How to Fix\n\n" +
+					"Apply the same security context standards to ephemeral containers as regular containers:\n\n" +
+					"```yaml\nephemeralContainers:\n  - name: debug\n    securityContext:\n      runAsNonRoot: true\n      allowPrivilegeEscalation: false\n      capabilities:\n        drop: [\"ALL\"]\n```\n\n" +
+					"Enforce these standards cluster-wide using Pod Security Admission policies at the namespace level, " +
+					"which apply equally to ephemeral containers.\n\n" +
+					"## Learn More\n\n" +
+					"Pod Security Admission enforces the same security profile on ephemeral containers as regular containers. " +
+					"Combine RBAC restrictions on `kubectl debug` with security context enforcement for defense in depth.",
+				FieldPath: fieldPath,
 			})
 		}
 	}

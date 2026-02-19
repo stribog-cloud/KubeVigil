@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Node
+metadata:
+  name: node-new
+status:
+  nodeInfo:
+    kubeletVersion: v1.29.0
+---
+apiVersion: v1
+kind: Node
+metadata:
+  name: node-old
+status:
+  nodeInfo:
+    kubeletVersion: v1.25.0
