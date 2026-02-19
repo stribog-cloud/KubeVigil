@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="3" failures="3">
+  <properties>
+    <property name="posture_score" value="89"></property>
+    <property name="total_findings" value="3"></property>
+    <property name="critical" value="1"></property>
+    <property name="high" value="1"></property>
+    <property name="medium" value="1"></property>
+    <property name="low" value="0"></property>
+    <property name="info" value="0"></property>
+    <property name="unique_resources" value="3"></property>
+    <property name="unique_namespaces" value="2"></property>
+    <property name="checks_run" value="25"></property>
+    <property name="checks_with_findings" value="3"></property>
+    <property name="checks_clean" value="22"></property>
+    <property name="checks_skipped" value="2"></property>
+    <property name="checks_errored" value="0"></property>
+  </properties>
+  <testsuite name="privileged" tests="1" failures="1">
+    <testcase name="default/Deployment/nginx" classname="privileged">
+      <failure message="Container runs in privileged mode" type="Critical">Severity: Critical&#xA;Message: Container runs in privileged mode&#xA;Remediation: Set securityContext.privileged to false&#xA;Frameworks: CIS 5.2.1 · MITRE T1611 · NSA 3.1</failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="run-as-root" tests="1" failures="1">
+    <testcase name="backend/Deployment/api-server" classname="run-as-root">
+      <failure message="Container runs as root" type="High">Severity: High&#xA;Message: Container runs as root&#xA;Remediation: Set runAsNonRoot: true&#xA;Frameworks: CIS 5.2.6</failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="read-only-rootfs" tests="1" failures="1">
+    <testcase name="default/StatefulSet/worker" classname="read-only-rootfs">
+      <failure message="Root filesystem is not read-only" type="Medium">Severity: Medium&#xA;Message: Root filesystem is not read-only&#xA;Remediation: Set readOnlyRootFilesystem: true&#xA;Frameworks: CIS 5.2.4 · NSA 3.1</failure>
+    </testcase>
+  </testsuite>
+</testsuites>

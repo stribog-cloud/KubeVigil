@@ -1,0 +1,28 @@
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: healthy-external-secret
+  namespace: default
+spec:
+  secretStoreRef:
+    name: my-store
+    kind: SecretStore
+  target:
+    name: my-secret
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+      reason: SecretSynced
+      message: "Secret synced successfully"
+---
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: my-store
+  namespace: default
+spec:
+  provider:
+    aws:
+      service: SecretsManager
+      region: us-east-1

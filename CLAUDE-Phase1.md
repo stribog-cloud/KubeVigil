@@ -8,7 +8,7 @@ A Kubernetes Security Posture Management (KSPM) CLI tool written in Go. Open sou
 
 **Current Phase:** Phase 1 — Foundation (MVP)
 
-**Reference document:** `docs/internal/kubevigil-features-v2.md` contains the complete feature specification across all 7 phases. **Read this file before making architectural decisions.** It defines the full checker interface, all 112 security checks, testing strategy, directory structure, and roadmap. You are implementing Phase 1 only — do not build features from later phases.
+**Reference document:** `docs/kubevigil-features-v2.md` contains the complete feature specification across all 7 phases. **Read this file before making architectural decisions.** It defines the full checker interface, all 112 security checks, testing strategy, directory structure, and roadmap. You are implementing Phase 1 only — do not build features from later phases.
 
 ---
 
@@ -498,7 +498,7 @@ These decisions are final. Don't re-debate them.
 
 ## Reminders
 
-- **Read `docs/internal/kubevigil-features-v2.md` for details** on any check behavior, severity rationale, or architectural decision not covered here. That document is the source of truth for "what" and "why." This CLAUDE.md is the source of truth for "how" and "now."
+- **Read `docs/kubevigil-features-v2.md` for details** on any check behavior, severity rationale, or architectural decision not covered here. That document is the source of truth for "what" and "why." This CLAUDE.md is the source of truth for "how" and "now."
 - **This is a Go learning project.** When multiple approaches exist, choose the one that teaches the best Go patterns (interfaces over concrete types, composition over inheritance, small focused packages, table-driven tests).
 - **Init containers and sidecar containers must be checked.** Every workload checker iterates `containers`, `initContainers`, and identifies native sidecars (initContainers with `restartPolicy: Always` on K8s 1.28+). This is a common oversight in real tools — don't repeat it.
 - **Severity definitions matter.** Critical = cluster compromise path. High = significant weakness. Medium = defense-in-depth gap. Low = best practice. Info = awareness. Don't inflate severities.

@@ -1,0 +1,4 @@
+Severity,Checker,Namespace,Namespace_Type,Kind,Resource,Container,Message,Remediation,FieldPath,Frameworks
+Critical,privileged,default,application,Deployment,nginx,nginx,Container runs in privileged mode,Set securityContext.privileged to false,.spec.containers[0].securityContext.privileged,CIS 5.2.1 · MITRE T1611 · NSA 3.1
+High,run-as-root,backend,application,Deployment,api-server,api,Container runs as root,Set runAsNonRoot: true,,CIS 5.2.6
+Medium,read-only-rootfs,default,application,StatefulSet,worker,worker,Root filesystem is not read-only,Set readOnlyRootFilesystem: true,.spec.containers[0].securityContext.readOnlyRootFilesystem,CIS 5.2.4 · NSA 3.1

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: latest-default-pod
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: nginx:latest

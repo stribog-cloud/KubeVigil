@@ -1,6 +1,25 @@
 {
   "version": "1",
+  "tool_version": "dev",
   "scan_result": {
+    "summary": {
+      "posture_score": 89,
+      "total_findings": 3,
+      "critical": 1,
+      "high": 1,
+      "medium": 1,
+      "low": 0,
+      "info": 0,
+      "unique_resources": 3,
+      "unique_namespaces": 2,
+      "check_coverage": {
+        "total_run": 25,
+        "with_findings": 3,
+        "clean": 22,
+        "skipped": 2,
+        "errored": 0
+      }
+    },
     "findings": [
       {
         "checker": "privileged",
@@ -11,7 +30,27 @@
         "container": "nginx",
         "message": "Container runs in privileged mode",
         "remediation": "Set securityContext.privileged to false",
-        "field_path": ".spec.containers[0].securityContext.privileged"
+        "field_path": ".spec.containers[0].securityContext.privileged",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.1",
+            "title": "Minimize the admission of privileged containers"
+          },
+          {
+            "framework": "mitre",
+            "version": "v14",
+            "control_id": "T1611",
+            "title": "Escape to Host"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "Pod Security"
+          }
+        ]
       },
       {
         "checker": "run-as-root",
@@ -21,7 +60,15 @@
         "kind": "Deployment",
         "container": "api",
         "message": "Container runs as root",
-        "remediation": "Set runAsNonRoot: true"
+        "remediation": "Set runAsNonRoot: true",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.6",
+            "title": "Minimize the admission of root containers"
+          }
+        ]
       },
       {
         "checker": "read-only-rootfs",
@@ -32,17 +79,32 @@
         "container": "worker",
         "message": "Root filesystem is not read-only",
         "remediation": "Set readOnlyRootFilesystem: true",
-        "field_path": ".spec.containers[0].securityContext.readOnlyRootFilesystem"
+        "field_path": ".spec.containers[0].securityContext.readOnlyRootFilesystem",
+        "frameworks": [
+          {
+            "framework": "cis",
+            "version": "1.8",
+            "control_id": "5.2.4",
+            "title": "Minimize the admission of containers with readOnlyRootFilesystem"
+          },
+          {
+            "framework": "nsa",
+            "version": "1.2",
+            "control_id": "3.1",
+            "title": "Pod Security"
+          }
+        ]
       }
     ],
     "cluster_info": {
       "server_version": "v1.28.0",
       "node_count": 3,
+      "namespace_count": 8,
       "context_name": "my-cluster"
     },
     "scan_meta": {
       "start_time": "2024-01-15T10:30:00Z",
-      "duration": "42ms",
+      "duration": "50ms",
       "checks_run": 25,
       "checks_skipped": 2,
       "checks_errored": 0,

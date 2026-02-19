@@ -57,15 +57,26 @@ func (c *EphemeralStorageLimitsChecker) Run(ctx context.Context, resources *chec
 			fieldPath := containerFieldPath(ct, idx, "resources.limits.ephemeral-storage")
 
 			findings = append(findings, checker.Finding{
-				Checker:     "ephemeral-storage-limits",
-				Severity:    checker.SeverityLow,
-				Resource:    info.ResourceName,
-				Namespace:   info.Namespace,
-				Kind:        info.Kind,
-				Container:   container.Name,
-				Message:     fmt.Sprintf("Container %q is missing ephemeral-storage limits.", container.Name),
-				Remediation: "Set resources.limits.ephemeral-storage to prevent unbounded disk usage.",
-				FieldPath:   fieldPath,
+				Checker:   "ephemeral-storage-limits",
+				Severity:  checker.SeverityLow,
+				Resource:  info.ResourceName,
+				Namespace: info.Namespace,
+				Kind:      info.Kind,
+				Container: container.Name,
+				Message:   fmt.Sprintf("Container %q is missing ephemeral-storage limits.", container.Name),
+				Remediation: "## Why This Matters\n\n" +
+					"Ephemeral storage includes container logs, emptyDir volumes, and the writable container layer. Without limits, " +
+					"a single container can fill the node's root disk, triggering eviction of all pods on that node and potentially " +
+					"causing a cascading failure across your cluster. This is a common denial-of-service vector.\n\n" +
+					"## How to Fix\n\n" +
+					"Set ephemeral-storage limits alongside your CPU and memory limits:\n\n" +
+					"```yaml\nresources:\n  limits:\n    ephemeral-storage: 1Gi\n  requests:\n    ephemeral-storage: 500Mi\n```\n\n" +
+					"Estimate your application's disk usage from logs, temporary files, and cache data. " +
+					"If your application writes large temporary files, consider using a PersistentVolumeClaim instead of ephemeral storage.\n\n" +
+					"## Learn More\n\n" +
+					"The kubelet evicts pods that exceed their ephemeral-storage limit. Use LimitRange to set default " +
+					"ephemeral-storage limits at the namespace level to catch containers that omit this setting.",
+				FieldPath: fieldPath,
 			})
 		})
 	}

@@ -272,6 +272,82 @@ func TestLoad_FileNotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "reading config file")
 }
 
+func TestLoadBytes_WithPolicies(t *testing.T) {
+	data := []byte(`
+version: "1"
+policies:
+  images:
+    allowed_registries:
+      - gcr.io
+      - us-docker.pkg.dev
+    blocked_registries:
+      - docker.io
+    require_signatures: true
+`)
+	cfg, err := LoadBytes(data)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"gcr.io", "us-docker.pkg.dev"}, cfg.Policies.Images.AllowedRegistries)
+	assert.Equal(t, []string{"docker.io"}, cfg.Policies.Images.BlockedRegistries)
+	assert.True(t, cfg.Policies.Images.RequireSignatures)
+	assert.False(t, cfg.Policies.Images.RequireSBOM)
+	assert.False(t, cfg.Policies.Images.RequireProvenance)
+}
+
+func TestLoadBytes_WithPolicies_AllFields(t *testing.T) {
+	data := []byte(`
+version: "1"
+policies:
+  images:
+    allowed_registries:
+      - gcr.io
+    blocked_registries:
+      - docker.io
+    require_signatures: true
+    require_sbom: true
+    require_provenance: true
+`)
+	cfg, err := LoadBytes(data)
+	require.NoError(t, err)
+
+	assert.True(t, cfg.Policies.Images.RequireSignatures)
+	assert.True(t, cfg.Policies.Images.RequireSBOM)
+	assert.True(t, cfg.Policies.Images.RequireProvenance)
+}
+
+func TestLoadBytes_NoPolicies(t *testing.T) {
+	data := []byte(`version: "1"`)
+	cfg, err := LoadBytes(data)
+	require.NoError(t, err)
+
+	// Policies should be zero-valued when not specified.
+	assert.Empty(t, cfg.Policies.Images.AllowedRegistries)
+	assert.Empty(t, cfg.Policies.Images.BlockedRegistries)
+	assert.False(t, cfg.Policies.Images.RequireSignatures)
+	assert.False(t, cfg.Policies.Images.RequireSBOM)
+	assert.False(t, cfg.Policies.Images.RequireProvenance)
+}
+
+func TestIsSystemNamespace(t *testing.T) {
+	tests := []struct {
+		ns   string
+		want bool
+	}{
+		{"kube-system", true},
+		{"kube-public", true},
+		{"kube-node-lease", true},
+		{"default", false},
+		{"production", false},
+		{"", false},
+		{"kube-system-extra", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.ns, func(t *testing.T) {
+			assert.Equal(t, tt.want, IsSystemNamespace(tt.ns))
+		})
+	}
+}
+
 func TestLoad_ValidFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, ".kubevigil.yaml")

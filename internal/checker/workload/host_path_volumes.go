@@ -60,15 +60,26 @@ func (c *HostPathVolumesChecker) Run(ctx context.Context, resources *checker.Res
 			severity := hostPathSeverity(hostPath)
 
 			findings = append(findings, checker.Finding{
-				Checker:     "host-path-volumes",
-				Severity:    severity,
-				Resource:    info.ResourceName,
-				Namespace:   info.Namespace,
-				Kind:        info.Kind,
-				Container:   "",
-				Message:     fmt.Sprintf("%s %q mounts hostPath %q via volume %q.", info.Kind, info.ResourceName, hostPath, vol.Name),
-				Remediation: "Remove hostPath volume mounts. Use persistent volumes or emptyDir instead.",
-				FieldPath:   fmt.Sprintf(".spec.volumes[%d].hostPath", volIdx),
+				Checker:   "host-path-volumes",
+				Severity:  severity,
+				Resource:  info.ResourceName,
+				Namespace: info.Namespace,
+				Kind:      info.Kind,
+				Container: "",
+				Message:   fmt.Sprintf("%s %q mounts hostPath %q via volume %q.", info.Kind, info.ResourceName, hostPath, vol.Name),
+				Remediation: "## Why This Matters\n\n" +
+					"hostPath volumes give containers direct, unrestricted access to the host node's filesystem. Depending on the path " +
+					"mounted, an attacker can read sensitive host files (/etc/shadow), access container runtime sockets for escape, " +
+					"or modify system binaries. This is one of the most common paths to full node compromise.\n\n" +
+					"## How to Fix\n\n" +
+					"Replace hostPath volumes with safer alternatives:\n\n" +
+					"```yaml\nvolumes:\n  - name: data\n    emptyDir: {}          # Pod-scoped temporary storage\n  - name: persistent\n    persistentVolumeClaim:\n      claimName: my-pvc  # Managed storage\n```\n\n" +
+					"If host filesystem access is absolutely required (e.g., for log collectors or node monitoring), mount the most " +
+					"restrictive path possible and set `readOnly: true` in the volumeMount.\n\n" +
+					"## Learn More\n\n" +
+					"hostPath volumes are prohibited in the Pod Security Standards \"Baseline\" profile. Refer to CIS Benchmark " +
+					"5.2.13 and use PersistentVolumeClaims with CSI drivers for production data storage needs.",
+				FieldPath: fmt.Sprintf(".spec.volumes[%d].hostPath", volIdx),
 			})
 		}
 	}

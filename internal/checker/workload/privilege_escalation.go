@@ -59,15 +59,26 @@ func (c *PrivilegeEscalationChecker) Run(ctx context.Context, resources *checker
 			fieldPath := containerFieldPath(ct, idx, "securityContext.allowPrivilegeEscalation")
 
 			findings = append(findings, checker.Finding{
-				Checker:     "privilege-escalation",
-				Severity:    checker.SeverityHigh,
-				Resource:    info.ResourceName,
-				Namespace:   info.Namespace,
-				Kind:        info.Kind,
-				Container:   container.Name,
-				Message:     fmt.Sprintf("Container %q does not set allowPrivilegeEscalation to false, permitting privilege escalation.", container.Name),
-				Remediation: "Set securityContext.allowPrivilegeEscalation to false.",
-				FieldPath:   fieldPath,
+				Checker:   "privilege-escalation",
+				Severity:  checker.SeverityHigh,
+				Resource:  info.ResourceName,
+				Namespace: info.Namespace,
+				Kind:      info.Kind,
+				Container: container.Name,
+				Message:   fmt.Sprintf("Container %q does not set allowPrivilegeEscalation to false, permitting privilege escalation.", container.Name),
+				Remediation: "## Why This Matters\n\n" +
+					"By default, Kubernetes allows containers to escalate privileges via setuid/setgid binaries, which let a " +
+					"process gain more permissions than its parent. An attacker can exploit this using setuid binaries already " +
+					"present in the container image (like `su`, `sudo`, or `ping`) to elevate from a low-privilege user to root.\n\n" +
+					"## How to Fix\n\n" +
+					"Explicitly disable privilege escalation in the container's securityContext:\n\n" +
+					"```yaml\nsecurityContext:\n  allowPrivilegeEscalation: false\n  runAsNonRoot: true\n  capabilities:\n    drop: [\"ALL\"]\n```\n\n" +
+					"This blocks the use of setuid/setgid binaries and prevents the no_new_privs Linux flag from being cleared. " +
+					"The vast majority of application containers do not need privilege escalation.\n\n" +
+					"## Learn More\n\n" +
+					"This is required by the Pod Security Standards \"Restricted\" profile and CIS Benchmark 5.2.5. " +
+					"Disabling privilege escalation is one of the most impactful single-line security improvements you can make.",
+				FieldPath: fieldPath,
 			})
 		})
 	}

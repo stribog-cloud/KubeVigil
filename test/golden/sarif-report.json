@@ -1,0 +1,126 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "kubevigil",
+          "version": "dev",
+          "informationUri": "https://github.com/stribog-cloud/kubevigil",
+          "rules": [
+            {
+              "id": "privileged",
+              "shortDescription": {
+                "text": "privileged"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "cis/1.8/5.2.1",
+                  "mitre/v14/T1611",
+                  "nsa/1.2/3.1"
+                ]
+              }
+            },
+            {
+              "id": "run-as-root",
+              "shortDescription": {
+                "text": "run-as-root"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "cis/1.8/5.2.6"
+                ]
+              }
+            },
+            {
+              "id": "read-only-rootfs",
+              "shortDescription": {
+                "text": "read-only-rootfs"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "tags": [
+                  "cis/1.8/5.2.4",
+                  "nsa/1.2/3.1"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "privileged",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "Container runs in privileged mode"
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "name": "nginx",
+                  "fullyQualifiedName": "default/Deployment/nginx",
+                  "decoratedName": ".spec.containers[0].securityContext.privileged"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "run-as-root",
+          "ruleIndex": 1,
+          "level": "error",
+          "message": {
+            "text": "Container runs as root"
+          }
+        },
+        {
+          "ruleId": "read-only-rootfs",
+          "ruleIndex": 2,
+          "level": "warning",
+          "message": {
+            "text": "Root filesystem is not read-only"
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "name": "worker",
+                  "fullyQualifiedName": "default/StatefulSet/worker",
+                  "decoratedName": ".spec.containers[0].securityContext.readOnlyRootFilesystem"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "posture_score": 89,
+        "total_findings": 3,
+        "critical": 1,
+        "high": 1,
+        "medium": 1,
+        "low": 0,
+        "info": 0,
+        "unique_resources": 3,
+        "unique_namespaces": 2,
+        "checks_run": 25,
+        "checks_with_findings": 3,
+        "checks_clean": 22,
+        "checks_skipped": 2,
+        "checks_errored": 0
+      }
+    }
+  ]
+}

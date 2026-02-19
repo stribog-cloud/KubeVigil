@@ -91,15 +91,26 @@ func (c *CapabilitiesAddedChecker) Run(ctx context.Context, resources *checker.R
 			fieldPath := containerFieldPath(ct, idx, "securityContext.capabilities.add")
 
 			findings = append(findings, checker.Finding{
-				Checker:     "capabilities-added",
-				Severity:    checker.SeverityHigh,
-				Resource:    info.ResourceName,
-				Namespace:   info.Namespace,
-				Kind:        info.Kind,
-				Container:   container.Name,
-				Message:     fmt.Sprintf("Container %q adds dangerous capabilities: %s.", container.Name, strings.Join(dangerous, ", ")),
-				Remediation: "Remove dangerous capabilities. Only add capabilities that are strictly required.",
-				FieldPath:   fieldPath,
+				Checker:   "capabilities-added",
+				Severity:  checker.SeverityHigh,
+				Resource:  info.ResourceName,
+				Namespace: info.Namespace,
+				Kind:      info.Kind,
+				Container: container.Name,
+				Message:   fmt.Sprintf("Container %q adds dangerous capabilities: %s.", container.Name, strings.Join(dangerous, ", ")),
+				Remediation: "## Why This Matters\n\n" +
+					"Linux capabilities like SYS_ADMIN, NET_RAW, and SYS_PTRACE grant kernel-level powers that dramatically expand " +
+					"a container's attack surface. SYS_ADMIN alone enables filesystem mounts and namespace manipulation that can lead " +
+					"to container escape. NET_RAW allows ARP spoofing and network sniffing attacks within the cluster.\n\n" +
+					"## How to Fix\n\n" +
+					"Drop all capabilities and only add back the specific ones your application truly requires:\n\n" +
+					"```yaml\nsecurityContext:\n  capabilities:\n    drop: [\"ALL\"]\n    add: []  # Only add specific caps after careful review\n```\n\n" +
+					"If your application needs to bind to ports below 1024, consider using a Kubernetes Service instead of " +
+					"granting NET_BIND_SERVICE. If setup tasks need elevated permissions, use an init container.\n\n" +
+					"## Learn More\n\n" +
+					"The Pod Security Standards \"Restricted\" profile only allows NET_BIND_SERVICE. Refer to the Linux capabilities " +
+					"man page (capabilities(7)) and CIS Benchmark 5.2.7-5.2.9 for guidance on acceptable capabilities.",
+				FieldPath: fieldPath,
 			})
 		})
 	}

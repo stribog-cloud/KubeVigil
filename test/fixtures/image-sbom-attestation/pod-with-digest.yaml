@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: digest-pod
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: nginx@sha256:abc123def456789012345678901234567890123456789012345678901234abcd

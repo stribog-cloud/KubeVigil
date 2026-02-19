@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KubeVigil Scan Report — Stribog IT Solutions</title>
+<style>
+:root{
+--color-critical:#dc2626;--color-high:#ea580c;--color-medium:#d97706;--color-low:#0284c7;--color-info:#6b7280;
+--color-accent:#4f46e5;--color-success:#10b981;
+--surface-0:#f0f2f5;--surface-1:#ffffff;--surface-2:#f8fafc;--surface-3:#f1f5f9;
+--text-primary:#0f172a;--text-secondary:#475569;--text-muted:#64748b;--text-faint:#94a3b8;
+--border-default:#e2e8f0;--border-subtle:#f1f5f9;
+--glass-bg:rgba(255,255,255,0.72);--glass-border:rgba(255,255,255,0.3);--glass-blur:12px;
+--ambient-1:rgba(59,130,246,0.08);--ambient-2:rgba(124,58,237,0.06);
+--fw-cis:#2563eb;--fw-mitre:#7c3aed;--fw-nsa:#059669;
+--status-fail-bg:#fef2f2;--status-fail-color:#dc2626;--status-fail-border:#fecaca;
+--status-pass-bg:#f0fdf4;--status-pass-color:#10b981;--status-pass-border:#bbf7d0;
+--code-bg:#1e293b;--code-color:#e2e8f0
+}
+.dark{
+--surface-0:#020617;--surface-1:#0f172a;--surface-2:#020617;--surface-3:#1e293b;
+--text-primary:#f1f5f9;--text-secondary:#94a3b8;--text-muted:#94a3b8;--text-faint:#64748b;
+--border-default:#1e293b;--border-subtle:#0f172a;
+--glass-bg:rgba(2,6,23,0.85);--glass-border:rgba(30,41,59,0.6);
+--ambient-1:rgba(59,130,246,0.05);--ambient-2:rgba(124,58,237,0.03);
+--status-fail-bg:#451a03;--status-fail-color:#fca5a5;--status-fail-border:#dc2626;
+--status-pass-bg:#052e16;--status-pass-color:#4ade80;--status-pass-border:#10b981;
+--code-bg:#020617;--code-color:#e2e8f0
+}
+@media(prefers-color-scheme:dark){html:not(.light){
+--surface-0:#020617;--surface-1:#0f172a;--surface-2:#020617;--surface-3:#1e293b;
+--text-primary:#f1f5f9;--text-secondary:#94a3b8;--text-muted:#94a3b8;--text-faint:#64748b;
+--border-default:#1e293b;--border-subtle:#0f172a;
+--glass-bg:rgba(2,6,23,0.85);--glass-border:rgba(30,41,59,0.6);
+--ambient-1:rgba(59,130,246,0.05);--ambient-2:rgba(124,58,237,0.03);
+--status-fail-bg:#451a03;--status-fail-color:#fca5a5;--status-fail-border:#dc2626;
+--status-pass-bg:#052e16;--status-pass-color:#4ade80;--status-pass-border:#10b981;
+--code-bg:#020617;--code-color:#e2e8f0
+}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+::selection{background:#4f46e5;color:#fff}
+body{font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:0;background:var(--surface-0);color:var(--text-primary);line-height:1.5}
+body::before{content:'';position:fixed;inset:0;z-index:-1;background:radial-gradient(ellipse 600px 400px at 20% 30%,var(--ambient-1),transparent),radial-gradient(ellipse 500px 350px at 75% 60%,var(--ambient-2),transparent),var(--surface-0);pointer-events:none}
+.header-meta{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;color:var(--text-faint)}
+.sticky-nav{position:sticky;top:0;z-index:100;background:var(--glass-bg);backdrop-filter:blur(var(--glass-blur));-webkit-backdrop-filter:blur(var(--glass-blur));border-bottom:1px solid var(--glass-border);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.sticky-inner{padding:16px 32px;display:flex;align-items:center;gap:16px}
+.container{max-width:1280px;margin:0 auto;padding:24px 32px}
+.fw-section{padding:24px 32px 0;margin-bottom:0}
+.fw-section+.fw-section{border-top:1px solid var(--border-subtle);margin-top:0}
+.fw-section:last-child{padding-bottom:24px}
+.fw-header{display:flex;align-items:baseline;gap:16px;margin-bottom:16px;padding-left:12px;border-left:4px solid var(--text-faint)}
+.fw-header .tier-heading{font-size:18px;font-weight:800;letter-spacing:-.3px;text-transform:uppercase;margin:0}
+.fw-section:nth-child(1) .fw-header{border-left-color:var(--fw-cis)}
+.fw-section:nth-child(2) .fw-header{border-left-color:var(--fw-mitre)}
+.fw-section:nth-child(3) .fw-header{border-left-color:var(--fw-nsa)}
+.fw-score{font-size:14px;font-weight:600}
+.fw-table{table-layout:fixed}
+.fw-table td:nth-child(4){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fw-table td:nth-child(5){overflow-wrap:break-word;word-break:break-word}
+.status-fail{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:var(--status-fail-bg);color:var(--status-fail-color);border:1px solid var(--status-fail-border)}
+.status-pass{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:var(--status-pass-bg);color:var(--status-pass-color);border:1px solid var(--status-pass-border)}
+.fw-passed-toggle{cursor:pointer;font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:8px}
+.fw-passed-note{font-size:12px;color:var(--text-faint);margin:4px 0 0 28px}
+.help-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center}
+.help-dialog{background:var(--surface-1);border-radius:12px;padding:24px 32px;box-shadow:0 8px 32px rgba(0,0,0,.2);max-width:360px;width:90%}
+.help-dialog h3{margin:0 0 16px;font-size:16px;font-weight:700;color:var(--text-primary)}
+.help-keys{width:100%;border-collapse:collapse}
+.help-keys td{padding:6px 0;font-size:13px;color:var(--text-secondary)}
+.help-keys td:first-child{width:60px}
+kbd{display:inline-block;padding:2px 8px;background:var(--surface-3);border:1px solid var(--border-default);border-radius:4px;font-family:monospace;font-size:12px;font-weight:600;color:var(--text-primary)}
+.sortable-th{cursor:pointer;user-select:none;position:relative;padding-right:18px!important}
+.sortable-th:hover{color:var(--text-primary)}
+.sortable-th::after{content:'';position:absolute;right:4px;top:50%;transform:translateY(-50%);border:4px solid transparent;opacity:.3}
+.sortable-th.sort-asc::after{border-bottom-color:currentColor;opacity:1;top:40%}
+.sortable-th.sort-desc::after{border-top-color:currentColor;opacity:1;top:55%}
+h2{margin:0 0 16px;font-size:18px;font-weight:700;color:var(--text-primary)}
+.data-table{width:100%;border-collapse:collapse;font-size:14px}
+.data-table th{text-align:left;padding:10px 8px;background:var(--surface-2);border-bottom:2px solid var(--border-default);font-weight:600;color:var(--text-secondary);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+.data-table td{padding:10px 8px;border-bottom:1px solid var(--border-subtle);vertical-align:top}
+.data-table tr:hover{background:var(--surface-2)}
+.res-col{word-break:break-word}
+.mono{font-family:'SF Mono',SFMono-Regular,Consolas,'Liberation Mono',Menlo,monospace;font-size:13px}
+.fw{font-size:12px;color:var(--text-muted)}
+.fw-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;color:#fff;margin:1px 2px;white-space:nowrap}
+.fw-cis{background:var(--fw-cis)}
+.fw-mitre{background:var(--fw-mitre)}
+.fw-nsa{background:var(--fw-nsa)}
+.sev{padding:6px 10px;border-radius:8px;font-size:10px;font-weight:900;color:#fff;white-space:nowrap;text-transform:uppercase;letter-spacing:.3px;box-shadow:0 1px 2px rgba(0,0,0,.05);min-width:72px;text-align:center;display:inline-block}
+.Critical{background:var(--color-critical);box-shadow:0 0 0 4px rgba(220,38,38,.1),0 1px 2px rgba(0,0,0,.05)}
+.High{background:var(--color-high);box-shadow:0 0 0 4px rgba(234,88,12,.1),0 1px 2px rgba(0,0,0,.05)}
+.Medium{background:var(--color-medium);box-shadow:0 0 0 4px rgba(217,119,6,.1),0 1px 2px rgba(0,0,0,.05)}
+.Low{background:var(--color-low);box-shadow:0 0 0 4px rgba(2,132,199,.1),0 1px 2px rgba(0,0,0,.05)}
+.Info{background:var(--color-info);box-shadow:0 0 0 4px rgba(107,114,128,.1),0 1px 2px rgba(0,0,0,.05)}
+.toolbar{display:flex;gap:12px;margin:0 0 16px;flex-wrap:wrap;align-items:center}
+.ns-search{padding:8px 14px;border:1px solid var(--border-default);border-radius:6px;font-size:14px;flex:1;min-width:200px;outline:none;transition:border-color .2s;background:var(--surface-0);color:var(--text-primary)}
+.ns-search:focus{border-color:var(--color-accent)}
+.filters{display:flex;gap:4px;flex-wrap:wrap}
+.filter-btn{padding:6px 14px;border:1px solid var(--border-default);border-radius:6px;background:var(--surface-1);cursor:pointer;font-size:13px;font-weight:500;color:var(--text-muted);transition:all .2s}
+.filter-btn:hover{background:var(--surface-2)}
+.filter-btn.active{background:var(--color-accent);color:#fff;border-color:var(--color-accent)}
+.toggle-btn{padding:6px 14px;border:1px solid var(--border-default);border-radius:6px;background:var(--surface-1);cursor:pointer;font-size:13px;font-weight:500;color:var(--text-muted);transition:all .2s;white-space:nowrap}
+.toggle-btn:hover{background:var(--surface-2)}
+.tier-heading{font-size:15px;font-weight:600;color:var(--text-secondary);margin:16px 0 8px;display:flex;align-items:center;gap:8px}
+.tier-section{margin:16px 0;border:1px solid var(--border-default);border-radius:8px;overflow:hidden}
+.tier-section>summary{padding:12px 16px;cursor:pointer;background:var(--surface-3)}
+.ns-section{margin:12px 0;border:1px solid var(--border-default);border-radius:8px;overflow:hidden}
+.ns-section summary{padding:12px 16px;cursor:pointer;font-weight:600;font-size:14px;background:var(--surface-2);display:flex;align-items:center;gap:12px}
+.ns-section[open] summary{border-bottom:1px solid var(--border-default)}
+.ns-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ns-count{font-size:12px;color:var(--text-muted);font-weight:400;white-space:nowrap}
+.ns-bar{display:flex;width:120px;height:6px;border-radius:3px;overflow:hidden;background:var(--border-default);flex-shrink:0}
+.bar-seg{height:100%}
+.ns-badges{display:flex;gap:4px;flex-shrink:0}
+.ns-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;color:#fff}
+.ns-badge.critical{background:var(--color-critical)}
+.ns-badge.high{background:var(--color-high)}
+.ns-badge.medium{background:var(--color-medium)}
+.ns-badge.low{background:var(--color-low)}
+.ns-badge.info{background:var(--color-info)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.no-findings{text-align:center;color:var(--text-muted);padding:32px;font-size:16px}
+.passed-list{column-count:3;column-gap:24px;padding:0 0 0 20px;margin:12px 0;font-size:13px}
+.passed-list li{padding:2px 0;color:var(--color-success)}
+.res-drill{display:inline}
+.res-drill summary{cursor:pointer;color:var(--color-accent);font-weight:500}
+.res-list{margin:4px 0 0;padding-left:16px;font-size:12px;list-style:disc}
+.res-more{list-style:none;color:var(--text-muted);font-style:italic;margin-top:4px}
+.rem-trigger{cursor:pointer;display:inline-block;padding:6px 14px;border:none;border-radius:10px;background:color-mix(in srgb,#4f46e5 8%,transparent);color:#4f46e5;font-size:11px;font-weight:700;transition:all .2s}
+.rem-trigger:hover{background:#4f46e5;color:#fff}
+.fc-remediation{margin-top:10px;padding-top:10px;border-top:1px solid var(--border-subtle)}
+.finding-cards{display:flex;flex-direction:column;gap:8px}
+.finding-card{background:var(--surface-1);border:1px solid var(--border-default);border-radius:10px;padding:12px 16px;transition:box-shadow .2s}
+.finding-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.fc-header{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fc-check{font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap}
+.fc-res{font-size:12px;color:var(--text-secondary);flex:1;min-width:0;word-break:break-word}
+.fc-fw{font-size:12px;color:var(--text-muted);display:flex;flex-wrap:wrap;gap:3px;flex-shrink:0}
+.code-block{background:var(--code-bg);color:var(--code-color);padding:10px 14px;border-radius:6px;font-size:11px;line-height:1.5;overflow-x:auto;margin:6px 0;white-space:pre}
+.code-block code{font-family:'SF Mono',SFMono-Regular,Consolas,'Liberation Mono',Menlo,monospace}
+.footer{text-align:center;padding:48px 24px;border-top:1px solid var(--border-subtle);background:var(--surface-1);color:var(--text-faint)}
+.footer-frameworks{display:flex;justify-content:center;gap:32px;margin-bottom:16px}
+.fw-icon{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;opacity:.6}
+.fw-icon svg{opacity:.6}
+.footer-tagline{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:3px;color:var(--text-faint)}
+[id]{scroll-margin-top:44px}
+.hidden{display:none}
+.nav-spacer{flex:1}
+.nav-btn{padding:4px 10px;border:1px solid var(--border-default);border-radius:4px;background:var(--surface-1);cursor:pointer;font-size:12px;font-weight:500;color:var(--text-muted);transition:all .2s}
+.nav-btn:hover{background:var(--surface-3);color:var(--text-primary)}
+.sort-group{display:flex;align-items:center;gap:4px}
+.sort-label{font-size:12px;color:var(--text-muted);font-weight:500}
+.sort-btn{padding:4px 10px;border:1px solid var(--border-default);border-radius:4px;background:var(--surface-1);cursor:pointer;font-size:12px;font-weight:500;color:var(--text-muted);transition:all .2s}
+.sort-btn:hover{background:var(--surface-2)}
+.sort-btn.active{background:var(--color-accent);color:#fff;border-color:var(--color-accent)}
+.rem-drawer{position:fixed;inset:0;z-index:300;pointer-events:none;visibility:hidden}
+.rem-drawer.open{pointer-events:auto;visibility:visible}
+.rem-drawer-backdrop{position:absolute;inset:0;background:rgba(0,0,0,0);backdrop-filter:blur(0);transition:background .3s,backdrop-filter .3s}
+.rem-drawer.open .rem-drawer-backdrop{background:rgba(0,0,0,.3);backdrop-filter:blur(2px)}
+.rem-drawer-panel{position:absolute;top:0;right:0;bottom:0;width:min(560px,90vw);background:var(--surface-1);border-left:1px solid var(--border-default);box-shadow:-4px 0 24px rgba(0,0,0,.12);transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow-y:auto}
+.rem-drawer.open .rem-drawer-panel{transform:translateX(0)}
+.rem-drawer-header{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--border-default);flex-shrink:0}
+.rem-drawer-title{font-size:14px;font-weight:700;color:var(--text-primary);font-family:'SF Mono',SFMono-Regular,Consolas,monospace;flex:1}
+.rem-drawer-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted);padding:4px 8px;border-radius:4px;line-height:1}
+.rem-drawer-close:hover{background:var(--surface-3);color:var(--text-primary)}
+.rem-drawer-body{padding:20px;flex:1;overflow-y:auto}
+.rem-drawer-body p{margin:6px 0;font-size:13px;color:var(--text-secondary);line-height:1.6}
+.rem-h3{font-size:14px;font-weight:700;color:var(--text-primary);margin:18px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border-subtle)}
+.rem-h4{font-size:12px;font-weight:600;color:var(--text-primary);margin:14px 0 4px}
+.rem-drawer-body .code-block{font-size:12px;padding:12px 16px;margin:8px 0 12px;border:1px solid var(--border-subtle);border-radius:8px}
+.header-brand{display:flex;align-items:center;gap:12px}
+.brand-icon{display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:#4f46e5;border-radius:10px;color:#fff;box-shadow:0 4px 12px rgba(79,70,229,.3)}
+.brand-name{font-size:18px;font-weight:800;letter-spacing:-.3px;color:var(--text-primary)}
+.brand-subtitle{display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:var(--text-faint)}
+.header-cluster{font-size:12px;font-weight:600;color:var(--text-secondary);border-right:1px solid var(--border-default);padding-right:16px}
+.header-cluster strong{color:#4f46e5}
+.dark .header-cluster strong{color:#818cf8}
+.theme-btn{display:flex;align-items:center;padding:8px;border:none;background:transparent;cursor:pointer;border-radius:50%;color:var(--text-muted);font-size:16px;transition:all .2s}
+.theme-btn:hover{background:var(--surface-3);color:var(--text-primary)}
+.theme-light{display:inline}.theme-dark{display:none}
+.dark .theme-light{display:none}.dark .theme-dark{display:inline}
+.hero-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;margin-bottom:32px}
+.hero-card{background:var(--surface-1);border-radius:24px;padding:24px;border:1px solid var(--border-subtle);box-shadow:0 1px 2px rgba(0,0,0,.05);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;min-height:160px;border-top:3px solid transparent}
+.hero-card-score{}
+.hero-card-detail{justify-content:flex-start}
+.hero-label{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:var(--text-faint);margin-bottom:4px}
+.hero-number{font-size:48px;font-weight:900;line-height:1;letter-spacing:-1px;color:var(--text-primary)}
+.hero-suffix{font-size:20px;font-weight:700;opacity:.6}
+.hero-row{display:flex;align-items:baseline;gap:4px}
+.hero-bottom{margin-top:16px;display:flex;align-items:center;gap:8px}
+.grade-badge{padding:2px 10px;border-radius:6px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:-.3px;background:color-mix(in srgb,currentColor 12%,transparent)}
+.hero-hint{font-size:10px;color:var(--text-faint)}
+.hero-desc{font-size:10px;font-weight:600;color:var(--text-faint);line-height:1.6;margin-top:16px}
+.hero-sev-labels{display:flex;gap:16px;margin-top:16px}
+.sev-label-crit{font-size:10px;font-weight:900;color:var(--color-critical)}
+.sev-label-high{font-size:10px;font-weight:900;color:var(--text-faint)}
+.sev-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--surface-3);margin-top:8px}
+.sev-bar-seg{height:100%}
+.compliance-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:10px;text-transform:uppercase;font-weight:900}
+.compliance-name{color:var(--text-muted);letter-spacing:.5px}
+.compliance-pct{letter-spacing:-.3px}
+.hero-scan-time{padding-top:12px;margin-top:auto;border-top:1px solid var(--border-subtle);display:flex;align-items:center;gap:6px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:var(--text-faint)}
+.scan-refresh{flex-shrink:0;opacity:.6}
+.explorer{background:var(--surface-1);border-radius:24px;border:1px solid var(--border-subtle);box-shadow:0 25px 50px -12px rgba(0,0,0,.15);overflow:hidden;margin-bottom:32px}
+.explorer-header{padding:32px 32px 24px;border-bottom:1px solid var(--border-subtle);display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px}
+.explorer-title{font-size:24px;font-weight:900;letter-spacing:-.5px;margin:0;color:var(--text-primary)}
+.explorer-subtitle{font-size:14px;color:var(--text-faint);font-weight:500;margin:4px 0 0}
+.pill-tabs{display:flex;align-items:center;gap:4px;background:var(--surface-3);border:1px solid var(--border-subtle);padding:6px;border-radius:16px}
+.pill-tab{padding:8px 20px;border:none;border-radius:12px;background:transparent;cursor:pointer;font-size:12px;font-weight:700;color:var(--text-faint);transition:all .2s}
+.pill-tab:hover{color:var(--text-primary)}
+.pill-tab.active{background:var(--surface-1);color:var(--text-primary);box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid var(--border-subtle)}
+.explorer-toolbar{padding:16px 32px;background:color-mix(in srgb,var(--surface-3) 50%,transparent);border-bottom:1px solid var(--border-subtle);display:flex;flex-wrap:wrap;gap:16px;align-items:center}
+.search-wrap{flex:1;position:relative;min-width:280px;display:flex}
+.search-icon{position:absolute;left:16px;top:0;bottom:0;margin:auto 0;width:16px;height:16px;color:var(--text-faint);pointer-events:none}
+.search-wrap input{width:100%;padding:14px 16px 14px 44px;border:1px solid var(--border-default);border-radius:16px;font-size:14px;background:var(--surface-1);color:var(--text-primary);outline:none;box-shadow:0 1px 2px rgba(0,0,0,.05);transition:all .2s}
+.search-wrap input:focus{border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.15)}
+.quick-filter{display:flex;align-items:center;gap:8px}
+.qf-label{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:var(--text-faint);margin-right:4px}
+.qf-btn{padding:6px 12px;border:none;border-radius:8px;background:var(--surface-0);cursor:pointer;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:var(--text-faint);transition:all .2s}
+.qf-btn:hover{color:var(--text-primary)}
+.qf-btn.active{background:var(--text-primary);color:var(--surface-0)}
+.qf-critical{background:var(--color-critical);color:#fff;opacity:.9}
+.qf-critical:hover{opacity:1}
+.qf-high{background:var(--color-high);color:#fff;opacity:.9}
+.qf-high:hover{opacity:1}
+.qf-others{background:var(--surface-3)}
+.table-wrap{overflow-x:auto}
+.findings-table{width:100%;border-collapse:collapse;text-align:left}
+.ft-th{padding:20px 32px;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:var(--text-faint);border-bottom:1px solid var(--border-subtle)}
+.ft-th-right{text-align:right}
+.findings-table td{padding:24px 32px;border-bottom:1px solid color-mix(in srgb,var(--border-subtle) 50%,transparent);vertical-align:middle}
+.findings-table tbody tr{transition:background .15s}
+.findings-table tbody tr:hover{background:color-mix(in srgb,var(--surface-3) 80%,transparent)}
+.ft-check-name{font-size:14px;font-weight:700;letter-spacing:-.3px;color:var(--text-primary);transition:color .15s}
+.findings-table tbody tr:hover .ft-check-name{color:#4f46e5}
+.ft-check-desc{font-size:12px;color:var(--text-faint);margin-top:2px}
+.ft-resource{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--text-muted)}
+.ft-resource-icon{display:flex;align-items:center;justify-content:center;width:28px;height:28px;background:var(--surface-3);border-radius:6px;font-size:10px;font-weight:700;color:var(--text-faint);flex-shrink:0}
+.ft-view-fix{padding:8px 16px;background:color-mix(in srgb,#4f46e5 8%,transparent);color:#4f46e5;font-size:10px;font-weight:900;text-transform:uppercase;border:none;border-radius:12px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.ft-view-fix:hover{background:#4f46e5;color:#fff}
+.pagination{padding:32px;background:var(--surface-3);border-top:1px solid var(--border-subtle);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px}
+.page-info{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--text-faint)}
+.page-btns{display:flex;gap:8px}
+.page-btn{padding:8px 16px;background:var(--surface-1);border:1px solid var(--border-default);border-radius:12px;font-size:10px;font-weight:900;text-transform:uppercase;cursor:pointer;color:var(--text-secondary);box-shadow:0 1px 2px rgba(0,0,0,.05);transition:all .2s}
+.page-btn:hover:not(:disabled){border-color:#4f46e5;color:#4f46e5}
+.page-btn:disabled{opacity:.5;cursor:not-allowed}
+.print-meta,.print-exec,.print-triage,.print-cats,.print-ns,.print-compliance,.print-workloads,.print-rem{display:none}
+@media print{
+:root,.dark,html:not(.light){
+--color-critical:#dc2626;--color-high:#ea580c;--color-medium:#d97706;--color-low:#0284c7;--color-info:#6b7280;
+--color-accent:#4f46e5;--color-success:#10b981;
+--surface-0:#f0f2f5;--surface-1:#ffffff;--surface-2:#f8fafc;--surface-3:#f1f5f9;
+--text-primary:#0f172a;--text-secondary:#475569;--text-muted:#64748b;--text-faint:#94a3b8;
+--border-default:#e2e8f0;--border-subtle:#f1f5f9;
+--glass-bg:rgba(255,255,255,0.72);--glass-border:rgba(255,255,255,0.3);--glass-blur:12px;
+--ambient-1:rgba(59,130,246,0.08);--ambient-2:rgba(124,58,237,0.06);
+--fw-cis:#2563eb;--fw-mitre:#7c3aed;--fw-nsa:#059669;
+--status-fail-bg:#fef2f2;--status-fail-color:#dc2626;--status-fail-border:#fecaca;
+--status-pass-bg:#f0fdf4;--status-pass-color:#10b981;--status-pass-border:#bbf7d0;
+--code-bg:#1e293b;--code-color:#e2e8f0
+}
+body{background:#fff!important}
+body::before{display:none}
+*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+.sticky-nav,.explorer-toolbar,.pagination,.quick-filter,.search-wrap,.rem-drawer,.rem-trigger,.ft-view-fix,.theme-btn,.pill-tabs,.help-overlay,.sort-group,.toggle-btn{display:none!important}
+.container{padding:8px 0;max-width:100%}
+.explorer{box-shadow:none;border:1px solid #ddd;border-radius:8px;overflow:visible}
+.explorer-header{padding:16px 20px 12px;border-bottom:1px solid #ddd}
+.explorer-title{font-size:18px}
+.explorer-subtitle{font-size:11px}
+.hero-grid{display:grid!important;grid-template-columns:repeat(2,1fr)!important;gap:12px!important;margin-bottom:16px}
+.hero-card{min-height:auto!important;padding:12px 16px!important;box-shadow:none;border:1px solid #ddd;border-radius:8px;border-top-width:3px}
+.hero-number{font-size:32px!important}
+.hero-suffix{font-size:14px!important}
+.hero-label{font-size:9px!important;margin-bottom:2px}
+.hero-bottom{margin-top:8px}
+.hero-desc{font-size:9px!important;margin-top:8px}
+.hero-sev-labels{margin-top:8px}
+.hero-scan-time{padding-top:6px;margin-top:8px;font-size:8px!important}
+.grade-badge{font-size:8px!important}
+.hero-hint{font-size:8px!important}
+.compliance-row{padding:4px 0;font-size:9px!important}
+#tab-all-findings{display:none!important}
+#tab-by-namespace{display:none!important}
+#tab-by-check,#tab-compliance{display:block!important;padding:12px 20px!important}
+#tab-by-check::before{content:'By Check';display:block;font-size:14px;font-weight:800;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #ddd}
+#tab-compliance::before{content:'Compliance';display:block;font-size:14px;font-weight:800;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #ddd;page-break-before:always}
+.data-table{font-size:10px}
+.data-table th{padding:6px 4px;font-size:9px;background:#f5f5f5!important}
+.data-table td{padding:5px 4px}
+.fw-section{padding:12px 0 0!important;margin-bottom:0!important}
+.fw-section+.fw-section{border-top:1px solid #ddd}
+.fw-section:last-child{padding-bottom:8px!important}
+.fw-header{margin-bottom:8px;padding-left:8px}
+.fw-header .tier-heading{font-size:13px!important}
+.fw-score{font-size:11px}
+.finding-row{break-inside:avoid;page-break-inside:avoid}
+.fw-section{break-inside:avoid;page-break-inside:avoid}
+.passed-list{column-count:4;font-size:10px}
+.sev{font-size:8px!important;padding:3px 6px!important;min-width:auto!important}
+.ns-badge{font-size:9px}
+.status-fail,.status-pass{font-size:8px!important;padding:1px 6px!important}
+.toolbar{margin-bottom:8px}
+.ns-search,.filters{display:none!important}
+.tier-section{margin:8px 0}
+.tier-section>summary{padding:8px 12px;font-size:12px}
+.ns-section{margin:6px 0}
+.ns-section summary{padding:8px 12px;font-size:11px}
+.footer{padding:16px;border-top:1px solid #ddd}
+.footer-frameworks{gap:16px;margin-bottom:8px}
+.fw-icon{font-size:8px;opacity:.8}
+.footer-tagline{font-size:8px}
+details[open]>summary~*{break-inside:avoid}
+.mono{font-size:10px!important}
+.print-meta,.print-exec,.print-triage,.print-cats,.print-ns,.print-compliance,.print-workloads,.print-rem{display:block!important}
+.print-meta,.print-exec,.print-triage,.print-cats,.print-ns,.print-compliance{margin-top:24px}
+.print-section-title{font-size:14px;font-weight:800;margin:28px 0 10px;padding-bottom:6px;border-bottom:2px solid #ddd;page-break-after:avoid}
+.print-table{width:100%;border-collapse:collapse;font-size:10px}
+.print-table th{text-align:left;padding:4px 6px;background:#f5f5f5!important;border-bottom:1px solid #ddd;font-size:9px;font-weight:600}
+.print-table td{padding:4px 6px;border-bottom:1px solid #eee;vertical-align:top}
+.print-exec-text{border-left:3px solid #4f46e5;background:#f8fafc;padding:8px 12px;font-size:11px;line-height:1.6;margin:0 0 8px}
+.print-workloads,.print-rem{page-break-before:always}
+.print-ns-group{break-inside:avoid;page-break-inside:avoid;margin-bottom:16px}
+.print-ns-heading{font-size:12px;font-weight:700;margin:16px 0 8px;color:#333;border-bottom:1px solid #ddd;padding-bottom:4px}
+.print-ns-tier{font-weight:400;color:#666;font-size:10px}
+.print-ns-stats{float:right;font-size:10px;font-weight:400}
+.print-workload{margin:8px 0 12px 12px;break-inside:avoid}
+.print-wl-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;padding:4px 6px;background:#f5f5f5;border-radius:4px}
+.print-wl-name{font-size:11px;font-weight:700}
+.print-wl-counts{font-size:9px;color:#666}
+.print-wl-table{margin-top:2px}
+.print-wl-table th{font-size:8px}
+.print-wl-table td{font-size:9px;padding:2px 4px}
+.print-exec-actions{margin:8px 0 0 16px;font-size:10px;line-height:1.6}
+.print-exec-actions li{margin-bottom:4px}
+.print-rem-entry{break-inside:avoid;page-break-inside:avoid;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #ddd}
+.print-rem-entry h4{font-size:12px;margin:16px 0 8px;color:#333}
+.print-rem-entry .code-block{background:#f5f5f5!important;color:#333!important;font-size:9px;border:1px solid #ddd}
+.print-rem-entry .rem-h3{font-size:12px;font-weight:700;margin:10px 0 4px;border-bottom:1px solid #ddd}
+.print-rem-entry .rem-h4{font-size:11px;font-weight:600;margin:8px 0 2px}
+.print-truncation{font-size:10px;color:#666;font-style:italic;margin-top:4px}
+.print-ns h4{font-size:12px;font-weight:700;margin:20px 0 8px;color:#333}
+}
+@media(prefers-reduced-transparency:reduce){.sticky-nav{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface-1)}body::before{display:none}}
+@media(max-width:1100px){.hero-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:768px){.hero-grid{grid-template-columns:1fr}.explorer-header{flex-direction:column}.pill-tabs{width:100%;overflow-x:auto}.explorer-toolbar{padding:16px}.findings-table td,.ft-th{padding:12px 16px}.pagination{padding:16px}.hide-mobile{display:none}}
+</style>
+</head>
+<body>
+<nav class="sticky-nav">
+<div class="sticky-inner">
+<div class="header-brand">
+<div class="brand-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+<div><span class="brand-name">KubeVigil</span><span class="brand-subtitle">Cluster Security Intelligence</span></div>
+</div>
+<div class="nav-spacer"></div>
+<button class="nav-btn hide-mobile" onclick="exportCSV()" title="Export CSV">CSV</button>
+<button class="nav-btn hide-mobile" onclick="exportJSON()" title="Export JSON">JSON</button>
+<button class="nav-btn hide-mobile" onclick="window.print()" title="Print">Print</button>
+<button class="nav-btn" onclick="toggleHelp()" title="Keyboard shortcuts">?</button>
+<div class="header-cluster hide-mobile">Cluster: <strong>my-cluster</strong></div>
+<div class="header-meta hide-mobile">K8s v1.28.0 · 3 nodes</div>
+<button class="theme-btn" id="theme-toggle" onclick="toggleDarkMode()" aria-label="Toggle theme"><span class="theme-light">☀︎</span><span class="theme-dark">☾</span></button>
+</div>
+</nav>
+
+<div class="container">
+
+<div id="dashboard" class="hero-grid">
+<div class="hero-card hero-card-score" style="border-top-color:#10b981">
+<div class="hero-label">Posture Score</div>
+<div class="hero-row"><span class="hero-number" style="color:#10b981">89</span><span class="hero-suffix" style="color:#10b981">/100</span></div>
+<div class="hero-bottom"><span class="grade-badge" style="color:#10b981">Grade A</span><span class="hero-hint">Excellent</span></div>
+</div>
+<div class="hero-card" style="border-top-color:#dc2626">
+<div class="hero-label">Total Findings</div>
+<div class="hero-number" style="color:#dc2626">3</div>
+<div class="hero-sev-labels"><span class="sev-label-crit">1 CRITICAL</span> <span class="sev-label-high">1 HIGH</span></div>
+<div class="sev-bar"><span class="sev-bar-seg" style="width:33%;background:var(--color-critical)"></span><span class="sev-bar-seg" style="width:33%;background:var(--color-high)"></span><span class="sev-bar-seg" style="width:33%;background:var(--color-medium)"></span></div>
+</div>
+<div class="hero-card" style="border-top-color:#10b981">
+<div class="hero-label">Compliance Pass</div>
+<div class="hero-number" style="color:#10b981">88%</div>
+<div class="hero-desc">22 of 25 control benchmarks successfully verified.</div>
+</div>
+<div class="hero-card hero-card-detail" style="border-top-color:#10b981">
+<div class="hero-label">Compliance Detail</div>
+<div class="compliance-row"><span class="compliance-name">CIS</span><span class="compliance-pct" style="color:#10b981">91%</span></div>
+<div class="compliance-row"><span class="compliance-name">MITRE</span><span class="compliance-pct" style="color:#10b981">96%</span></div>
+<div class="compliance-row"><span class="compliance-name">NSA</span><span class="compliance-pct" style="color:#10b981">93%</span></div>
+<div class="hero-scan-time"><svg class="scan-refresh" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Manifest · 50ms</div>
+</div>
+</div>
+
+<div class="print-meta">
+<h3 class="print-section-title">Scan Metadata</h3>
+<table class="print-table">
+<tr><td><strong>Cluster</strong></td><td>my-cluster</td><td><strong>K8s Version</strong></td><td>v1.28.0</td><td><strong>Nodes</strong></td><td>3</td></tr>
+<tr><td><strong>Scan Mode</strong></td><td>Manifest</td><td><strong>Duration</strong></td><td>50ms</td><td><strong>Generated</strong></td><td>15 Jan 2024, 10:30 UTC</td></tr>
+<tr><td><strong>Checks Run</strong></td><td>25</td><td><strong>Clean</strong></td><td>22</td><td><strong>With Findings</strong></td><td>3</td></tr>
+</table>
+</div>
+
+<div class="print-exec">
+<h3 class="print-section-title">Executive Summary</h3>
+<p class="print-exec-text">Your cluster scores A (89/100). Key risk areas include privileged (1 findings), and run-as-root (1 findings). Immediate attention is recommended for the 1 Critical findings.</p>
+<ul class="print-exec-actions">
+<li>Fix privileged across 1 workloads in default</li><li>Fix run-as-root across 1 workloads in backend</li></ul>
+</div>
+
+<div class="print-triage">
+<h3 class="print-section-title">Namespace Triage</h3>
+<table class="print-table">
+<thead><tr><th>#</th><th>Namespace</th><th>Tier</th><th>Findings</th><th>Crit</th><th>High</th><th>Med</th><th>Low</th><th>Info</th><th>Workloads</th><th>Top Issue</th></tr></thead>
+<tbody><tr><td>1</td><td>default</td><td>App</td><td>2</td><td>1</td><td>0</td><td>1</td><td>0</td><td>0</td><td>2</td><td class="mono">privileged</td></tr><tr><td>2</td><td>backend</td><td>App</td><td>1</td><td>0</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1</td><td class="mono">run-as-root</td></tr></tbody>
+</table>
+</div>
+
+
+
+<div class="print-ns">
+<h3 class="print-section-title">Findings by Namespace</h3>
+<h4>Application Namespaces</h4>
+<table class="print-table"><thead><tr><th>Namespace</th><th>Total</th><th>Critical</th><th>High</th><th>Medium</th><th>Low</th><th>Info</th><th>Top Workloads</th></tr></thead>
+<tbody><tr><td>default</td><td>2</td><td>1</td><td>0</td><td>1</td><td>0</td><td>0</td><td class="mono">Deployment/nginx, StatefulSet/worker</td></tr><tr><td>backend</td><td>1</td><td>0</td><td>1</td><td>0</td><td>0</td><td>0</td><td class="mono">Deployment/api-server</td></tr></tbody></table>
+
+
+</div>
+
+<div id="findings" class="explorer">
+<div class="explorer-header">
+<div>
+<h2 class="explorer-title">Vulnerability Explorer</h2>
+<p class="explorer-subtitle">Drill down into specific resource misconfigurations and security debt.</p>
+</div>
+<div class="pill-tabs">
+<button class="pill-tab active" data-tab="all-findings" onclick="switchTab(this)">All Findings</button>
+<button class="pill-tab" data-tab="by-namespace" onclick="switchTab(this)">By Namespace</button>
+<button class="pill-tab" data-tab="by-check" onclick="switchTab(this)">By Check</button>
+<button class="pill-tab" data-tab="compliance" onclick="switchTab(this)">Compliance</button>
+</div>
+</div>
+
+
+<div id="tab-all-findings" class="tab-panel active">
+<div class="explorer-toolbar">
+<div class="search-wrap">
+<svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+<input type="text" id="search" placeholder="Search resources, IDs, or error messages..." oninput="filterAllFindings()">
+</div>
+<div class="quick-filter">
+<span class="qf-label">Quick Filter:</span>
+<button class="qf-btn active" data-severity="all" onclick="setQuickFilter(this)">All</button>
+<button class="qf-btn qf-critical" data-severity="Critical" onclick="setQuickFilter(this)">Critical</button>
+<button class="qf-btn qf-high" data-severity="High" onclick="setQuickFilter(this)">High</button>
+<button class="qf-btn qf-others" data-severity="others" onclick="setQuickFilter(this)">Others</button>
+</div>
+</div>
+<div class="table-wrap">
+<table class="findings-table">
+<thead><tr>
+<th class="ft-th">Severity</th>
+<th class="ft-th">Security Check &amp; Logic</th>
+<th class="ft-th">Resource Origin</th>
+<th class="ft-th ft-th-right">Actions</th>
+</tr></thead>
+<tbody id="findings-tbody"></tbody>
+</table>
+</div>
+<div class="pagination">
+<span class="page-info">Showing <span id="page-range">0-0</span> of 3 findings</span>
+<div class="page-btns">
+<button class="page-btn" id="prev-page" onclick="prevPage()" disabled>Previous Page</button>
+<button class="page-btn" id="next-page" onclick="nextPage()">Next Page</button>
+</div>
+</div>
+</div>
+
+<div id="tab-by-namespace" class="tab-panel" style="padding:24px 32px">
+<div class="toolbar">
+<input type="text" class="ns-search" placeholder="Search findings..." oninput="filterFindings()" aria-label="Search findings">
+<div class="filters">
+<button class="filter-btn active" data-severity="all" onclick="toggleSeverity(this)">All</button>
+<button class="filter-btn" data-severity="Critical" onclick="toggleSeverity(this)">Critical</button>
+<button class="filter-btn" data-severity="High" onclick="toggleSeverity(this)">High</button>
+<button class="filter-btn" data-severity="Medium" onclick="toggleSeverity(this)">Medium</button>
+<button class="filter-btn" data-severity="Low" onclick="toggleSeverity(this)">Low</button>
+<button class="filter-btn" data-severity="Info" onclick="toggleSeverity(this)">Info</button>
+</div>
+<button class="toggle-btn" id="toggle-all" onclick="toggleAll()">Expand All</button>
+<div class="sort-group">
+<span class="sort-label">Sort:</span>
+<button class="sort-btn active" data-sort="severity" onclick="sortNamespaces(this)">Severity</button>
+<button class="sort-btn" data-sort="alpha" onclick="sortNamespaces(this)">A-Z</button>
+<button class="sort-btn" data-sort="count" onclick="sortNamespaces(this)">Count</button>
+</div>
+</div>
+
+<details class="tier-section" open>
+<summary class="tier-heading">Application Namespaces (2) <span class="ns-badges">
+<span class="ns-badge critical">1</span>
+<span class="ns-badge high">1</span>
+<span class="ns-badge medium">1</span>
+
+
+</span></summary>
+
+<details class="ns-section" data-ns="default" data-label="default" data-count="2" data-sev="1,0,1,0,0" ontoggle="if(this.open)loadNsFindings(this)">
+<summary>
+<span class="ns-label">default</span>
+<span class="ns-count">2 findings</span>
+<span class="ns-bar">
+<span class="bar-seg" style="width:50%;background:var(--color-critical)"></span>
+
+<span class="bar-seg" style="width:50%;background:var(--color-medium)"></span>
+
+
+</span>
+<span class="ns-badges">
+<span class="ns-badge critical">1</span>
+
+<span class="ns-badge medium">1</span>
+
+
+</span>
+</summary>
+<div class="finding-cards"></div>
+</details>
+
+<details class="ns-section" data-ns="backend" data-label="backend" data-count="1" data-sev="0,1,0,0,0" ontoggle="if(this.open)loadNsFindings(this)">
+<summary>
+<span class="ns-label">backend</span>
+<span class="ns-count">1 findings</span>
+<span class="ns-bar">
+
+<span class="bar-seg" style="width:100%;background:var(--color-high)"></span>
+
+
+
+</span>
+<span class="ns-badges">
+
+<span class="ns-badge high">1</span>
+
+
+
+</span>
+</summary>
+<div class="finding-cards"></div>
+</details>
+
+</details>
+
+
+
+
+
+
+
+</div>
+
+<div id="tab-by-check" class="tab-panel" style="padding:24px 32px">
+
+
+<table class="data-table sortable">
+<thead>
+<tr><th data-sort="severity" class="sortable-th">Severity</th><th data-sort="text" class="sortable-th">Check</th><th data-sort="num" class="sortable-th">Total</th><th data-sort="num" class="sortable-th">App</th><th data-sort="num" class="sortable-th">Infra</th><th data-sort="num" class="sortable-th">Cluster</th><th data-sort="num" class="sortable-th">Resources</th><th>Frameworks</th></tr>
+</thead>
+<tbody>
+
+<tr class="finding-row" data-severity="Critical" data-sev-weight="Critical"><td><span class="sev Critical">Critical</span></td><td class="mono" title="">privileged</td><td>1</td><td>1</td><td></td><td></td><td>1</td><td class="fw"><span class="fw-badge fw-cis">CIS 5.2.1</span> <span class="fw-badge fw-mitre">MITRE T1611</span> <span class="fw-badge fw-nsa">NSA 3.1</span></td></tr>
+
+<tr class="finding-row" data-severity="High" data-sev-weight="High"><td><span class="sev High">High</span></td><td class="mono" title="">run-as-root</td><td>1</td><td>1</td><td></td><td></td><td>1</td><td class="fw"><span class="fw-badge fw-cis">CIS 5.2.6</span></td></tr>
+
+<tr class="finding-row" data-severity="Medium" data-sev-weight="Medium"><td><span class="sev Medium">Medium</span></td><td class="mono" title="">read-only-rootfs</td><td>1</td><td>1</td><td></td><td></td><td>1</td><td class="fw"><span class="fw-badge fw-cis">CIS 5.2.4</span> <span class="fw-badge fw-nsa">NSA 3.1</span></td></tr>
+
+</tbody>
+</table>
+
+
+
+</div>
+
+
+<div id="tab-compliance" class="tab-panel">
+
+<div class="fw-section">
+<div class="fw-header">
+<h3 class="tier-heading" style="margin:0">CIS</h3>
+<span class="fw-score" style="color:#10b981">32/35 passing (91%)</span>
+</div>
+<table class="data-table fw-table">
+<colgroup><col style="width:7%"><col style="width:10%"><col style="width:9%"><col style="width:48%"><col style="width:26%"></colgroup>
+<thead>
+<tr><th scope="col">Status</th><th scope="col">Severity</th><th scope="col">Control</th><th scope="col">Title</th><th scope="col">Resources</th></tr>
+</thead>
+<tbody>
+
+<tr class="finding-row" data-severity="Critical">
+<td><span class="status-fail">FAIL</span></td>
+<td><span class="sev Critical">Critical</span></td>
+<td class="mono">5.2.1</td>
+<td>Minimize the admission of privileged containers</td>
+<td>default/Deployment/nginx</td>
+</tr>
+
+<tr class="finding-row" data-severity="High">
+<td><span class="status-fail">FAIL</span></td>
+<td><span class="sev High">High</span></td>
+<td class="mono">5.2.6</td>
+<td>Minimize the admission of root containers</td>
+<td>backend/Deployment/api-server</td>
+</tr>
+
+<tr class="finding-row" data-severity="Medium">
+<td><span class="status-fail">FAIL</span></td>
+<td><span class="sev Medium">Medium</span></td>
+<td class="mono">5.2.4</td>
+<td>Minimize the admission of containers with readOnlyRootFilesystem</td>
+<td>default/StatefulSet/worker</td>
+</tr>
+
+</tbody>
+</table>
+<details style="margin-top:12px;padding-left:8px"><summary class="fw-passed-toggle"><span class="status-pass">PASS</span> 32 controls passing</summary><ul class="passed-list"><li class="mono">1.2.1</li>
+<li class="mono">1.2.11</li>
+<li class="mono">1.2.17</li>
+<li class="mono">1.2.18</li>
+<li class="mono">1.2.28</li>
+<li class="mono">1.2.29</li>
+<li class="mono">4.2.1</li>
+<li class="mono">5.1.1</li>
+<li class="mono">5.1.2</li>
+<li class="mono">5.1.3</li>
+<li class="mono">5.1.5</li>
+<li class="mono">5.1.6</li>
+<li class="mono">5.1.7</li>
+<li class="mono">5.1.8</li>
+<li class="mono">5.2.10</li>
+<li class="mono">5.2.12</li>
+<li class="mono">5.2.13</li>
+<li class="mono">5.2.2</li>
+<li class="mono">5.2.3</li>
+<li class="mono">5.2.5</li>
+<li class="mono">5.2.7</li>
+<li class="mono">5.2.8</li>
+<li class="mono">5.2.9</li>
+<li class="mono">5.3.1</li>
+<li class="mono">5.3.2</li>
+<li class="mono">5.4.1</li>
+<li class="mono">5.4.2</li>
+<li class="mono">5.5.1</li>
+<li class="mono">5.6.1</li>
+<li class="mono">5.6.2</li>
+<li class="mono">5.6.3</li>
+<li class="mono">5.6.4</li>
+</ul></details>
+</div>
+
+<div class="fw-section">
+<div class="fw-header">
+<h3 class="tier-heading" style="margin:0">MITRE</h3>
+<span class="fw-score" style="color:#10b981">28/29 passing (96%)</span>
+</div>
+<table class="data-table fw-table">
+<colgroup><col style="width:7%"><col style="width:10%"><col style="width:9%"><col style="width:48%"><col style="width:26%"></colgroup>
+<thead>
+<tr><th scope="col">Status</th><th scope="col">Severity</th><th scope="col">Control</th><th scope="col">Title</th><th scope="col">Resources</th></tr>
+</thead>
+<tbody>
+
+<tr class="finding-row" data-severity="Critical">
+<td><span class="status-fail">FAIL</span></td>
+<td><span class="sev Critical">Critical</span></td>
+<td class="mono">T1611</td>
+<td>Escape to Host</td>
+<td>default/Deployment/nginx</td>
+</tr>
+
+</tbody>
+</table>
+<details style="margin-top:12px;padding-left:8px"><summary class="fw-passed-toggle"><span class="status-pass">PASS</span> 28 controls passing</summary><ul class="passed-list"><li class="mono">T1006</li>
+<li class="mono">T1040</li>
+<li class="mono">T1046</li>
+<li class="mono">T1048</li>
+<li class="mono">T1057</li>
+<li class="mono">T1059</li>
+<li class="mono">T1068</li>
+<li class="mono">T1071</li>
+<li class="mono">T1071.004</li>
+<li class="mono">T1078</li>
+<li class="mono">T1078.001</li>
+<li class="mono">T1078.004</li>
+<li class="mono">T1190</li>
+<li class="mono">T1195.002</li>
+<li class="mono">T1203</li>
+<li class="mono">T1499</li>
+<li class="mono">T1525</li>
+<li class="mono">T1530</li>
+<li class="mono">T1552</li>
+<li class="mono">T1552.001</li>
+<li class="mono">T1552.005</li>
+<li class="mono">T1552.007</li>
+<li class="mono">T1557</li>
+<li class="mono">T1562.008</li>
+<li class="mono">T1565.001</li>
+<li class="mono">T1580</li>
+<li class="mono">T1609</li>
+<li class="mono">T1610</li>
+</ul></details>
+</div>
+
+<div class="fw-section">
+<div class="fw-header">
+<h3 class="tier-heading" style="margin:0">NSA</h3>
+<span class="fw-score" style="color:#10b981">14/15 passing (93%)</span>
+</div>
+<table class="data-table fw-table">
+<colgroup><col style="width:7%"><col style="width:10%"><col style="width:9%"><col style="width:48%"><col style="width:26%"></colgroup>
+<thead>
+<tr><th scope="col">Status</th><th scope="col">Severity</th><th scope="col">Control</th><th scope="col">Title</th><th scope="col">Resources</th></tr>
+</thead>
+<tbody>
+
+<tr class="finding-row" data-severity="Critical">
+<td><span class="status-fail">FAIL</span></td>
+<td><span class="sev Critical">Critical</span></td>
+<td class="mono">3.1</td>
+<td>Pod Security</td>
+<td><details class="res-drill"><summary>2 resources</summary><ul class="res-list"><li>default/Deployment/nginx</li><li>default/StatefulSet/worker</li></ul></details></td>
+</tr>
+
+</tbody>
+</table>
+<details style="margin-top:12px;padding-left:8px"><summary class="fw-passed-toggle"><span class="status-pass">PASS</span> 14 controls passing</summary><ul class="passed-list"><li class="mono">1.1</li>
+<li class="mono">1.2</li>
+<li class="mono">1.3</li>
+<li class="mono">1.4</li>
+<li class="mono">1.5</li>
+<li class="mono">2.1</li>
+<li class="mono">3.2</li>
+<li class="mono">4.1</li>
+<li class="mono">4.2</li>
+<li class="mono">4.3</li>
+<li class="mono">5.1</li>
+<li class="mono">5.2</li>
+<li class="mono">6.1</li>
+<li class="mono">7.1</li>
+</ul></details>
+</div>
+
+</div>
+
+
+
+</div>
+
+</div>
+
+<div class="print-compliance">
+<h3 class="print-section-title">Compliance Posture</h3>
+<table class="print-table">
+<thead><tr><th>Framework</th><th>Pass Rate</th><th>Passed</th><th>Failed</th><th>Total Controls</th></tr></thead>
+<tbody><tr><td>CIS</td><td>91%</td><td>32</td><td>3</td><td>35</td></tr><tr><td>MITRE</td><td>96%</td><td>28</td><td>1</td><td>29</td></tr><tr><td>NSA</td><td>93%</td><td>14</td><td>1</td><td>15</td></tr></tbody>
+</table>
+</div>
+
+<div class="print-workloads">
+<h3 class="print-section-title">Critical &amp; High Findings by Workload</h3>
+<div class="print-ns-group">
+<div class="print-ns-heading">default <span class="print-ns-tier">(App)</span><span class="print-ns-stats">1 findings &mdash; 1 Crit, 0 High</span></div>
+<div class="print-workload">
+<div class="print-wl-header"><span class="print-wl-name">Deployment/nginx</span><span class="print-wl-counts">1 Crit / 0 High</span></div>
+<table class="print-table print-wl-table">
+<thead><tr><th>Sev</th><th>Check</th><th>Container</th><th>Field</th><th>Message</th></tr></thead>
+<tbody><tr><td><span class="sev Critical">Critical</span></td><td class="mono">privileged</td><td>nginx</td><td class="mono">.spec.containers[0].securityContext.privileged</td><td>Container runs in privileged mode</td></tr></tbody>
+</table>
+</div>
+</div><div class="print-ns-group">
+<div class="print-ns-heading">backend <span class="print-ns-tier">(App)</span><span class="print-ns-stats">1 findings &mdash; 0 Crit, 1 High</span></div>
+<div class="print-workload">
+<div class="print-wl-header"><span class="print-wl-name">Deployment/api-server</span><span class="print-wl-counts">0 Crit / 1 High</span></div>
+<table class="print-table print-wl-table">
+<thead><tr><th>Sev</th><th>Check</th><th>Container</th><th>Field</th><th>Message</th></tr></thead>
+<tbody><tr><td><span class="sev High">High</span></td><td class="mono">run-as-root</td><td>api</td><td class="mono"></td><td>Container runs as root</td></tr></tbody>
+</table>
+</div>
+</div>
+
+</div>
+
+<div class="print-rem">
+<h3 class="print-section-title">Remediation Reference</h3>
+<div class="print-rem-entry"><h4 class="mono"><span class="sev Critical">Critical</span> privileged</h4><p>Set securityContext.privileged to false</p></div>
+<div class="print-rem-entry"><h4 class="mono"><span class="sev High">High</span> run-as-root</h4><p>Set runAsNonRoot: true</p></div>
+<div class="print-rem-entry"><h4 class="mono"><span class="sev Medium">Medium</span> read-only-rootfs</h4><p>Set readOnlyRootFilesystem: true</p></div>
+
+</div>
+
+<div id="rem-store" style="display:none"><div id="rem-privileged"><p>Set securityContext.privileged to false</p></div><div id="rem-run-as-root"><p>Set runAsNonRoot: true</p></div><div id="rem-read-only-rootfs"><p>Set readOnlyRootFilesystem: true</p></div></div>
+<div id="summary-data" style="display:none">KubeVigil Scan Report — Stribog IT Solutions
+Cluster: my-cluster
+Scan Mode: Manifest | Duration: 50ms
+K8s Version: v1.28.0 | Nodes: 3
+Posture Score: 89/100 (A)
+Total Findings: 3 (Critical: 1, High: 1, Medium: 1, Low: 0, Info: 0)
+Resources Affected: 3 | Namespaces: 2
+Application: 3 findings (score 89, A)
+Checks Run: 25 | Passed: 22 | Failed: 3
+Generated: 15 Jan 2024, 10:30 UTC</div>
+<script id="findings-json" type="application/json">{"c":["privileged","run-as-root","read-only-rootfs"],"s":["Critical","High","Medium"],"r":["nginx","api-server","worker"],"n":["default","backend","default"],"k":["Deployment","Deployment","StatefulSet"],"t":["nginx","api","worker"],"m":["Container runs in privileged mode","Container runs as root","Root filesystem is not read-only"],"f":[".spec.containers[0].securityContext.privileged","",".spec.containers[0].securityContext.readOnlyRootFilesystem"]}</script>
+<script id="checker-meta" type="application/json">{"privileged":{"r":"Set securityContext.privileged to false","fw":"CIS | MITRE | NSA","ci":"5.2.1 | T1611 | 3.1"},"read-only-rootfs":{"r":"Set readOnlyRootFilesystem: true","fw":"CIS | NSA","ci":"5.2.4 | 3.1"},"run-as-root":{"r":"Set runAsNonRoot: true","fw":"CIS","ci":"5.2.6"}}</script>
+<div id="help-overlay" class="help-overlay hidden">
+<div class="help-dialog">
+<h3>Keyboard Shortcuts</h3>
+<table class="help-keys">
+<tr><td><kbd>1</kbd></td><td>All Findings tab</td></tr>
+<tr><td><kbd>2</kbd></td><td>By Namespace tab</td></tr>
+<tr><td><kbd>3</kbd></td><td>By Check tab</td></tr>
+<tr><td><kbd>4</kbd></td><td>Compliance tab</td></tr>
+<tr><td><kbd>f</kbd></td><td>Focus search</td></tr>
+<tr><td><kbd>e</kbd></td><td>Expand / Collapse all</td></tr>
+<tr><td><kbd>d</kbd></td><td>Toggle dark mode</td></tr>
+<tr><td><kbd>?</kbd></td><td>Show this help</td></tr>
+<tr><td><kbd>Esc</kbd></td><td>Close overlay</td></tr>
+</table>
+<button class="nav-btn" onclick="toggleHelp()" style="margin-top:12px">Close</button>
+</div>
+</div>
+<div id="rem-drawer" class="rem-drawer" aria-hidden="true">
+<div class="rem-drawer-backdrop" onclick="closeDrawer()"></div>
+<div class="rem-drawer-panel">
+<div class="rem-drawer-header">
+<span class="rem-drawer-title"></span>
+<span class="rem-drawer-sev sev"></span>
+<button class="rem-drawer-close" onclick="closeDrawer()" aria-label="Close">&times;</button>
+</div>
+<div class="rem-drawer-body"></div>
+</div>
+</div>
+<footer class="footer">
+<div class="footer-frameworks">
+<span class="fw-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> CIS v1.8.0</span>
+<span class="fw-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> NSA/CISA Hardened</span>
+<span class="fw-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> MITRE Framework</span>
+</div>
+<div class="footer-tagline">KubeVigil (development build) · Stribog IT Solutions Pvt. Ltd.</div>
+</footer>
+<script>
+var AGGREGATE=true;
+function switchTab(btn){document.querySelectorAll('.pill-tab').forEach(function(b){b.classList.remove('active')});document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active')});btn.classList.add('active');var panel=document.getElementById('tab-'+btn.dataset.tab);if(panel)panel.classList.add('active');history.replaceState(null,null,'#'+btn.dataset.tab)}(function(){var hash=location.hash.replace('#','');if(hash){var btn=document.querySelector('.pill-tab[data-tab="'+hash+'"]');if(btn)switchTab(btn)}window.addEventListener('hashchange',function(){var h=location.hash.replace('#','');var b=document.querySelector('.pill-tab[data-tab="'+h+'"]');if(b)switchTab(b)})})();var PAGE_SIZE=25,currentPage=0,filteredFindings=[],allFindings=[],findingsByNs={},CHECKER_META=null;function getCheckerMeta(){if(!CHECKER_META){var el=document.getElementById('checker-meta');CHECKER_META=el?JSON.parse(el.textContent):{}}return CHECKER_META}function getFindings(){var el=document.getElementById('findings-json');if(!el)return[];try{var d=JSON.parse(el.textContent);if(!d.c)return[];var a=[];for(var i=0;i<d.c.length;i++){a.push({checker:d.c[i],severity:d.s[i],resource:d.r[i],namespace:d.n[i]||'',kind:d.k[i],container:d.t[i]||'',message:d.m[i],field_path:d.f[i]||''})}return a}catch(e){return[]}}function initFindings(){allFindings=getFindings();filteredFindings=allFindings.slice();currentPage=0;findingsByNs={};allFindings.forEach(function(f){var ns=f.namespace||'';if(!findingsByNs[ns])findingsByNs[ns]=[];findingsByNs[ns].push(f)});renderPage()}function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}function kindIcon(kind){var m={Deployment:'D',StatefulSet:'SS',DaemonSet:'DS',Job:'J',CronJob:'CJ',Pod:'P',ClusterRole:'CR',ClusterRoleBinding:'CB',Role:'R',RoleBinding:'RB',Service:'Sv',Ingress:'I',ConfigMap:'CM',Secret:'Sc',Namespace:'N',NetworkPolicy:'NP',ServiceAccount:'SA',PersistentVolumeClaim:'PV',Node:'No'};return m[kind]||kind.charAt(0).toUpperCase()||'?'}function fwBadges(m){if(!m||!m.fw)return'';var h='<span class="fc-fw">',fp=m.fw.split(' | '),cp=(m.ci||'').split(' | ');for(var i=0;i<fp.length;i++){var fw=fp[i],ci=cp[i]||'',cls='fw-badge';if(fw==='CIS')cls+=' fw-cis';else if(fw==='MITRE')cls+=' fw-mitre';else if(fw==='NSA')cls+=' fw-nsa';ci.split(', ').forEach(function(id){if(id)h+='<span class="'+cls+'">'+fw+' '+esc(id)+'</span> '})}return h+'</span>'}function renderPage(){var start=currentPage*PAGE_SIZE;var end=Math.min(start+PAGE_SIZE,filteredFindings.length);var tbody=document.getElementById('findings-tbody');if(!tbody)return;var cm=getCheckerMeta();var html='';for(var i=start;i<end;i++){var f=filteredFindings[i];var res=f.kind?(f.kind+' / '+(f.resource||'')):(f.resource||'');var ki=kindIcon(f.kind||'');var m=cm[f.checker]||{};html+='<tr><td><span class="sev '+f.severity+'">'+f.severity+'</span></td>';html+='<td><div class="ft-check-name">'+esc(f.checker)+'</div><div class="ft-check-desc">'+esc(f.message||'')+'</div></td>';html+='<td><div class="ft-resource"><span class="ft-resource-icon">'+ki+'</span>'+esc(res)+'</div></td>';html+='<td style="text-align:right">'+(m.r?'<button class="ft-view-fix rem-trigger" data-checker="'+esc(f.checker)+'" onclick="openDrawer(this)">View Fix</button>':'')+'</td></tr>'}tbody.innerHTML=html;var pr=document.getElementById('page-range');if(pr)pr.textContent=filteredFindings.length?(start+1)+'\u2013'+end:'0\u20130';var pb=document.getElementById('prev-page');var nb=document.getElementById('next-page');if(pb)pb.disabled=currentPage===0;if(nb)nb.disabled=end>=filteredFindings.length}function nextPage(){if((currentPage+1)*PAGE_SIZE<filteredFindings.length){currentPage++;renderPage();var el=document.getElementById('findings');if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}}function prevPage(){if(currentPage>0){currentPage--;renderPage();var el=document.getElementById('findings');if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}}function filterAllFindings(){var q=document.getElementById('search').value.toLowerCase();var sevBtn=document.querySelector('.qf-btn.active');var sev=sevBtn?sevBtn.dataset.severity:'all';filteredFindings=allFindings.filter(function(f){var matchSearch=!q||(f.checker+' '+f.resource+' '+f.message+' '+f.severity+' '+f.kind+' '+f.namespace).toLowerCase().indexOf(q)>=0;var matchSev=sev==='all'||f.severity===sev||(sev==='others'&&f.severity!=='Critical'&&f.severity!=='High');return matchSearch&&matchSev});currentPage=0;renderPage()}function setQuickFilter(btn){document.querySelectorAll('.qf-btn').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');filterAllFindings()}function loadNsFindings(s){var ns=s.dataset.ns,nsf=findingsByNs[ns]||[],cm=getCheckerMeta(),el=document.querySelector('.ns-search'),q=el?el.value.toLowerCase():'',sb=document.querySelector('.filter-btn.active'),sv=sb?sb.dataset.severity:'all',ff=nsf.filter(function(f){var ms=!q||(f.checker+' '+f.resource+' '+f.message+' '+f.severity+' '+f.kind).toLowerCase().indexOf(q)>=0;return ms&&(sv==='all'||f.severity===sv)}),c=s.querySelector('.finding-cards');if(!c)return;if(!ff.length){c.innerHTML='';return}var h='';if(typeof AGGREGATE!=='undefined'&&AGGREGATE){var g={},o=[];ff.forEach(function(f){var k=f.checker+'|'+f.severity+'|'+f.message;if(!g[k]){g[k]={ch:f.checker,sv:f.severity,msg:f.message,rs:[]};o.push(k)}var r=f.kind?f.kind+'/'+f.resource:f.resource;g[k].rs.push({n:r,c:f.container})});o.forEach(function(k){var a=g[k],m=cm[a.ch]||{},fw=fwBadges(m);h+='<div class="finding-card finding-row" data-severity="'+a.sv+'"><div class="fc-header"><span class="sev '+a.sv+'">'+a.sv+'</span><span class="fc-check mono">'+esc(a.ch)+'</span><span class="fc-res mono">';if(a.rs.length===1){h+=esc(a.rs[0].n);if(a.rs[0].c)h+=' ('+esc(a.rs[0].c)+')'}else{h+='<details class="res-drill"><summary>'+a.rs.length+' resources</summary><ul class="res-list">';a.rs.forEach(function(r){h+='<li>'+esc(r.n);if(r.c)h+=' ('+esc(r.c)+')';h+='</li>'});h+='</ul></details>'}h+='</span>'+fw+'</div>';if(m.r)h+='<button class="fc-remediation rem-trigger" data-checker="'+esc(a.ch)+'" onclick="openDrawer(this)">View Fix</button>';h+='</div>'})}else{ff.forEach(function(f){var m=cm[f.checker]||{},fw=fwBadges(m),r=f.kind?f.kind+'/'+f.resource:f.resource;h+='<div class="finding-card finding-row" data-severity="'+f.severity+'"><div class="fc-header"><span class="sev '+f.severity+'">'+f.severity+'</span><span class="fc-check mono">'+esc(f.checker)+'</span><span class="fc-res mono">'+esc(r);if(f.container)h+=' ('+esc(f.container)+')';h+='</span>'+fw+'</div>';if(m.r)h+='<button class="fc-remediation rem-trigger" data-checker="'+esc(f.checker)+'" onclick="openDrawer(this)">View Fix</button>';h+='</div>'})}c.innerHTML=h}function filterFindings(){var el=document.querySelector('.ns-search');var q=el?el.value.toLowerCase():'';var sev=document.querySelector('.filter-btn.active').dataset.severity;document.querySelectorAll('.ns-section').forEach(function(s){var ns=s.dataset.ns;var nsf=findingsByNs[ns]||[];var visible=nsf.filter(function(f){var matchSearch=!q||(f.checker+' '+f.resource+' '+f.message+' '+f.severity+' '+f.kind).toLowerCase().indexOf(q)>=0;var matchSev=sev==='all'||f.severity===sev;return matchSearch&&matchSev}).length;s.classList.toggle('hidden',visible===0);if(s.open&&visible>0)loadNsFindings(s);if(q&&visible>0)s.open=true});document.querySelectorAll('.fw-section').forEach(function(s){s.querySelectorAll('.finding-row').forEach(function(r){var text=r.textContent.toLowerCase();var matchSearch=!q||text.indexOf(q)>=0;var matchSev=sev==='all'||r.dataset.severity===sev;r.classList.toggle('hidden',!(matchSearch&&matchSev))});var vis=s.querySelectorAll('.finding-row:not(.hidden)').length;s.classList.toggle('hidden',vis===0)})}function toggleSeverity(btn){document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');filterFindings()}function toggleAll(){var sections=document.querySelectorAll('.ns-section:not(.hidden)');var btn=document.getElementById('toggle-all');var anyOpen=false;sections.forEach(function(s){if(s.open)anyOpen=true});sections.forEach(function(s){s.open=!anyOpen;if(s.open)loadNsFindings(s)});btn.textContent=anyOpen?'Expand All':'Collapse All'}function openDrawer(btn){var drawer=document.getElementById('rem-drawer');var title=drawer.querySelector('.rem-drawer-title');var sevBadge=drawer.querySelector('.rem-drawer-sev');var body=drawer.querySelector('.rem-drawer-body');var checker=btn.dataset.checker;title.textContent=checker;var card=btn.closest('.finding-card');if(card){var s=card.querySelector('.sev');if(s){sevBadge.textContent=s.textContent;sevBadge.className='rem-drawer-sev sev '+s.textContent}}else{var tr=btn.closest('tr');if(tr){var s=tr.querySelector('.sev');if(s){sevBadge.textContent=s.textContent;sevBadge.className='rem-drawer-sev sev '+s.textContent}}}var store=document.getElementById('rem-'+checker);body.innerHTML=store?store.innerHTML:'';drawer.classList.add('open');drawer.setAttribute('aria-hidden','false');document.body.style.overflow='hidden'}function closeDrawer(){var drawer=document.getElementById('rem-drawer');drawer.classList.remove('open');drawer.setAttribute('aria-hidden','true');document.body.style.overflow=''}function sortNamespaces(btn){document.querySelectorAll('.sort-btn').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');var mode=btn.dataset.sort;document.querySelectorAll('.tier-section').forEach(function(tier){var parent=tier.querySelector('.ns-section')?.parentElement;if(!parent)return;var sections=Array.from(parent.querySelectorAll('.ns-section'));sections.sort(function(a,b){if(mode==='alpha')return a.dataset.label.localeCompare(b.dataset.label);if(mode==='count')return parseInt(b.dataset.count)-parseInt(a.dataset.count);var sa=a.dataset.sev.split(',').map(Number),sb=b.dataset.sev.split(',').map(Number);for(var i=0;i<5;i++){if(sa[i]!==sb[i])return sb[i]-sa[i]}return 0});sections.forEach(function(s){parent.appendChild(s)})})}function toggleDarkMode(){var html=document.documentElement;if(html.classList.contains('dark')){html.classList.remove('dark');html.classList.add('light')}else{html.classList.remove('light');html.classList.add('dark')}}var sevWeight={Critical:5,High:4,Medium:3,Low:2,Info:1};document.querySelectorAll('.sortable-th').forEach(function(th){th.addEventListener('click',function(){var table=th.closest('table');var tbody=table.querySelector('tbody');var idx=Array.from(th.parentElement.children).indexOf(th);var sortType=th.dataset.sort;var dir='asc';if(th.classList.contains('sort-asc'))dir='desc';else if(th.classList.contains('sort-desc'))dir='none';table.querySelectorAll('.sortable-th').forEach(function(h){h.classList.remove('sort-asc','sort-desc')});if(dir==='none'){return}th.classList.add('sort-'+dir);var rows=Array.from(tbody.querySelectorAll('tr'));rows.sort(function(a,b){var av,bv;if(sortType==='severity'){av=sevWeight[a.dataset.sevWeight]||0;bv=sevWeight[b.dataset.sevWeight]||0}else if(sortType==='num'){av=parseInt(a.children[idx].textContent)||0;bv=parseInt(b.children[idx].textContent)||0}else{av=a.children[idx].textContent.trim().toLowerCase();bv=b.children[idx].textContent.trim().toLowerCase();return dir==='asc'?av.localeCompare(bv):bv.localeCompare(av)}return dir==='asc'?av-bv:bv-av});rows.forEach(function(r){tbody.appendChild(r)})})});function toggleHelp(){document.getElementById('help-overlay').classList.toggle('hidden')}document.addEventListener('keydown',function(e){if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;var tabs=['all-findings','by-namespace','by-check','compliance'];if(e.key==='Escape'){var drawer=document.getElementById('rem-drawer');if(drawer&&drawer.classList.contains('open')){closeDrawer();e.preventDefault();return}var overlay=document.getElementById('help-overlay');if(!overlay.classList.contains('hidden')){overlay.classList.add('hidden');e.preventDefault();return}}if(e.key>='1'&&e.key<='4'){var idx=parseInt(e.key)-1;var btn=document.querySelector('.pill-tab[data-tab="'+tabs[idx]+'"]');if(btn){switchTab(btn);e.preventDefault()}}else if(e.key==='f'){var s=document.getElementById('search');if(s){s.focus();e.preventDefault()}}else if(e.key==='e'){toggleAll();e.preventDefault()}else if(e.key==='d'){toggleDarkMode();e.preventDefault()}else if(e.key==='?'){toggleHelp();e.preventDefault()}});function downloadBlob(data,filename,mime){var blob=new Blob([data],{type:mime});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url)}function exportJSON(){var findings=getFindings();var cm=getCheckerMeta();var qf=document.querySelector('.qf-btn.active');var filter=qf?qf.dataset.severity:'all';if(filter!=='all'){findings=filter==='others'?findings.filter(function(f){return f.severity!=='Critical'&&f.severity!=='High'}):findings.filter(function(f){return f.severity===filter})}var enriched=findings.map(function(f){var m=cm[f.checker]||{};return{checker:f.checker,severity:f.severity,resource:f.resource,namespace:f.namespace,kind:f.kind,container:f.container,message:f.message,remediation:m.r||'',field_path:f.field_path,frameworks:m.fw||'',control_ids:m.ci||'',category:m.ca||''}});downloadBlob(JSON.stringify(enriched,null,2),'kubevigil-findings.json','application/json')}function exportCSV(){var findings=getFindings();var cm=getCheckerMeta();var qf=document.querySelector('.qf-btn.active');var filter=qf?qf.dataset.severity:'all';if(filter!=='all'){findings=filter==='others'?findings.filter(function(f){return f.severity!=='Critical'&&f.severity!=='High'}):findings.filter(function(f){return f.severity===filter})}var cols=['checker','severity','category','resource','namespace','kind','container','message','remediation','field_path','frameworks','control_ids'];var rows=[cols.join(',')];findings.forEach(function(f){var m=cm[f.checker]||{};var row={checker:f.checker,severity:f.severity,resource:f.resource,namespace:f.namespace||'',kind:f.kind,container:f.container||'',message:f.message,field_path:f.field_path||'',remediation:m.r||'',frameworks:m.fw||'',control_ids:m.ci||'',category:m.ca||''};rows.push(cols.map(function(c){var v=(row[c]||'').toString().replace(/"/g,'""');return '"'+v+'"'}).join(','))});downloadBlob(rows.join('\n'),'kubevigil-findings.csv','text/csv')}initFindings();
+document.querySelectorAll('.ns-section').forEach(function(s){s.open=true;loadNsFindings(s)});
+</script>
+</body>
+</html>

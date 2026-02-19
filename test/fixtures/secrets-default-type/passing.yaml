@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: proper-tls-secret
+  namespace: default
+type: kubernetes.io/tls
+data:
+  tls.crt: LS0tLS1CRUdJTi4uLg==
+  tls.key: LS0tLS1CRUdJTi4uLg==

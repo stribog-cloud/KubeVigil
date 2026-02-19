@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: my-app
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: default-quota
+  namespace: my-app
+spec:
+  hard:
+    cpu: "10"
+    memory: "20Gi"
+    pods: "50"

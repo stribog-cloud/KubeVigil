@@ -39,3 +39,21 @@ exemptions: []
   #  reason: "Prometheus needs host network for node metrics"
   #  approved_by: "security-team"
   #  expires: "2025-12-31"
+
+# Image policies (used by image-registry-allowlist, image-registry-blocklist, etc.)
+#policies:
+#  images:
+#    # Only allow images from these registries
+#    allowed_registries:
+#      - gcr.io
+#      - us-docker.pkg.dev
+#      - ghcr.io
+#    # Block images from these registries
+#    blocked_registries:
+#      - docker.io
+#    # Require images to be pinned by digest for signature verification
+#    require_signatures: false
+#    # Require images to have SBOM attestations
+#    require_sbom: false
+#    # Require images to have provenance attestations
+#    require_provenance: false

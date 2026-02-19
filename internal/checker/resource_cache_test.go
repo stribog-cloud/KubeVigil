@@ -159,6 +159,146 @@ func TestGVRForKind(t *testing.T) {
 			kind:       "Widget",
 			wantGVR:    schema.GroupVersionResource{Group: "custom.io", Version: "v1beta1", Resource: "widgets"},
 		},
+		// Core v1 types (Phase 2)
+		{
+			name:       "v1 ServiceAccount",
+			apiVersion: "v1",
+			kind:       "ServiceAccount",
+			wantGVR:    schema.GroupVersionResource{Group: "", Version: "v1", Resource: "serviceaccounts"},
+		},
+		{
+			name:       "v1 Service",
+			apiVersion: "v1",
+			kind:       "Service",
+			wantGVR:    schema.GroupVersionResource{Group: "", Version: "v1", Resource: "services"},
+		},
+		{
+			name:       "v1 Secret",
+			apiVersion: "v1",
+			kind:       "Secret",
+			wantGVR:    schema.GroupVersionResource{Group: "", Version: "v1", Resource: "secrets"},
+		},
+		{
+			name:       "v1 ConfigMap",
+			apiVersion: "v1",
+			kind:       "ConfigMap",
+			wantGVR:    schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"},
+		},
+		{
+			name:       "v1 LimitRange",
+			apiVersion: "v1",
+			kind:       "LimitRange",
+			wantGVR:    schema.GroupVersionResource{Group: "", Version: "v1", Resource: "limitranges"},
+		},
+		{
+			name:       "v1 ResourceQuota",
+			apiVersion: "v1",
+			kind:       "ResourceQuota",
+			wantGVR:    schema.GroupVersionResource{Group: "", Version: "v1", Resource: "resourcequotas"},
+		},
+		{
+			name:       "v1 PersistentVolumeClaim",
+			apiVersion: "v1",
+			kind:       "PersistentVolumeClaim",
+			wantGVR:    schema.GroupVersionResource{Group: "", Version: "v1", Resource: "persistentvolumeclaims"},
+		},
+		{
+			name:       "v1 PersistentVolume",
+			apiVersion: "v1",
+			kind:       "PersistentVolume",
+			wantGVR:    schema.GroupVersionResource{Group: "", Version: "v1", Resource: "persistentvolumes"},
+		},
+		{
+			name:       "v1 Namespace",
+			apiVersion: "v1",
+			kind:       "Namespace",
+			wantGVR:    schema.GroupVersionResource{Group: "", Version: "v1", Resource: "namespaces"},
+		},
+		{
+			name:       "v1 Node",
+			apiVersion: "v1",
+			kind:       "Node",
+			wantGVR:    schema.GroupVersionResource{Group: "", Version: "v1", Resource: "nodes"},
+		},
+		// RBAC types (Phase 2)
+		{
+			name:       "rbac Role",
+			apiVersion: "rbac.authorization.k8s.io/v1",
+			kind:       "Role",
+			wantGVR:    schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "roles"},
+		},
+		{
+			name:       "rbac ClusterRole",
+			apiVersion: "rbac.authorization.k8s.io/v1",
+			kind:       "ClusterRole",
+			wantGVR:    schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "clusterroles"},
+		},
+		{
+			name:       "rbac RoleBinding",
+			apiVersion: "rbac.authorization.k8s.io/v1",
+			kind:       "RoleBinding",
+			wantGVR:    schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "rolebindings"},
+		},
+		{
+			name:       "rbac ClusterRoleBinding",
+			apiVersion: "rbac.authorization.k8s.io/v1",
+			kind:       "ClusterRoleBinding",
+			wantGVR:    schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "clusterrolebindings"},
+		},
+		// Networking types (Phase 2) — irregular plurals
+		{
+			name:       "networking NetworkPolicy irregular plural",
+			apiVersion: "networking.k8s.io/v1",
+			kind:       "NetworkPolicy",
+			wantGVR:    schema.GroupVersionResource{Group: "networking.k8s.io", Version: "v1", Resource: "networkpolicies"},
+		},
+		{
+			name:       "networking Ingress irregular plural",
+			apiVersion: "networking.k8s.io/v1",
+			kind:       "Ingress",
+			wantGVR:    schema.GroupVersionResource{Group: "networking.k8s.io", Version: "v1", Resource: "ingresses"},
+		},
+		// Storage types (Phase 2) — irregular plural for StorageClass
+		{
+			name:       "storage StorageClass irregular plural",
+			apiVersion: "storage.k8s.io/v1",
+			kind:       "StorageClass",
+			wantGVR:    schema.GroupVersionResource{Group: "storage.k8s.io", Version: "v1", Resource: "storageclasses"},
+		},
+		{
+			name:       "storage CSIDriver",
+			apiVersion: "storage.k8s.io/v1",
+			kind:       "CSIDriver",
+			wantGVR:    schema.GroupVersionResource{Group: "storage.k8s.io", Version: "v1", Resource: "csidrivers"},
+		},
+		// Policy (Phase 2)
+		{
+			name:       "policy PodDisruptionBudget",
+			apiVersion: "policy/v1",
+			kind:       "PodDisruptionBudget",
+			wantGVR:    schema.GroupVersionResource{Group: "policy", Version: "v1", Resource: "poddisruptionbudgets"},
+		},
+		// Autoscaling (Phase 2)
+		{
+			name:       "autoscaling HorizontalPodAutoscaler",
+			apiVersion: "autoscaling/v2",
+			kind:       "HorizontalPodAutoscaler",
+			wantGVR:    schema.GroupVersionResource{Group: "autoscaling", Version: "v2", Resource: "horizontalpodautoscalers"},
+		},
+		// Scheduling (Phase 2) — irregular plural for PriorityClass
+		{
+			name:       "scheduling PriorityClass irregular plural",
+			apiVersion: "scheduling.k8s.io/v1",
+			kind:       "PriorityClass",
+			wantGVR:    schema.GroupVersionResource{Group: "scheduling.k8s.io", Version: "v1", Resource: "priorityclasses"},
+		},
+		// API Extensions (Phase 2)
+		{
+			name:       "apiextensions CustomResourceDefinition",
+			apiVersion: "apiextensions.k8s.io/v1",
+			kind:       "CustomResourceDefinition",
+			wantGVR:    schema.GroupVersionResource{Group: "apiextensions.k8s.io", Version: "v1", Resource: "customresourcedefinitions"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -172,4 +312,161 @@ func TestGVRForKind(t *testing.T) {
 			assert.Equal(t, tt.wantGVR, gvr)
 		})
 	}
+}
+
+func TestResourceCache_Policies(t *testing.T) {
+	t.Run("nil by default", func(t *testing.T) {
+		cache := NewResourceCache()
+		assert.Nil(t, cache.Policies())
+	})
+
+	t.Run("set and get policies", func(t *testing.T) {
+		cache := NewResourceCache()
+		p := &Policies{
+			Images: ImagePolicies{
+				AllowedRegistries: []string{"gcr.io"},
+			},
+		}
+		cache.SetPolicies(p)
+		assert.Equal(t, p, cache.Policies())
+		assert.True(t, cache.Policies().HasAllowedRegistries())
+		assert.False(t, cache.Policies().HasBlockedRegistries())
+	})
+
+	t.Run("overwrite policies", func(t *testing.T) {
+		cache := NewResourceCache()
+		p1 := &Policies{
+			Images: ImagePolicies{
+				AllowedRegistries: []string{"gcr.io"},
+			},
+		}
+		cache.SetPolicies(p1)
+
+		p2 := &Policies{
+			Images: ImagePolicies{
+				BlockedRegistries: []string{"docker.io"},
+			},
+		}
+		cache.SetPolicies(p2)
+		assert.Equal(t, p2, cache.Policies())
+		assert.False(t, cache.Policies().HasAllowedRegistries())
+		assert.True(t, cache.Policies().HasBlockedRegistries())
+	})
+}
+
+func TestResourceCache_Remove(t *testing.T) {
+	t.Run("remove existing resource", func(t *testing.T) {
+		cache := NewResourceCache()
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-a", "default"))
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-b", "default"))
+
+		removed := cache.Remove(podGVR, "default", "pod-a")
+		assert.True(t, removed)
+		result := cache.List(podGVR)
+		require.Len(t, result, 1)
+		assert.Equal(t, "pod-b", result[0].GetName())
+		assert.Equal(t, 1, cache.Len())
+	})
+
+	t.Run("remove nonexistent resource", func(t *testing.T) {
+		cache := NewResourceCache()
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-a", "default"))
+
+		removed := cache.Remove(podGVR, "default", "nonexistent")
+		assert.False(t, removed)
+		assert.Equal(t, 1, cache.Len())
+	})
+
+	t.Run("remove from nonexistent namespace", func(t *testing.T) {
+		cache := NewResourceCache()
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-a", "default"))
+
+		removed := cache.Remove(podGVR, "other", "pod-a")
+		assert.False(t, removed)
+		assert.Equal(t, 1, cache.Len())
+	})
+
+	t.Run("remove from nonexistent GVR", func(t *testing.T) {
+		cache := NewResourceCache()
+		removed := cache.Remove(podGVR, "default", "pod-a")
+		assert.False(t, removed)
+	})
+
+	t.Run("remove last resource in namespace cleans up empty slice", func(t *testing.T) {
+		cache := NewResourceCache()
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-a", "default"))
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-b", "kube-system"))
+
+		removed := cache.Remove(podGVR, "default", "pod-a")
+		assert.True(t, removed)
+		assert.Nil(t, cache.ListNamespaced(podGVR, "default"))
+		assert.Len(t, cache.ListNamespaced(podGVR, "kube-system"), 1)
+	})
+}
+
+func TestResourceCache_RemoveAll(t *testing.T) {
+	t.Run("remove all resources of a GVR", func(t *testing.T) {
+		cache := NewResourceCache()
+		rsGVR := schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "replicasets"}
+		cache.Add(rsGVR, makeUnstructured("apps/v1", "ReplicaSet", "rs-a", "default"))
+		cache.Add(rsGVR, makeUnstructured("apps/v1", "ReplicaSet", "rs-b", "kube-system"))
+		cache.Add(podGVR, makeUnstructured("v1", "Pod", "pod-a", "default"))
+
+		count := cache.RemoveAll(rsGVR)
+		assert.Equal(t, 2, count)
+		assert.Nil(t, cache.List(rsGVR))
+		assert.Len(t, cache.List(podGVR), 1)
+		assert.Equal(t, 1, cache.Len())
+	})
+
+	t.Run("remove all from nonexistent GVR", func(t *testing.T) {
+		cache := NewResourceCache()
+		count := cache.RemoveAll(podGVR)
+		assert.Equal(t, 0, count)
+	})
+}
+
+func TestPolicies_Helpers(t *testing.T) {
+	t.Run("nil policies", func(t *testing.T) {
+		var p *Policies
+		assert.False(t, p.HasAllowedRegistries())
+		assert.False(t, p.HasBlockedRegistries())
+	})
+
+	t.Run("empty policies", func(t *testing.T) {
+		p := &Policies{}
+		assert.False(t, p.HasAllowedRegistries())
+		assert.False(t, p.HasBlockedRegistries())
+	})
+
+	t.Run("with allowed registries", func(t *testing.T) {
+		p := &Policies{
+			Images: ImagePolicies{
+				AllowedRegistries: []string{"gcr.io", "us-docker.pkg.dev"},
+			},
+		}
+		assert.True(t, p.HasAllowedRegistries())
+		assert.False(t, p.HasBlockedRegistries())
+	})
+
+	t.Run("with blocked registries", func(t *testing.T) {
+		p := &Policies{
+			Images: ImagePolicies{
+				BlockedRegistries: []string{"docker.io"},
+			},
+		}
+		assert.False(t, p.HasAllowedRegistries())
+		assert.True(t, p.HasBlockedRegistries())
+	})
+
+	t.Run("with both registries", func(t *testing.T) {
+		p := &Policies{
+			Images: ImagePolicies{
+				AllowedRegistries: []string{"gcr.io"},
+				BlockedRegistries: []string{"docker.io"},
+			},
+		}
+		assert.True(t, p.HasAllowedRegistries())
+		assert.True(t, p.HasBlockedRegistries())
+	})
 }

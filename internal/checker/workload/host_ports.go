@@ -54,15 +54,26 @@ func (c *HostPortsChecker) Run(ctx context.Context, resources *checker.ResourceC
 			for _, port := range container.Ports {
 				if port.HostPort > 0 {
 					findings = append(findings, checker.Finding{
-						Checker:     "host-ports",
-						Severity:    checker.SeverityHigh,
-						Resource:    info.ResourceName,
-						Namespace:   info.Namespace,
-						Kind:        info.Kind,
-						Container:   container.Name,
-						Message:     fmt.Sprintf("Container %q binds to host port %d, exposing the service directly on the node.", container.Name, port.HostPort),
-						Remediation: "Remove hostPort bindings. Use Services to expose pods instead.",
-						FieldPath:   containerFieldPath(ct, idx, "ports"),
+						Checker:   "host-ports",
+						Severity:  checker.SeverityHigh,
+						Resource:  info.ResourceName,
+						Namespace: info.Namespace,
+						Kind:      info.Kind,
+						Container: container.Name,
+						Message:   fmt.Sprintf("Container %q binds to host port %d, exposing the service directly on the node.", container.Name, port.HostPort),
+						Remediation: "## Why This Matters\n\n" +
+							"Binding to a host port exposes your service directly on the node's network interface, bypassing Kubernetes " +
+							"Service abstractions and NetworkPolicies. It also ties each pod replica to a unique node (since two pods " +
+							"cannot share the same host port), severely limiting scheduling flexibility, rolling updates, and scaling.\n\n" +
+							"## How to Fix\n\n" +
+							"Remove the hostPort and use Kubernetes Services to expose your application:\n\n" +
+							"```yaml\nports:\n  - containerPort: 8080\n    protocol: TCP\n    # Remove hostPort entirely\n```\n\n" +
+							"Use a ClusterIP Service for internal traffic, NodePort or LoadBalancer for external access, " +
+							"or an Ingress controller for HTTP routing.\n\n" +
+							"## Learn More\n\n" +
+							"Host ports are prohibited by the Pod Security Standards \"Baseline\" profile. The only common " +
+							"legitimate use is for DaemonSets that must bind to a well-known port on every node (e.g., log collectors).",
+						FieldPath: containerFieldPath(ct, idx, "ports"),
 					})
 				}
 			}

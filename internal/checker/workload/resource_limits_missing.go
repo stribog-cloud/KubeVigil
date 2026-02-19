@@ -70,15 +70,27 @@ func (c *ResourceLimitsMissingChecker) Run(ctx context.Context, resources *check
 			fieldPath := containerFieldPath(ct, idx, "resources.limits")
 
 			findings = append(findings, checker.Finding{
-				Checker:     "resource-limits-missing",
-				Severity:    checker.SeverityMedium,
-				Resource:    info.ResourceName,
-				Namespace:   info.Namespace,
-				Kind:        info.Kind,
-				Container:   container.Name,
-				Message:     msg,
-				Remediation: "Set resources.limits.cpu and resources.limits.memory.",
-				FieldPath:   fieldPath,
+				Checker:   "resource-limits-missing",
+				Severity:  checker.SeverityMedium,
+				Resource:  info.ResourceName,
+				Namespace: info.Namespace,
+				Kind:      info.Kind,
+				Container: container.Name,
+				Message:   msg,
+				Remediation: "## Why This Matters\n\n" +
+					"Without resource limits, a single container can consume all available CPU and memory on a node, " +
+					"starving other workloads and triggering cascading failures. An attacker who compromises an unlimited " +
+					"container can mount a denial-of-service attack against the entire node with a simple fork bomb or " +
+					"memory allocation loop.\n\n" +
+					"## How to Fix\n\n" +
+					"Set both CPU and memory limits based on your application's actual resource usage:\n\n" +
+					"```yaml\nresources:\n  limits:\n    cpu: 500m\n    memory: 256Mi\n  requests:\n    cpu: 100m\n    memory: 128Mi\n```\n\n" +
+					"Profile your application under load to determine appropriate values. Set limits to handle peak usage " +
+					"and requests to match steady-state consumption.\n\n" +
+					"## Learn More\n\n" +
+					"Use LimitRange objects to enforce default limits at the namespace level. Resource limits also determine " +
+					"the pod's QoS class: pods with equal requests and limits get Guaranteed QoS and are last to be evicted.",
+				FieldPath: fieldPath,
 			})
 		})
 	}

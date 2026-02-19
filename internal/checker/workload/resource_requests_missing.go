@@ -70,15 +70,26 @@ func (c *ResourceRequestsMissingChecker) Run(ctx context.Context, resources *che
 			fieldPath := containerFieldPath(ct, idx, "resources.requests")
 
 			findings = append(findings, checker.Finding{
-				Checker:     "resource-requests-missing",
-				Severity:    checker.SeverityMedium,
-				Resource:    info.ResourceName,
-				Namespace:   info.Namespace,
-				Kind:        info.Kind,
-				Container:   container.Name,
-				Message:     msg,
-				Remediation: "Set resources.requests.cpu and resources.requests.memory.",
-				FieldPath:   fieldPath,
+				Checker:   "resource-requests-missing",
+				Severity:  checker.SeverityMedium,
+				Resource:  info.ResourceName,
+				Namespace: info.Namespace,
+				Kind:      info.Kind,
+				Container: container.Name,
+				Message:   msg,
+				Remediation: "## Why This Matters\n\n" +
+					"Resource requests tell the Kubernetes scheduler how much CPU and memory your container needs. Without " +
+					"requests, the scheduler treats the pod as needing zero resources and may pack too many pods onto a single " +
+					"node. This leads to overcommitment, resource contention, throttling, and OOM kills under load.\n\n" +
+					"## How to Fix\n\n" +
+					"Set resource requests based on your application's steady-state usage:\n\n" +
+					"```yaml\nresources:\n  requests:\n    cpu: 100m\n    memory: 128Mi\n  limits:\n    cpu: 500m\n    memory: 256Mi\n```\n\n" +
+					"Observe your application's actual resource consumption using `kubectl top` or a monitoring tool, then set " +
+					"requests to match the typical steady-state usage.\n\n" +
+					"## Learn More\n\n" +
+					"Resource requests determine the pod's QoS class and scheduling behavior. Pods with requests equal to limits " +
+					"receive Guaranteed QoS. Use Vertical Pod Autoscaler (VPA) to automatically recommend request values.",
+				FieldPath: fieldPath,
 			})
 		})
 	}

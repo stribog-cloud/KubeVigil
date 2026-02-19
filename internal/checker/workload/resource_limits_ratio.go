@@ -80,15 +80,26 @@ func (c *ResourceLimitsRatioChecker) Run(ctx context.Context, resources *checker
 			fieldPath := containerFieldPath(ct, idx, "resources")
 
 			findings = append(findings, checker.Finding{
-				Checker:     "resource-limits-ratio",
-				Severity:    checker.SeverityLow,
-				Resource:    info.ResourceName,
-				Namespace:   info.Namespace,
-				Kind:        info.Kind,
-				Container:   container.Name,
-				Message:     msg,
-				Remediation: "Reduce the limits-to-requests ratio. High ratios cause overcommitment and OOM kills.",
-				FieldPath:   fieldPath,
+				Checker:   "resource-limits-ratio",
+				Severity:  checker.SeverityLow,
+				Resource:  info.ResourceName,
+				Namespace: info.Namespace,
+				Kind:      info.Kind,
+				Container: container.Name,
+				Message:   msg,
+				Remediation: "## Why This Matters\n\n" +
+					"When resource limits are much higher than requests, the scheduler allocates nodes based on the smaller request " +
+					"values but containers can burst up to their limits. If multiple containers burst simultaneously, the node " +
+					"becomes overcommitted, leading to CPU throttling and OOM kills that cause unpredictable application failures.\n\n" +
+					"## How to Fix\n\n" +
+					"Bring limits closer to requests, ideally within a 3x ratio:\n\n" +
+					"```yaml\nresources:\n  requests:\n    cpu: 200m\n    memory: 256Mi\n  limits:\n    cpu: 500m            # 2.5x ratio\n    memory: 512Mi        # 2x ratio\n```\n\n" +
+					"Profile your application's actual resource usage under realistic load using `kubectl top` or Prometheus " +
+					"metrics, then set requests close to the steady-state and limits for peak bursts.\n\n" +
+					"## Learn More\n\n" +
+					"Consider using Vertical Pod Autoscaler (VPA) to automatically recommend appropriate request and limit values. " +
+					"Setting requests equal to limits gives the pod Guaranteed QoS, providing the most predictable performance.",
+				FieldPath: fieldPath,
 			})
 		})
 	}
