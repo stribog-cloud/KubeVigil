@@ -32,9 +32,23 @@ func ParsePath(path string) (*checker.ResourceCache, []error) {
 	return ParseFile(path)
 }
 
+// maxManifestFileSize is the maximum allowed size for a single YAML manifest file (10 MiB).
+const maxManifestFileSize = 10 << 20
+
 // ParseFile parses a single YAML file into a ResourceCache.
 // Handles multi-document YAML files (separated by ---).
+// Rejects files larger than maxManifestFileSize to prevent resource exhaustion.
 func ParseFile(path string) (*checker.ResourceCache, []error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return checker.NewResourceCache(), []error{fmt.Errorf("reading %s: %w", path, err)}
+	}
+	if info.Size() > maxManifestFileSize {
+		return checker.NewResourceCache(), []error{
+			fmt.Errorf("reading %s: file size %d bytes exceeds maximum of %d bytes",
+				path, info.Size(), maxManifestFileSize),
+		}
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return checker.NewResourceCache(), []error{fmt.Errorf("reading %s: %w", path, err)}
@@ -59,6 +73,17 @@ func ParseDir(dir string) (*checker.ResourceCache, []error) {
 
 		ext := strings.ToLower(filepath.Ext(path))
 		if ext != ".yaml" && ext != ".yml" {
+			return nil
+		}
+
+		fi, fiErr := d.Info()
+		if fiErr != nil {
+			errs = append(errs, fmt.Errorf("stat %s: %w", path, fiErr))
+			return nil
+		}
+		if fi.Size() > maxManifestFileSize {
+			errs = append(errs, fmt.Errorf("reading %s: file size %d bytes exceeds maximum of %d bytes",
+				path, fi.Size(), maxManifestFileSize))
 			return nil
 		}
 

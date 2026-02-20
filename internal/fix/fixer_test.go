@@ -357,6 +357,27 @@ func TestFixer_AlreadySecure(t *testing.T) {
 	}
 }
 
+func TestFixer_Plan_RejectsOversizedFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	bigFile := filepath.Join(tmpDir, "huge.yaml")
+
+	size := 10*1024*1024 + 1
+	data := make([]byte, size)
+	for i := range data {
+		data[i] = '#'
+	}
+	require.NoError(t, os.WriteFile(bigFile, data, 0o644))
+
+	fixer := newTestFixer(t, Config{
+		RiskLevel: RiskLevelSafe,
+	})
+
+	plan, err := fixer.Plan(context.Background(), []string{tmpDir})
+	require.NoError(t, err)
+	assert.Equal(t, 1, plan.Summary.FilesScanned)
+	assert.Equal(t, 1, plan.Summary.FilesFailed)
+}
+
 func TestFixer_EmptyDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 

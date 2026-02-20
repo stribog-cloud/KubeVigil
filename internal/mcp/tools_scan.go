@@ -242,11 +242,20 @@ func buildSummary(result *checker.ScanResult) ScanSummaryOutput {
 }
 
 // validateManifestPath validates and cleans a user-supplied manifest path.
+// It verifies the path exists and is either a regular file or a directory.
 func validateManifestPath(path string) (string, error) {
 	if len(path) > maxInputPathLen {
 		return "", fmt.Errorf("path exceeds maximum length of %d characters", maxInputPathLen)
 	}
-	return filepath.Clean(path), nil
+	clean := filepath.Clean(path)
+	info, err := os.Stat(clean) //nolint:gosec // path validated above (length-bounded)
+	if err != nil {
+		return "", fmt.Errorf("manifest path %q: %w", clean, err)
+	}
+	if !info.Mode().IsRegular() && !info.IsDir() {
+		return "", fmt.Errorf("manifest path %q is not a regular file or directory", clean)
+	}
+	return clean, nil
 }
 
 // validateKubeconfig validates a user-supplied kubeconfig path.
