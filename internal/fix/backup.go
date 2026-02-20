@@ -39,6 +39,11 @@ func BackupFile(srcPath, sourceBase, backupDir string) error {
 		return fmt.Errorf("computing relative path: %w", err)
 	}
 
+	// Reject paths that escape the source base (e.g., "../../../etc/passwd").
+	if strings.HasPrefix(relPath, "..") {
+		return fmt.Errorf("source path %q is outside base %q (path traversal rejected)", srcPath, sourceBase)
+	}
+
 	dstPath := filepath.Join(backupDir, relPath)
 
 	// Create parent directories in the backup location.

@@ -19,6 +19,11 @@ type Document struct {
 	Modified bool
 }
 
+// maxDocumentCount is the maximum number of YAML documents allowed in a single file.
+// Combined with the 10 MiB file size limit, this prevents excessive memory use
+// from files with many tiny documents.
+const maxDocumentCount = 10000
+
 // ParseDocuments parses multi-document YAML (separated by ---) into individual
 // Document structs. Preserves all comments, formatting, key ordering, and
 // indentation via the yaml.v3 Node API.
@@ -28,6 +33,9 @@ func ParseDocuments(data []byte) ([]*Document, error) {
 	}
 
 	rawDocs := splitDocuments(data)
+	if len(rawDocs) > maxDocumentCount {
+		return nil, fmt.Errorf("YAML contains %d documents, exceeding maximum of %d", len(rawDocs), maxDocumentCount)
+	}
 	docs := make([]*Document, 0, len(rawDocs))
 
 	for _, raw := range rawDocs {

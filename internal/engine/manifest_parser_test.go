@@ -362,3 +362,17 @@ spec:
 	assert.Len(t, pods, 1)
 	assert.Equal(t, "nested-pod", pods[0].GetName())
 }
+
+func TestParseBytes_ExceedsMaxDocumentCount(t *testing.T) {
+	// Build YAML with more than maxDocumentCount documents.
+	var b []byte
+	doc := []byte("---\napiVersion: v1\nkind: Pod\nmetadata:\n  name: p\nspec:\n  containers:\n    - name: c\n      image: img\n")
+	for i := 0; i <= maxDocumentCount; i++ {
+		b = append(b, doc...)
+	}
+
+	_, errs := ParseBytes(b)
+	require.NotEmpty(t, errs)
+	lastErr := errs[len(errs)-1]
+	assert.Contains(t, lastErr.Error(), "more than", "expected error about document count limit")
+}
