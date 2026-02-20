@@ -272,6 +272,33 @@ func TestLoad_FileNotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "reading config file")
 }
 
+func TestLoad_RejectsOversizedFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	bigFile := filepath.Join(tmpDir, ".kubevigil.yaml")
+
+	size := 1*1024*1024 + 1
+	data := make([]byte, size)
+	for i := range data {
+		data[i] = '#'
+	}
+	require.NoError(t, os.WriteFile(bigFile, data, 0o644))
+
+	_, err := Load(bigFile)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exceeds maximum", "error should mention size limit")
+}
+
+func TestLoad_AcceptsFileAtLimit(t *testing.T) {
+	tmpDir := t.TempDir()
+	configFile := filepath.Join(tmpDir, ".kubevigil.yaml")
+
+	require.NoError(t, os.WriteFile(configFile, []byte(`version: "1"`), 0o644))
+
+	cfg, err := Load(configFile)
+	require.NoError(t, err)
+	assert.Equal(t, "1", cfg.Version)
+}
+
 func TestLoadBytes_WithPolicies(t *testing.T) {
 	data := []byte(`
 version: "1"
