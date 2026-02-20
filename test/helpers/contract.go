@@ -1,4 +1,4 @@
-package checker
+package helpers
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stribog-cloud/kubevigil/internal/checker"
 )
 
 var kebabCaseRe = regexp.MustCompile(`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`)
@@ -20,11 +22,10 @@ var kebabCaseRe = regexp.MustCompile(`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`)
 //   - RequiredResources() returns valid GVRs
 //   - Run() with empty ResourceCache returns no findings and no error
 //   - Run() with cancelled context returns an error
-func RunCheckerContractTests(t *testing.T, checkers []Checker) {
+func RunCheckerContractTests(t *testing.T, checkers []checker.Checker) {
 	t.Helper()
 
 	for _, c := range checkers {
-		c := c
 		t.Run(c.Name(), func(t *testing.T) {
 			t.Parallel()
 
@@ -47,7 +48,7 @@ func RunCheckerContractTests(t *testing.T, checkers []Checker) {
 				assert.NotEmpty(t, gvr.Version, "GVR Version must not be empty")
 			}
 
-			emptyCache := NewResourceCache()
+			emptyCache := checker.NewResourceCache()
 			findings, err := c.Run(context.Background(), emptyCache)
 			require.NoError(t, err, "Run() with empty cache should not error")
 			assert.Empty(t, findings, "Run() with empty cache should return no findings")

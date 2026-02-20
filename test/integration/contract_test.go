@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stribog-cloud/kubevigil/internal/checker"
+	"github.com/stribog-cloud/kubevigil/test/helpers"
 
 	// Import checker packages to trigger init() registration.
 	_ "github.com/stribog-cloud/kubevigil/internal/checker/cloud"
@@ -28,7 +29,7 @@ func TestAllCheckersContract(t *testing.T) {
 	checkers := checker.DefaultRegistry().All()
 	require.NotEmpty(t, checkers, "expected at least one checker to be registered")
 
-	checker.RunCheckerContractTests(t, checkers)
+	helpers.RunCheckerContractTests(t, checkers)
 }
 
 // TestCheckerRegistration verifies ALL expected checkers are registered.

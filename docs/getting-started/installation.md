@@ -2,18 +2,58 @@
 
 ## Requirements
 
-- **Go 1.25** or later (for `go install` or building from source)
 - **kubectl** configured with a valid kubeconfig (for live cluster scanning only)
 
-## Install with `go install`
+## Homebrew (macOS / Linux)
+
+```bash
+brew install stribog-cloud/tap/kubevigil
+```
+
+## Krew (kubectl plugin)
+
+```bash
+kubectl krew install vigil
+```
+
+## Install Script
+
+```bash
+curl -sSL https://raw.githubusercontent.com/stribog-cloud/KubeVigil/master/install.sh | bash
+```
+
+The script auto-detects your OS and architecture, downloads the latest release,
+verifies the SHA256 checksum, and installs to `/usr/local/bin` (or
+`~/.local/bin` if not writable). Set `KUBEVIGIL_VERSION` or
+`KUBEVIGIL_INSTALL_DIR` to customize.
+
+## Download from GitHub Releases
+
+Pre-built binaries for Linux, macOS, and Windows are available on the
+[Releases page](https://github.com/stribog-cloud/KubeVigil/releases).
+
+Download the archive for your platform, extract it, and move `kubevigil` to a
+directory on your `$PATH`.
+
+## Docker
+
+```bash
+# Scan manifests
+docker run --rm -v $(pwd):/manifests ghcr.io/stribog-cloud/kubevigil scan -f /manifests/
+
+# Scan a live cluster
+docker run --rm -v ~/.kube/config:/root/.kube/config ghcr.io/stribog-cloud/kubevigil scan
+```
+
+## From Source
+
+Requires **Go 1.25** or later.
 
 ```bash
 go install github.com/stribog-cloud/kubevigil/cmd/kubevigil@latest
 ```
 
-This places the `kubevigil` binary in your `$GOPATH/bin` (or `$HOME/go/bin` if `$GOPATH` is unset). Make sure that directory is in your `$PATH`.
-
-## Build from Source
+Or clone and build with version injection:
 
 ```bash
 git clone https://github.com/stribog-cloud/kubevigil.git
@@ -21,13 +61,7 @@ cd kubevigil
 make build
 ```
 
-The binary is written to `./bin/kubevigil`. You can move it to a location on your `$PATH`:
-
-```bash
-sudo mv ./bin/kubevigil /usr/local/bin/
-```
-
-The `make build` target embeds version, commit, and build date into the binary via linker flags. If you use `go build` directly, those fields default to `dev` / `unknown`.
+The binary is written to `./bin/kubevigil`.
 
 ## Verify Installation
 
@@ -38,12 +72,13 @@ kubevigil version
 Expected output:
 
 ```
-KubeVigil v0.1.0
+KubeVigil v0.5.0
   Commit: abc1234
-  Built:  2025-01-15T12:00:00Z
+  Built:  2026-02-20T12:00:00Z
 ```
 
-If you see `KubeVigil dev`, you built without the Makefile. This is fine for local use.
+If you see `KubeVigil dev`, you built without the Makefile. This is fine for
+local use.
 
 ## Shell Completion
 
