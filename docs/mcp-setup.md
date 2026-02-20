@@ -318,6 +318,48 @@ Find where kubevigil is installed:
 which kubevigil
 ```
 
+### macOS Gatekeeper blocks KubeVigil
+
+On macOS, downloaded binaries carry a `com.apple.provenance` attribute that
+Gatekeeper may block. Claude Desktop silently fails to enable the MCP toggle
+when this happens — no error is shown.
+
+**Symptoms:** The kubevigil toggle in Claude Desktop stays off and won't flip
+on. No tools appear in Settings → Connectors → kubevigil.
+
+**Fix:** Create a shell wrapper script that invokes the binary. macOS does not
+gate shell scripts the same way it gates Mach-O binaries:
+
+```bash
+# Create the wrapper
+cat > ~/.local/bin/kubevigil-mcp << 'EOF'
+#!/bin/bash
+exec /path/to/kubevigil mcp-server "$@"
+EOF
+chmod +x ~/.local/bin/kubevigil-mcp
+```
+
+Then update your Claude Desktop config to use the wrapper:
+
+```json
+{
+  "mcpServers": {
+    "kubevigil": {
+      "command": "/Users/yourname/.local/bin/kubevigil-mcp",
+      "env": {
+        "KUBECONFIG": "/Users/yourname/.kube/config"
+      }
+    }
+  }
+}
+```
+
+Restart Claude Desktop after making this change.
+
+**Alternative:** If you build from source (`go build ./cmd/kubevigil`), the
+resulting binary may still acquire the provenance attribute depending on your
+macOS version. The wrapper approach works regardless.
+
 ### "Connection refused"
 
 The MCP server uses stdio transport (stdin/stdout), not network sockets. Verify
