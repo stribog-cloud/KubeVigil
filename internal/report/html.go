@@ -62,7 +62,7 @@ func (r *HTMLReporter) Generate(ctx context.Context, result *checker.ScanResult,
 		remEntries = append(remEntries, htmlRemediationEntry{
 			Checker:  ch,
 			Severity: remSev[ch].String(),
-			HTML:     template.HTML(body),
+			HTML:     template.HTML(body), //nolint:gosec // Trusted internal markdown-to-HTML; no user input.
 		})
 	}
 	// Sort remediations by severity weight descending, then alphabetical.
@@ -1346,7 +1346,7 @@ func formatFrameworksHTML(refs []checker.FrameworkRef) template.HTML {
 		b.WriteString(template.HTMLEscapeString(ref.ControlID))
 		b.WriteString("</span>")
 	}
-	return template.HTML(b.String())
+	return template.HTML(b.String()) //nolint:gosec // All content is HTMLEscapeString'd above.
 }
 
 // computeDonutSegments builds SVG circle segments for a severity donut chart.

@@ -120,7 +120,7 @@ func GenerateRestoreInstructions(backupDir, sourceBase string, files []string) e
 	fmt.Fprintf(&b, "```\n")
 
 	restorePath := filepath.Join(backupDir, "RESTORE.md")
-	if err := os.WriteFile(restorePath, []byte(b.String()), 0o644); err != nil {
+	if err := os.WriteFile(restorePath, []byte(b.String()), 0o644); err != nil { //nolint:gosec // Documentation file; world-readable is intentional.
 		return fmt.Errorf("writing RESTORE.md: %w", err)
 	}
 

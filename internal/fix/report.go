@@ -54,7 +54,7 @@ func WriteFixReport(plan *Plan, opts *ReportOptions, path string) error {
 	if err != nil {
 		return fmt.Errorf("generating fix report: %w", err)
 	}
-	if err := os.WriteFile(path, data, 0o644); err != nil {
+	if err := os.WriteFile(path, data, 0o644); err != nil { //nolint:gosec // Report file; world-readable is intentional.
 		return fmt.Errorf("writing fix report to %s: %w", path, err)
 	}
 	return nil

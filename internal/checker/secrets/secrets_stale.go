@@ -64,7 +64,7 @@ func (c *StaleChecker) Run(ctx context.Context, cache *checker.ResourceCache) ([
 
 		// Skip service-account-token secrets (auto-managed by Kubernetes).
 		secretType, _, _ := unstructuredString(obj.Object, "type")
-		if secretType == "kubernetes.io/service-account-token" {
+		if secretType == "kubernetes.io/service-account-token" { //nolint:gosec // Not a credential; Kubernetes Secret type constant.
 			continue
 		}
 

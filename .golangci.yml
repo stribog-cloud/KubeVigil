@@ -4,6 +4,7 @@ run:
 linters:
   enable:
     - gocritic
+    - gosec
     - misspell
     - revive
   settings:
@@ -36,6 +37,7 @@ linters:
       - linters:
           - errcheck
           - gocritic
+          - gosec
           - revive
         path: _test\.go
     paths:
