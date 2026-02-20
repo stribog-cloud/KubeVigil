@@ -258,7 +258,7 @@ func validateKubeconfig(path string) error {
 	if len(path) > maxInputPathLen {
 		return fmt.Errorf("kubeconfig path exceeds maximum length of %d characters", maxInputPathLen)
 	}
-	info, err := os.Stat(path)
+	info, err := os.Stat(path) //nolint:gosec // path validated above (length-bounded, no taint from user beyond kubeconfig)
 	if err != nil {
 		return fmt.Errorf("kubeconfig path %q: %w", path, err)
 	}

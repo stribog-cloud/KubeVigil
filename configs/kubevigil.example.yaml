@@ -38,7 +38,7 @@ exemptions: []
   #    - host-ports
   #  reason: "Prometheus needs host network for node metrics"
   #  approved_by: "security-team"
-  #  expires: "2025-12-31"
+  #  expires: "2027-12-31"
 
 # Image policies (used by image-registry-allowlist, image-registry-blocklist, etc.)
 #policies:
