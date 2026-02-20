@@ -2443,3 +2443,31 @@ func TestNavigatePathMulti_NilNodeInSlice(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, result)
 }
+
+func TestParseDocuments_ExceedsMaxDocumentCount(t *testing.T) {
+	// Build a YAML file with more than maxDocumentCount documents.
+	var b strings.Builder
+	for i := 0; i <= maxDocumentCount; i++ {
+		b.WriteString("---\nkind: Pod\n")
+	}
+
+	_, err := ParseDocuments([]byte(b.String()))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exceeding maximum")
+}
+
+func TestParseDocuments_AtMaxDocumentCount(t *testing.T) {
+	// Build a YAML file with exactly maxDocumentCount documents — should succeed.
+	// Use a small count to keep the test fast.
+	var b strings.Builder
+	for i := 0; i < 100; i++ {
+		if i > 0 {
+			b.WriteString("---\n")
+		}
+		b.WriteString("kind: Pod\n")
+	}
+
+	docs, err := ParseDocuments([]byte(b.String()))
+	require.NoError(t, err)
+	assert.Len(t, docs, 100)
+}

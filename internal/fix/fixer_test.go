@@ -1729,3 +1729,61 @@ spec:
 	var node yaml.Node
 	require.NoError(t, yaml.Unmarshal(patched, &node))
 }
+
+func TestFixer_Plan_SkipsSymlink(t *testing.T) {
+	// Create a real fixture and a symlink to it.
+	realPath := copyFixture(t, "simple-deployment.yaml")
+	tmpDir := filepath.Dir(realPath)
+	linkPath := filepath.Join(tmpDir, "link-deployment.yaml")
+	require.NoError(t, os.Symlink(realPath, linkPath))
+
+	fixer := newTestFixer(t, Config{RiskLevel: RiskLevelSafe})
+
+	// Plan with only the symlink should skip it at collection time.
+	plan, err := fixer.Plan(context.Background(), []string{linkPath})
+	require.NoError(t, err)
+	assert.Equal(t, 0, plan.Summary.FilesScanned, "symlink should be skipped at collection time")
+	assert.Equal(t, 0, plan.Summary.Applied, "no fixes should be applied for symlink")
+}
+
+func TestFixer_Plan_SymlinkAmongRealFiles(t *testing.T) {
+	// When mixing symlinks and real files, only real files are scanned.
+	realPath := copyFixture(t, "simple-deployment.yaml")
+	tmpDir := filepath.Dir(realPath)
+	linkPath := filepath.Join(tmpDir, "link-deployment.yaml")
+	require.NoError(t, os.Symlink(realPath, linkPath))
+
+	fixer := newTestFixer(t, Config{RiskLevel: RiskLevelSafe})
+
+	plan, err := fixer.Plan(context.Background(), []string{realPath, linkPath})
+	require.NoError(t, err)
+	assert.Equal(t, 1, plan.Summary.FilesScanned, "only real file should be scanned")
+	assert.Greater(t, plan.Summary.Applied, 0, "real file should have fixes applied")
+}
+
+func TestCollectFiles_SkipsSymlink(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a real YAML file.
+	realFile := filepath.Join(tmpDir, "real.yaml")
+	require.NoError(t, os.WriteFile(realFile, []byte("kind: Pod"), 0o644))
+
+	// Create a symlink to it.
+	linkFile := filepath.Join(tmpDir, "link.yaml")
+	require.NoError(t, os.Symlink(realFile, linkFile))
+
+	// collectFiles with the symlink as input should skip it.
+	files, err := collectFiles([]string{linkFile})
+	require.NoError(t, err)
+	assert.Empty(t, files, "symlink should be skipped in collectFiles")
+}
+
+func TestCollectFiles_IncludesRealFiles(t *testing.T) {
+	tmpDir := t.TempDir()
+	realFile := filepath.Join(tmpDir, "real.yaml")
+	require.NoError(t, os.WriteFile(realFile, []byte("kind: Pod"), 0o644))
+
+	files, err := collectFiles([]string{realFile})
+	require.NoError(t, err)
+	assert.Len(t, files, 1, "real file should be collected")
+}

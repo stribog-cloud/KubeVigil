@@ -609,6 +609,28 @@ func TestGenerateRestoreInstructions_WriteError(t *testing.T) {
 	}
 }
 
+func TestBackupFile_RejectsPathTraversal(t *testing.T) {
+	// If srcPath is outside sourceBase, filepath.Rel produces a ".." path.
+	// BackupFile must reject this to prevent writing outside the backup directory.
+	srcDir := t.TempDir()
+	backupDir := t.TempDir()
+
+	// Create a file in a sibling directory (outside sourceBase).
+	outsideDir := t.TempDir()
+	outsideFile := filepath.Join(outsideDir, "sensitive.yaml")
+	if err := os.WriteFile(outsideFile, []byte("sensitive data"), 0o644); err != nil {
+		t.Fatalf("writing outside file: %v", err)
+	}
+
+	err := BackupFile(outsideFile, srcDir, backupDir)
+	if err == nil {
+		t.Fatal("BackupFile() should reject path traversal, got nil")
+	}
+	if !strings.Contains(err.Error(), "path traversal") {
+		t.Errorf("error should mention path traversal, got: %v", err)
+	}
+}
+
 func TestGenerateRestoreInstructions_RelPathError(t *testing.T) {
 	// When Rel() cannot compute a relative path, it falls back to filepath.Base().
 	// This is hard to trigger in practice but the code has a fallback path.
