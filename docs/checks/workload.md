@@ -1,6 +1,6 @@
 # Workload Security Checks
 
-KubeVigil includes 24 checks that inspect container and pod security contexts, host isolation boundaries, and resource management. These checks apply to Deployments, StatefulSets, DaemonSets, Jobs, CronJobs, and bare Pods.
+KubeVigil includes 25 checks that inspect container and pod security contexts, host isolation boundaries, and resource management. These checks apply to Deployments, StatefulSets, DaemonSets, Jobs, CronJobs, and bare Pods.
 
 All workload checks support both **Live** and **Manifest** scan modes.
 
