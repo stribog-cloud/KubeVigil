@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/stribog-cloud/kubevigil/internal/checker"
@@ -248,4 +249,62 @@ func TestHandleScanManifestsInvalidPath(t *testing.T) {
 	if err == nil {
 		t.Error("expected error for invalid path")
 	}
+}
+
+func TestValidateManifestPath(t *testing.T) {
+	tests := []struct {
+		name    string
+		path    string
+		wantErr bool
+	}{
+		{"valid path", "/tmp/manifests", false},
+		{"relative path cleaned", "../manifests", false},
+		{"too long", string(make([]byte, maxInputPathLen+1)), true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := validateManifestPath(tt.path)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateManifestPath(%q) error = %v, wantErr %v", tt.path, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateKubeconfig(t *testing.T) {
+	tests := []struct {
+		name    string
+		path    string
+		wantErr bool
+	}{
+		{"empty (default)", "", false},
+		{"too long", string(make([]byte, maxInputPathLen+1)), true},
+		{"nonexistent", "/nonexistent/kubeconfig", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateKubeconfig(tt.path)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateKubeconfig(%q) error = %v, wantErr %v", tt.path, err, tt.wantErr)
+			}
+		})
+	}
+
+	// Test with a directory (should fail - not a regular file).
+	t.Run("directory rejected", func(t *testing.T) {
+		err := validateKubeconfig(t.TempDir())
+		if err == nil {
+			t.Error("expected error for directory path")
+		}
+	})
+
+	// Test with a valid regular file.
+	t.Run("regular file accepted", func(t *testing.T) {
+		f, _ := os.CreateTemp(t.TempDir(), "kubeconfig")
+		f.Close()
+		err := validateKubeconfig(f.Name())
+		if err != nil {
+			t.Errorf("unexpected error for regular file: %v", err)
+		}
+	})
 }
