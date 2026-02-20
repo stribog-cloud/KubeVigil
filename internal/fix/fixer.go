@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -554,13 +555,32 @@ func applyFixToDocs(docs []*Document, pf *PlannedFix) error {
 		pf.Finding.Kind, pf.Finding.Namespace, pf.Finding.Resource)
 }
 
-// resolveYAMLPath translates a finding's PodSpec-relative field path into a full
-// YAML path by prepending the template prefix for the resource kind.
+// containerRefRe matches a concrete container reference like containers[0] or initContainers[1].
+var containerRefRe = regexp.MustCompile(`(?:init)?[Cc]ontainers\[\d+\]`)
+
+// resolveYAMLPath translates a strategy's field path into a full YAML path by
+// substituting concrete container indices from the finding and prepending the
+// template prefix for the resource kind.
+//
+// The strategy's field path defines WHICH field to set (e.g., runAsNonRoot).
+// The finding's field path may point to a DIFFERENT field (e.g., runAsUser)
+// that was detected as problematic. We always use the strategy's target field,
+// but substitute the finding's concrete container index for any wildcard.
 func resolveYAMLPath(finding *checker.Finding, strategy *Strategy, kind string) string {
-	// Use the finding's concrete field path if available (has specific container index).
-	fieldPath := finding.FieldPath
-	if fieldPath == "" {
+	var fieldPath string
+
+	switch {
+	case strategy.FieldPath != "" && finding.FieldPath != "":
+		// Use the strategy's path (defines the target field to set).
+		// Substitute the finding's concrete container index for any [*] wildcard.
 		fieldPath = strategy.FieldPath
+		if m := containerRefRe.FindString(finding.FieldPath); m != "" {
+			fieldPath = strings.Replace(fieldPath, "containers[*]", m, 1)
+		}
+	case strategy.FieldPath != "":
+		fieldPath = strategy.FieldPath
+	default:
+		fieldPath = finding.FieldPath
 	}
 
 	// Strip leading dot from finding paths (e.g., ".spec.containers[0]..." → "spec.containers[0]...").

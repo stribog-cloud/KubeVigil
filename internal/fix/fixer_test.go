@@ -646,6 +646,28 @@ func TestResolveYAMLPath(t *testing.T) {
 			kind: "Namespace",
 			want: "metadata.labels",
 		},
+		{
+			name: "finding field differs from strategy field (run-as-root)",
+			finding: checker.Finding{
+				FieldPath: ".spec.containers[0].securityContext.runAsUser",
+			},
+			strategy: Strategy{
+				FieldPath: "spec.containers[*].securityContext.runAsNonRoot",
+			},
+			kind: "Deployment",
+			want: "spec.template.spec.containers[0].securityContext.runAsNonRoot",
+		},
+		{
+			name: "finding field differs from strategy field (initContainers)",
+			finding: checker.Finding{
+				FieldPath: ".spec.initContainers[1].securityContext.runAsUser",
+			},
+			strategy: Strategy{
+				FieldPath: "spec.containers[*].securityContext.runAsNonRoot",
+			},
+			kind: "Deployment",
+			want: "spec.template.spec.initContainers[1].securityContext.runAsNonRoot",
+		},
 	}
 
 	for _, tt := range tests {
@@ -1628,4 +1650,61 @@ func TestCommonBase_RootPaths(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestFixer_RunAsRoot_PreservesRunAsUser(t *testing.T) {
+	// Regression test: the fix engine must set runAsNonRoot: true without
+	// corrupting an existing runAsUser field. Previously, the path resolver
+	// used the finding's field path (pointing to runAsUser) instead of the
+	// strategy's field path (pointing to runAsNonRoot), causing runAsUser: 0
+	// to be overwritten with runAsUser: true.
+	manifest := `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-deploy
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: test
+  template:
+    metadata:
+      labels:
+        app: test
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.25
+          securityContext:
+            runAsUser: 0
+`
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "deploy.yaml")
+	require.NoError(t, os.WriteFile(path, []byte(manifest), 0o644))
+
+	fixer := newTestFixer(t, Config{
+		RiskLevel: RiskLevelModerate, // run-as-root is likely_safe
+		Apply:     true,
+		BackupDir: filepath.Join(t.TempDir(), "backup"),
+	})
+
+	_, summary, err := fixer.Fix(context.Background(), []string{path})
+	require.NoError(t, err)
+	assert.Greater(t, summary.Applied, 0, "should have applied at least one fix")
+
+	patched, err := os.ReadFile(path)
+	require.NoError(t, err)
+	content := string(patched)
+
+	// runAsNonRoot: true must be present (the fix).
+	assert.Contains(t, content, "runAsNonRoot: true",
+		"fix should add runAsNonRoot: true")
+
+	// runAsUser must NOT have been changed to a boolean.
+	assert.NotContains(t, content, "runAsUser: true",
+		"fix must not corrupt runAsUser to boolean true")
+
+	// Parse and verify the YAML structure.
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal(patched, &node))
 }
