@@ -61,7 +61,7 @@ func (kv *KubeVigilMCP) handleGetFindings(
 	page := filtered[offset:end]
 
 	return nil, FindingsOutput{
-		Findings: page,
+		Findings: toMCPFindings(page),
 		Total:    total,
 		Offset:   offset,
 		Limit:    limit,

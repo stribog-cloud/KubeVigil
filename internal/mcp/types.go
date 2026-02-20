@@ -109,10 +109,69 @@ type TopIssue struct {
 	Count int `json:"count"`
 }
 
+// MCPFinding is an MCP-compatible representation of a security finding.
+// It mirrors [checker.Finding] but uses string for Severity to ensure the
+// auto-generated JSON schema matches the serialized output. The checker
+// package's Severity type is int with custom MarshalJSON, which causes a
+// schema mismatch (audit finding AF-01).
+type MCPFinding struct {
+	// Checker is the kebab-case ID of the check that produced this finding.
+	Checker string `json:"checker"`
+	// Severity is the impact level (Info, Low, Medium, High, Critical).
+	Severity string `json:"severity"`
+	// Resource is the name of the Kubernetes resource.
+	Resource string `json:"resource"`
+	// Namespace is the namespace of the resource.
+	Namespace string `json:"namespace,omitempty"`
+	// Kind is the Kubernetes resource kind.
+	Kind string `json:"kind"`
+	// Container is the container name, if applicable.
+	Container string `json:"container,omitempty"`
+	// Message describes the issue.
+	Message string `json:"message"`
+	// Remediation describes how to fix the issue.
+	Remediation string `json:"remediation"`
+	// FieldPath is the JSON path to the problematic field.
+	FieldPath string `json:"field_path,omitempty"`
+	// Frameworks lists compliance framework references.
+	Frameworks []checker.FrameworkRef `json:"frameworks,omitempty"`
+	// CurrentValue is the current insecure value.
+	CurrentValue any `json:"current_value,omitempty"`
+	// DesiredValue is the recommended secure value.
+	DesiredValue any `json:"desired_value,omitempty"`
+}
+
+// toMCPFinding converts a checker.Finding to an MCPFinding.
+func toMCPFinding(f *checker.Finding) MCPFinding {
+	return MCPFinding{
+		Checker:      f.Checker,
+		Severity:     f.Severity.String(),
+		Resource:     f.Resource,
+		Namespace:    f.Namespace,
+		Kind:         f.Kind,
+		Container:    f.Container,
+		Message:      f.Message,
+		Remediation:  f.Remediation,
+		FieldPath:    f.FieldPath,
+		Frameworks:   f.Frameworks,
+		CurrentValue: f.CurrentValue,
+		DesiredValue: f.DesiredValue,
+	}
+}
+
+// toMCPFindings converts a slice of checker.Finding to MCPFinding.
+func toMCPFindings(findings []checker.Finding) []MCPFinding {
+	result := make([]MCPFinding, len(findings))
+	for i := range findings {
+		result[i] = toMCPFinding(&findings[i])
+	}
+	return result
+}
+
 // FindingsOutput is the paginated result from get_findings.
 type FindingsOutput struct {
 	// Findings is the list of matching findings for the current page.
-	Findings []checker.Finding `json:"findings"`
+	Findings []MCPFinding `json:"findings"`
 	// Total is the total number of matching findings across all pages.
 	Total int `json:"total"`
 	// Offset is the offset used for this page.
