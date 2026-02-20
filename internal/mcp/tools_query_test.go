@@ -368,6 +368,16 @@ func TestFindMatchingFindingNamespaceOptional(t *testing.T) {
 	}
 }
 
+func TestCheckerDefaultSeverityFallback(t *testing.T) {
+	// A checker whose Name() is NOT in the defaultSeverities map should
+	// fall back to "Medium". We use a minimal stub implementation.
+	stub := &stubChecker{name: "nonexistent-checker-xyz"}
+	got := checkerDefaultSeverity(stub)
+	if got != "Medium" {
+		t.Errorf("checkerDefaultSeverity(unknown) = %q, want %q", got, "Medium")
+	}
+}
+
 func TestCheckerHasCategory(t *testing.T) {
 	c, ok := checker.Get("privileged")
 	if !ok {

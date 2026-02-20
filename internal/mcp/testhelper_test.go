@@ -1,11 +1,28 @@
 package mcp
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/stribog-cloud/kubevigil/internal/checker"
 	"github.com/stribog-cloud/kubevigil/internal/config"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
+
+// stubChecker is a minimal Checker implementation for unit tests that need
+// a checker not present in the defaultSeverities map.
+type stubChecker struct {
+	name string
+}
+
+func (s *stubChecker) Name() string                                          { return s.name }
+func (s *stubChecker) Description() string                                   { return "stub" }
+func (s *stubChecker) Categories() []checker.Category                        { return nil }
+func (s *stubChecker) SupportedModes() []checker.ScanMode                    { return nil }
+func (s *stubChecker) RequiredResources() []schema.GroupVersionResource      { return nil }
+func (s *stubChecker) Run(context.Context, *checker.ResourceCache) ([]checker.Finding, error) {
+	return nil, nil
+}
 
 // testFinding creates a Finding with the given parameters.
 func testFinding(checkerID, severity, resource, namespace, category string) checker.Finding {
