@@ -130,7 +130,7 @@ func runScan(cmd *cobra.Command, _ []string) error {
 		}
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("scanning: %w", err)
 	}
 
 	// Filter by severity threshold.
