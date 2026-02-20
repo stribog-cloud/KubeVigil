@@ -282,7 +282,7 @@ func WriteHelmValues(plan *Plan, opts HelmValuesOptions, path string) error {
 		return fmt.Errorf("generating helm values: %w", err)
 	}
 
-	if err := os.WriteFile(path, data, 0o644); err != nil {
+	if err := os.WriteFile(path, data, 0o644); err != nil { //nolint:gosec // Helm values file; world-readable is intentional.
 		return fmt.Errorf("writing helm values to %s: %w", path, err)
 	}
 
