@@ -84,7 +84,7 @@ func GenerateKustomizeOverlay(plan *Plan, outputDir string) error {
 
 		filename := resourcePatchFilename(id)
 		patchPath := filepath.Join(outputDir, filename)
-		if err := os.WriteFile(patchPath, patchContent, 0o644); err != nil {
+		if err := os.WriteFile(patchPath, patchContent, 0o644); err != nil { //nolint:gosec // YAML patch file; world-readable is intentional.
 			return fmt.Errorf("writing patch file %s: %w", filename, err)
 		}
 		patchFiles = append(patchFiles, filename)
@@ -94,7 +94,7 @@ func GenerateKustomizeOverlay(plan *Plan, outputDir string) error {
 
 	// Generate kustomization.yaml.
 	kustContent := buildKustomization(patchFiles, riskLevel)
-	if err := os.WriteFile(kustPath, kustContent, 0o644); err != nil {
+	if err := os.WriteFile(kustPath, kustContent, 0o644); err != nil { //nolint:gosec // YAML config file; world-readable is intentional.
 		return fmt.Errorf("writing kustomization.yaml: %w", err)
 	}
 
