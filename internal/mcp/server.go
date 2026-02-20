@@ -23,8 +23,13 @@ var ToolNames = []string{
 // KubeVigilMCP is the MCP server state. It holds the checker registry,
 // configuration, and the most recent scan result.
 type KubeVigilMCP struct {
-	config     *config.Config
-	registry   *checker.Registry
+	config   *config.Config
+	registry *checker.Registry
+	// lastResult holds the most recent scan result. It is treated as
+	// immutable after assignment: writers replace the pointer under mu
+	// (Lock), and readers copy the pointer under mu (RLock) then access
+	// the ScanResult without holding the lock. This is safe ONLY because
+	// no code mutates a ScanResult after it is stored here.
 	lastResult *checker.ScanResult
 	mu         sync.RWMutex
 }
