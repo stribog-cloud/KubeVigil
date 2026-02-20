@@ -96,8 +96,8 @@ func (kv *KubeVigilMCP) handleGetRemediation(
 		if finding := findMatchingFinding(result, input); finding != nil {
 			output.Remediation = finding.Remediation
 			output.FixHint = finding.FixHint
-			output.CurrentValue = finding.CurrentValue
-			output.DesiredValue = finding.DesiredValue
+			output.CurrentValue = anyToString(finding.CurrentValue)
+			output.DesiredValue = anyToString(finding.DesiredValue)
 			output.Resource = finding.Resource
 			output.Namespace = finding.Namespace
 			return nil, output, nil

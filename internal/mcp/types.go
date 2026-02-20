@@ -7,7 +7,20 @@
 // existing checker packages. Zero duplication of scan logic.
 package mcp
 
-import "github.com/stribog-cloud/kubevigil/internal/checker"
+import (
+	"fmt"
+
+	"github.com/stribog-cloud/kubevigil/internal/checker"
+)
+
+// anyToString converts an arbitrary value to its string representation.
+// It returns an empty string for nil values so that omitempty works correctly.
+func anyToString(v any) string {
+	if v == nil {
+		return ""
+	}
+	return fmt.Sprintf("%v", v)
+}
 
 // ScanClusterInput holds the parameters for the scan_cluster tool.
 type ScanClusterInput struct {
@@ -133,10 +146,10 @@ type FindingDetail struct {
 	FieldPath string `json:"field_path,omitempty"`
 	// Frameworks lists compliance framework references.
 	Frameworks []checker.FrameworkRef `json:"frameworks,omitempty"`
-	// CurrentValue is the current insecure value.
-	CurrentValue any `json:"current_value,omitempty"`
-	// DesiredValue is the recommended secure value.
-	DesiredValue any `json:"desired_value,omitempty"`
+	// CurrentValue is the current insecure value (serialised as a string).
+	CurrentValue string `json:"current_value,omitempty"`
+	// DesiredValue is the recommended secure value (serialised as a string).
+	DesiredValue string `json:"desired_value,omitempty"`
 }
 
 // toFindingDetail converts a checker.Finding to an FindingDetail.
@@ -152,8 +165,8 @@ func toFindingDetail(f *checker.Finding) FindingDetail {
 		Remediation:  f.Remediation,
 		FieldPath:    f.FieldPath,
 		Frameworks:   f.Frameworks,
-		CurrentValue: f.CurrentValue,
-		DesiredValue: f.DesiredValue,
+		CurrentValue: anyToString(f.CurrentValue),
+		DesiredValue: anyToString(f.DesiredValue),
 	}
 }
 
@@ -217,9 +230,9 @@ type RemediationOutput struct {
 	// Frameworks lists the compliance framework references for this check.
 	Frameworks []checker.FrameworkRef `json:"frameworks,omitempty"`
 	// CurrentValue is the current insecure value, if a specific finding was matched.
-	CurrentValue any `json:"current_value,omitempty"`
+	CurrentValue string `json:"current_value,omitempty"`
 	// DesiredValue is the recommended secure value, if a specific finding was matched.
-	DesiredValue any `json:"desired_value,omitempty"`
+	DesiredValue string `json:"desired_value,omitempty"`
 	// Resource is the resource name, if a specific finding was matched.
 	Resource string `json:"resource,omitempty"`
 	// Namespace is the resource namespace, if a specific finding was matched.
