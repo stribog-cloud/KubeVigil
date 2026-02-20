@@ -1,6 +1,6 @@
 # Supply Chain & Lifecycle Checks
 
-KubeVigil includes 6 checks that detect supply chain security risks and container lifecycle concerns, covering container runtime socket access, health probes, lifecycle hooks, image freshness, and ephemeral container security.
+KubeVigil includes 5 checks that detect supply chain security risks and container lifecycle concerns, covering container runtime socket access, health probes, lifecycle hooks, and image freshness.
 
 ## Checks
 

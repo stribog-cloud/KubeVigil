@@ -6,7 +6,7 @@ KubeVigil includes 110 security checks across 12 categories that inspect your Ku
 
 | Category | Checks | Description | Details |
 |----------|--------|-------------|---------|
-| Workload Security | 24 | Container and pod security context, host isolation, resource management | [workload.md](workload.md) |
+| Workload Security | 25 | Container and pod security context, host isolation, resource management | [workload.md](workload.md) |
 | Image Security | 9 | Image tagging, digest pinning, registry policies, supply chain | [image.md](image.md) |
 | Identity & Access (RBAC) | 15 | Service accounts, token management, role permissions, bindings | [rbac.md](rbac.md) |
 | Secrets Management | 7 | Secret storage, rotation, encryption, external secrets | [secrets.md](secrets.md) |
@@ -15,7 +15,7 @@ KubeVigil includes 110 security checks across 12 categories that inspect your Ku
 | Scheduling & Availability | 8 | Tolerations, PriorityClass, PDB, topology spread, HPA | [scheduling.md](scheduling.md) |
 | Storage Security | 5 | PVC encryption, reclaim policies, CSI drivers, emptyDir limits | [storage.md](storage.md) |
 | Cluster Configuration | 10 | API server, etcd encryption, kubelet, admission controllers | [cluster.md](cluster.md) |
-| Supply Chain & Lifecycle | 6 | Runtime sockets, health probes, image age, lifecycle hooks | [supply-chain.md](supply-chain.md) |
+| Supply Chain & Lifecycle | 5 | Runtime sockets, health probes, image age, lifecycle hooks | [supply-chain.md](supply-chain.md) |
 | Cloud Provider | 4 | EKS IMDS, GKE metadata, AKS pod identity (all live-only) | [cloud.md](cloud.md) |
 | CRD Security | 4 | CRD validation, conversion webhooks, cert-manager | [crd.md](crd.md) |
 

@@ -138,7 +138,7 @@ Full documentation lives in [`docs/`](docs/index.md):
 
 | Category | Checks | Examples |
 |----------|--------|---------|
-| [Workload](docs/checks/workload.md) | 24 | `privileged`, `host-pid`, `run-as-root`, `resource-limits-missing` |
+| [Workload](docs/checks/workload.md) | 25 | `privileged`, `host-pid`, `run-as-root`, `resource-limits-missing` |
 | [Image](docs/checks/image.md) | 9 | `image-tag-latest`, `image-registry-blocklist` |
 | [RBAC](docs/checks/rbac.md) | 15 | `rbac-wildcard-verbs`, `rbac-cluster-admin`, `automount-token` |
 | [Secrets](docs/checks/secrets.md) | 7 | `secrets-in-env`, `secrets-unencrypted`, `secrets-in-configmap` |
@@ -147,7 +147,7 @@ Full documentation lives in [`docs/`](docs/index.md):
 | [Scheduling](docs/checks/scheduling.md) | 8 | `toleration-control-plane`, `pod-disruption-budget` |
 | [Storage](docs/checks/storage.md) | 5 | `pvc-no-encryption`, `emptydir-size-limit` |
 | [Cluster](docs/checks/cluster.md) | 10 | `etcd-encryption`, `api-server-anonymous`, `deprecated-api-usage` |
-| [Supply Chain](docs/checks/supply-chain.md) | 6 | `container-runtime-socket`, `liveness-readiness-probes` |
+| [Supply Chain](docs/checks/supply-chain.md) | 5 | `container-runtime-socket`, `liveness-readiness-probes` |
 | [Cloud](docs/checks/cloud.md) | 4 | `eks-imds-access`, `gke-metadata-concealment` |
 | [CRD](docs/checks/crd.md) | 4 | `crd-validation-missing`, `cert-manager-expiry` |
 

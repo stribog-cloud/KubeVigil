@@ -244,14 +244,14 @@ Browse available checks without scanning:
 >
 > | Category | Checks |
 > |----------|--------|
-> | Workload | 24 |
+> | Workload | 25 |
 > | RBAC | 15 |
 > | Network | 12 |
 > | Image | 9 |
 > | Scheduling | 8 |
 > | Secrets | 7 |
 > | PSA | 6 |
-> | Supply Chain | 6 |
+> | Supply Chain | 5 |
 > | Storage | 5 |
 > | Cluster | 10 |
 > | Cloud | 4 |
