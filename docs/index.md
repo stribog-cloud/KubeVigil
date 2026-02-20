@@ -64,7 +64,7 @@ KubeVigil is a Kubernetes Security Posture Management (KSPM) CLI tool that scans
 
 ### AI Assistant Integration
 
-- [MCP Setup](mcp/setup.md) — Connect KubeVigil to AI assistants via the Model Context Protocol
+- [MCP Setup](mcp-setup.md) — Connect KubeVigil to AI assistants via the Model Context Protocol
 
 ### More
 
