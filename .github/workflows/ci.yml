@@ -31,6 +31,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25.7'
+      - name: Build binary for MCP E2E tests
+        run: make build
       - name: Run tests with coverage
         run: go test -race -count=1 -coverprofile=coverage.out ./...
       - name: Check coverage threshold
@@ -67,8 +69,9 @@ jobs:
           go-version: '1.25.7'
       - name: Build binary
         run: |
-          go build -ldflags "-X github.com/stribog-cloud/kubevigil/internal/version.Version=${{ github.ref_name }} \
-                             -X github.com/stribog-cloud/kubevigil/internal/version.Commit=${{ github.sha }} \
+          CGO_ENABLED=0 go build -ldflags "-s -w \
+                             -X github.com/stribog-cloud/kubevigil/internal/version.Version=${{ github.ref_name }} \
+                             -X github.com/stribog-cloud/kubevigil/internal/version.Commit=$(echo ${{ github.sha }} | cut -c1-7) \
                              -X github.com/stribog-cloud/kubevigil/internal/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             -o kubevigil ./cmd/kubevigil
       - name: Verify binary runs
