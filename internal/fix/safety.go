@@ -1,20 +1,15 @@
 package fix
 
-import "sort"
+import (
+	"sort"
+
+	"github.com/stribog-cloud/kubevigil/internal/k8s"
+)
 
 // DefaultSystemNamespaces is the built-in list of system namespaces that are
 // protected from auto-remediation unless explicitly overridden.
-var DefaultSystemNamespaces = []string{
-	"kube-system", "kube-public", "kube-node-lease",
-	"rook-ceph", "rook-ceph-system",
-	"calico-system", "calico-apiserver", "tigera-operator",
-	"cilium", "cilium-system",
-	"ingress-nginx", "traefik", "traefik-system",
-	"cert-manager",
-	"monitoring", "prometheus", "grafana",
-	"istio-system", "linkerd", "linkerd-cni",
-	"metallb-system", "longhorn-system", "openebs",
-}
+// Derived from the shared k8s.AllProtectedNamespaces to avoid duplicate definitions.
+var DefaultSystemNamespaces = k8s.AllProtectedNamespaces
 
 // SafetyClassifier determines whether resources should be skipped during fix operations.
 type SafetyClassifier struct {
