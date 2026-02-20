@@ -6,7 +6,17 @@ import (
 	"testing"
 
 	"github.com/stribog-cloud/kubevigil/internal/checker"
+	_ "github.com/stribog-cloud/kubevigil/internal/checker/cloud"
+	_ "github.com/stribog-cloud/kubevigil/internal/checker/cluster"
+	_ "github.com/stribog-cloud/kubevigil/internal/checker/crd"
 	_ "github.com/stribog-cloud/kubevigil/internal/checker/image"
+	_ "github.com/stribog-cloud/kubevigil/internal/checker/network"
+	_ "github.com/stribog-cloud/kubevigil/internal/checker/psa"
+	_ "github.com/stribog-cloud/kubevigil/internal/checker/rbac"
+	_ "github.com/stribog-cloud/kubevigil/internal/checker/scheduling"
+	_ "github.com/stribog-cloud/kubevigil/internal/checker/secrets"
+	_ "github.com/stribog-cloud/kubevigil/internal/checker/storage"
+	_ "github.com/stribog-cloud/kubevigil/internal/checker/supply_chain"
 	_ "github.com/stribog-cloud/kubevigil/internal/checker/workload"
 )
 
@@ -226,13 +236,65 @@ func TestFindMatchingFindingNamespaceMismatch(t *testing.T) {
 }
 
 func TestCheckerDefaultSeverity(t *testing.T) {
-	c, ok := checker.Get("privileged")
-	if !ok {
-		t.Skip("privileged checker not registered")
+	tests := []struct {
+		checkerID string
+		wantSev   string
+	}{
+		{"privileged", "Critical"},
+		{"host-pid", "Critical"},
+		{"host-ipc", "Critical"},
+		{"host-network", "Critical"},
+		{"image-tag-latest", "Medium"},
+		{"resource-limits-missing", "Medium"},
+		{"run-as-root", "High"},
+		{"capabilities-added", "High"},
+		{"privilege-escalation", "High"},
+		{"image-no-digest", "Low"},
+		{"runtime-class", "Low"},
 	}
-	sev := checkerDefaultSeverity(c)
-	if sev == "" {
-		t.Error("expected non-empty severity")
+	for _, tt := range tests {
+		t.Run(tt.checkerID, func(t *testing.T) {
+			c, ok := checker.Get(tt.checkerID)
+			if !ok {
+				t.Skipf("checker %q not registered", tt.checkerID)
+			}
+			got := checkerDefaultSeverity(c)
+			if got != tt.wantSev {
+				t.Errorf("checkerDefaultSeverity(%q) = %q, want %q", tt.checkerID, got, tt.wantSev)
+			}
+		})
+	}
+}
+
+func TestCheckerDefaultSeverityAllRegistered(t *testing.T) {
+	// Every registered checker must return a valid severity string.
+	allCheckers := checker.DefaultRegistry().All()
+	if len(allCheckers) == 0 {
+		t.Skip("no checkers registered")
+	}
+	validSeverities := map[string]bool{
+		"Info": true, "Low": true, "Medium": true, "High": true, "Critical": true,
+	}
+	for _, c := range allCheckers {
+		sev := checkerDefaultSeverity(c)
+		if !validSeverities[sev] {
+			t.Errorf("checker %q returned invalid severity %q", c.Name(), sev)
+		}
+	}
+}
+
+func TestCheckerDefaultSeverityMapCoverage(t *testing.T) {
+	// Verify the severity map covers ALL registered checkers (not relying
+	// on the fallback). This will catch missing entries when new checkers
+	// are added.
+	allCheckers := checker.DefaultRegistry().All()
+	if len(allCheckers) == 0 {
+		t.Skip("no checkers registered")
+	}
+	for _, c := range allCheckers {
+		if _, ok := defaultSeverities[c.Name()]; !ok {
+			t.Errorf("checker %q is not in defaultSeverities map", c.Name())
+		}
 	}
 }
 

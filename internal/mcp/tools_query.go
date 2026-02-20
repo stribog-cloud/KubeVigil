@@ -176,12 +176,12 @@ func modeStrings(c checker.Checker) []string {
 }
 
 // checkerDefaultSeverity returns the default severity for a checker by
-// inspecting its first finding template. Returns "Medium" if unknown.
+// looking up its ID in the static severity map (severity_map.go).
+// For checkers with variable severity (e.g., host-path-volumes), the
+// worst-case severity is returned. Falls back to "Medium" for unknown checks.
 func checkerDefaultSeverity(c checker.Checker) string {
-	// Most checkers have a known severity from the checker description metadata.
-	// Run with nil context/cache would panic, so we use a heuristic:
-	// all KubeVigil checkers set severity at construction time, and the first
-	// finding from any run of the checker has the default severity.
-	// Since we can't run without resources, return a sensible default.
+	if sev, ok := defaultSeverities[c.Name()]; ok {
+		return sev
+	}
 	return "Medium"
 }
