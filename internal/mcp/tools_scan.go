@@ -290,7 +290,8 @@ func validateKubeconfig(path string) error {
 	if len(path) > maxInputPathLen {
 		return fmt.Errorf("kubeconfig path exceeds maximum length of %d characters", maxInputPathLen)
 	}
-	info, err := os.Lstat(path)
+	clean := filepath.Clean(path)
+	info, err := os.Lstat(clean) //nolint:gosec // Path is cleaned above; no directory restriction by design (local MCP).
 	if err != nil {
 		return fmt.Errorf("kubeconfig path %q: %w", path, err)
 	}
