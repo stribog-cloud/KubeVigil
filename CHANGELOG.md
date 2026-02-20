@@ -7,19 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.0] - 2026-02-20
 
+### Fixed
+- Fix engine path resolution: `runAsUser` field no longer corrupted when applying run-as-root fix
+- CI coverage threshold raised from 90% to 94% to match project floor
+- gosec linter enabled for security-focused code scanning
+- Contract test infrastructure moved from production code to test helpers (removes testify from binary)
+- Internal engineering documents removed from git tracking (will not ship in public repo)
+- README and documentation checker counts corrected (Workload: 25, Supply Chain: 5)
+- File size limits added to YAML parsing paths (manifest parser, config loader, fix engine)
+- MCP manifest path validation now verifies file existence and type
+- Duplicate system namespace definitions consolidated into shared package
+
+## [0.4.5] - 2026-02-15
+
 ### Added
 - MCP server for AI assistant integration (Claude, Cursor, VS Code Copilot)
   - 6 tools: `scan_cluster`, `scan_manifests`, `get_findings`, `get_summary`, `list_checks`, `get_remediation`
   - stdio transport with JSON-RPC protocol
   - Input validation with path length limits and kubeconfig verification
   - Full test coverage: unit, integration, E2E (9 scenarios), benchmarks
+- MCP setup guide with configuration examples for Claude Desktop, Cursor, VS Code
 
 ### Fixed
-- Fix engine path resolution: `runAsUser` field no longer corrupted when applying run-as-root fix
-- CI coverage threshold raised from 90% to 94% to match project floor
 - MCP SDK correctly marked as direct dependency (was indirect)
-- gosec linter enabled for security-focused code scanning
-- Contract test infrastructure moved from production code to test helpers (removes testify from binary)
+- MCP severity schema type mismatch corrected (string, not integer)
+- `MCPFinding` renamed to `FindingDetail` to fix revive stutter lint
+- Go pinned to 1.25.7 to resolve GO-2026-4337 govulncheck finding
 
 ## [0.4.0] - 2025-12-01
 
@@ -76,7 +89,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Table-driven unit tests with 15+ cases per checker, contract tests for all checkers
 - E2E test suite via Bats framework with Kind cluster validation
 
-[0.5.0]: https://github.com/stribog-cloud/KubeVigil/compare/v0.4.0...v0.5.0
+[0.5.0]: https://github.com/stribog-cloud/KubeVigil/compare/v0.4.5...v0.5.0
+[0.4.5]: https://github.com/stribog-cloud/KubeVigil/compare/v0.4.0...v0.4.5
 [0.4.0]: https://github.com/stribog-cloud/KubeVigil/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/stribog-cloud/KubeVigil/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/stribog-cloud/KubeVigil/compare/v0.1.0...v0.2.0
