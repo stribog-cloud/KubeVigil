@@ -3,6 +3,8 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -15,12 +17,19 @@ import (
 	"github.com/stribog-cloud/kubevigil/internal/k8s"
 )
 
+// maxInputPathLen is the maximum length for user-supplied paths in MCP inputs.
+const maxInputPathLen = 4096
+
 // handleScanCluster scans a live Kubernetes cluster and returns a summary.
 func (kv *KubeVigilMCP) handleScanCluster(
 	ctx context.Context,
 	_ *mcp.CallToolRequest,
 	input ScanClusterInput, //nolint:gocritic // value required by MCP SDK ToolHandlerFor signature
 ) (*mcp.CallToolResult, ScanSummaryOutput, error) {
+	if err := validateKubeconfig(input.Kubeconfig); err != nil {
+		return nil, ScanSummaryOutput{}, fmt.Errorf("scan_cluster: %w", err)
+	}
+
 	cfg := kv.configWithOverrides(input.Severity, input.Framework, input.ExcludeInfra, input.Namespace)
 	scanner := engine.NewScanner(kv.registry, cfg)
 
@@ -52,11 +61,15 @@ func (kv *KubeVigilMCP) handleScanManifests(
 	if input.Path == "" {
 		return nil, ScanSummaryOutput{}, fmt.Errorf("scan_manifests: path is required")
 	}
+	cleanPath, err := validateManifestPath(input.Path)
+	if err != nil {
+		return nil, ScanSummaryOutput{}, fmt.Errorf("scan_manifests: %w", err)
+	}
 
 	cfg := kv.configWithOverrides(input.Severity, input.Framework, false, "")
 	scanner := engine.NewScanner(kv.registry, cfg)
 
-	result, err := scanner.ScanManifest(ctx, input.Path)
+	result, err := scanner.ScanManifest(ctx, cleanPath)
 	if err != nil {
 		return nil, ScanSummaryOutput{}, fmt.Errorf("scan_manifests: scanning path %q: %w", input.Path, err)
 	}
@@ -226,4 +239,31 @@ func buildSummary(result *checker.ScanResult) ScanSummaryOutput {
 	}
 
 	return summary
+}
+
+// validateManifestPath validates and cleans a user-supplied manifest path.
+func validateManifestPath(path string) (string, error) {
+	if len(path) > maxInputPathLen {
+		return "", fmt.Errorf("path exceeds maximum length of %d characters", maxInputPathLen)
+	}
+	return filepath.Clean(path), nil
+}
+
+// validateKubeconfig validates a user-supplied kubeconfig path.
+// Empty string is allowed (uses default kubeconfig).
+func validateKubeconfig(path string) error {
+	if path == "" {
+		return nil
+	}
+	if len(path) > maxInputPathLen {
+		return fmt.Errorf("kubeconfig path exceeds maximum length of %d characters", maxInputPathLen)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("kubeconfig path %q: %w", path, err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("kubeconfig path %q is not a regular file", path)
+	}
+	return nil
 }
