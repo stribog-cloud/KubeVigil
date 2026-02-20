@@ -109,12 +109,10 @@ type TopIssue struct {
 	Count int `json:"count"`
 }
 
-// MCPFinding is an MCP-compatible representation of a security finding.
-// It mirrors [checker.Finding] but uses string for Severity to ensure the
-// auto-generated JSON schema matches the serialized output. The checker
-// package's Severity type is int with custom MarshalJSON, which causes a
-// schema mismatch (audit finding AF-01).
-type MCPFinding struct {
+// FindingDetail is an MCP-compatible representation of a security finding.
+// It mirrors [checker.Finding] but uses string for Severity so the
+// auto-generated JSON schema matches the serialized output.
+type FindingDetail struct {
 	// Checker is the kebab-case ID of the check that produced this finding.
 	Checker string `json:"checker"`
 	// Severity is the impact level (Info, Low, Medium, High, Critical).
@@ -141,9 +139,9 @@ type MCPFinding struct {
 	DesiredValue any `json:"desired_value,omitempty"`
 }
 
-// toMCPFinding converts a checker.Finding to an MCPFinding.
-func toMCPFinding(f *checker.Finding) MCPFinding {
-	return MCPFinding{
+// toFindingDetail converts a checker.Finding to an FindingDetail.
+func toFindingDetail(f *checker.Finding) FindingDetail {
+	return FindingDetail{
 		Checker:      f.Checker,
 		Severity:     f.Severity.String(),
 		Resource:     f.Resource,
@@ -159,11 +157,11 @@ func toMCPFinding(f *checker.Finding) MCPFinding {
 	}
 }
 
-// toMCPFindings converts a slice of checker.Finding to MCPFinding.
-func toMCPFindings(findings []checker.Finding) []MCPFinding {
-	result := make([]MCPFinding, len(findings))
+// toFindingDetails converts a slice of checker.Finding to FindingDetail.
+func toFindingDetails(findings []checker.Finding) []FindingDetail {
+	result := make([]FindingDetail, len(findings))
 	for i := range findings {
-		result[i] = toMCPFinding(&findings[i])
+		result[i] = toFindingDetail(&findings[i])
 	}
 	return result
 }
@@ -171,7 +169,7 @@ func toMCPFindings(findings []checker.Finding) []MCPFinding {
 // FindingsOutput is the paginated result from get_findings.
 type FindingsOutput struct {
 	// Findings is the list of matching findings for the current page.
-	Findings []MCPFinding `json:"findings"`
+	Findings []FindingDetail `json:"findings"`
 	// Total is the total number of matching findings across all pages.
 	Total int `json:"total"`
 	// Offset is the offset used for this page.
