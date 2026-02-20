@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.0] - 2026-02-20
 
+### Security
+- MCP path validation uses `os.Lstat` to detect and reject symlinks in manifest and kubeconfig paths
+- Fix engine uses `os.Lstat` in Apply, planFile, and collectFiles to prevent writing through symlinks
+- Backup path boundary enforcement: reject `filepath.Rel` results that escape the source directory
+- YAML document count limit (10,000) in both engine and fix parsers prevents memory exhaustion
+- Namespace (253 char) and context (512 char) length validation in MCP `scan_cluster`
+
 ### Fixed
 - Fix engine path resolution: `runAsUser` field no longer corrupted when applying run-as-root fix
 - CI coverage threshold raised from 90% to 94% to match project floor
@@ -18,7 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MCP manifest path validation now verifies file existence and rejects non-regular files
 - Duplicate system namespace definitions consolidated into shared `internal/k8s` package
 - MCP `checkerDefaultSeverity` replaced hardcoded "Medium" with per-checker severity map (110 entries)
-- Test coverage improved from 94.0% to 94.6% (ScanLive, NewClient, CreateGitOpsPR)
+- Bare error returns wrapped with context in scan.go and mcp.go
+- Dead code removed from kubelet_config.go
+- `lastResult` immutability invariant documented in MCP server
+- Documentation accuracy fixes: config key `disabled`, exemption format `checks: []`, install URLs, CLI reference version
+- `k8s.io/utils` moved from direct to indirect dependency
+- Go pinned to 1.25.7 in go.mod and Dockerfile
+- CI: `CGO_ENABLED=0` build, short SHA, strip ldflags, `make build` before tests
+- Test coverage improved from 94.0% to 94.7%
 
 ## [0.4.5] - 2026-02-15
 
