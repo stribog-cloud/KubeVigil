@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/stribog-cloud/kubevigil/internal/checker"
+	"github.com/stribog-cloud/kubevigil/internal/k8s"
 )
 
 // validSeverities is the set of accepted severity strings.
@@ -189,11 +190,14 @@ func SeverityOverride(cfg *Config, name string) (string, bool) {
 
 // DefaultSystemNamespaces are Kubernetes system namespaces excluded by default.
 // These contain components that legitimately need elevated privileges.
-var DefaultSystemNamespaces = map[string]bool{
-	"kube-system":     true,
-	"kube-public":     true,
-	"kube-node-lease": true,
-}
+// Derived from the shared k8s.CoreSystemNamespaces to avoid duplicate definitions.
+var DefaultSystemNamespaces = func() map[string]bool {
+	m := make(map[string]bool, len(k8s.CoreSystemNamespaces))
+	for _, ns := range k8s.CoreSystemNamespaces {
+		m[ns] = true
+	}
+	return m
+}()
 
 // IsSystemNamespace returns true if the namespace is a Kubernetes system namespace.
 func IsSystemNamespace(ns string) bool {
