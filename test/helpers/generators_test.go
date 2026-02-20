@@ -91,6 +91,27 @@ func TestGeneratePod(t *testing.T) {
 		assert.Equal(t, corev1.ContainerRestartPolicyAlways, *pod.Spec.InitContainers[0].RestartPolicy)
 	})
 
+	t.Run("WithServiceAccountName sets serviceAccountName", func(t *testing.T) {
+		pod := GeneratePod(WithServiceAccountName("my-sa"))
+		assert.Equal(t, "my-sa", pod.Spec.ServiceAccountName)
+	})
+
+	t.Run("WithAutomountServiceAccountToken sets automountServiceAccountToken", func(t *testing.T) {
+		pod := GeneratePod(WithAutomountServiceAccountToken(false))
+		require.NotNil(t, pod.Spec.AutomountServiceAccountToken)
+		assert.False(t, *pod.Spec.AutomountServiceAccountToken)
+	})
+
+	t.Run("WithVolume appends volume", func(t *testing.T) {
+		vol := corev1.Volume{Name: "config", VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		}}
+		pod := GeneratePod(WithVolume(vol))
+		require.Len(t, pod.Spec.Volumes, 1)
+		assert.Equal(t, "config", pod.Spec.Volumes[0].Name)
+		require.NotNil(t, pod.Spec.Volumes[0].EmptyDir)
+	})
+
 	t.Run("WithPodSecurityContext sets pod-level securityContext", func(t *testing.T) {
 		uid := int64(1000)
 		pod := GeneratePod(WithPodSecurityContext(&corev1.PodSecurityContext{
@@ -178,6 +199,18 @@ func TestNewContainer(t *testing.T) {
 		c := NewContainer("app", WithHostPort(8080))
 		require.Len(t, c.Ports, 1)
 		assert.Equal(t, int32(8080), c.Ports[0].HostPort)
+	})
+
+	t.Run("WithRunAsGroup", func(t *testing.T) {
+		c := NewContainer("app", WithRunAsGroup(1000))
+		require.NotNil(t, c.SecurityContext)
+		require.NotNil(t, c.SecurityContext.RunAsGroup)
+		assert.Equal(t, int64(1000), *c.SecurityContext.RunAsGroup)
+	})
+
+	t.Run("WithImagePullPolicy", func(t *testing.T) {
+		c := NewContainer("app", WithImagePullPolicy(corev1.PullAlways))
+		assert.Equal(t, corev1.PullAlways, c.ImagePullPolicy)
 	})
 }
 

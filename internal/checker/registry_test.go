@@ -171,6 +171,51 @@ func TestRegistry_Names(t *testing.T) {
 	})
 }
 
+// TestPackageLevelRegistryFunctions exercises the package-level convenience
+// wrappers (Register, MustRegister, Get, All) that delegate to defaultRegistry.
+// These functions are normally called by checker package init() functions,
+// but coverage is not credited across package boundaries.
+func TestPackageLevelRegistryFunctions(t *testing.T) {
+	// DefaultRegistry() should return the module-level registry.
+	reg := DefaultRegistry()
+	require.NotNil(t, reg)
+
+	// Register a test checker using the package-level function.
+	err := Register(newStub("__test-pkg-register"))
+	require.NoError(t, err)
+
+	// Get should find the registered checker.
+	c, ok := Get("__test-pkg-register")
+	assert.True(t, ok)
+	require.NotNil(t, c)
+	assert.Equal(t, "__test-pkg-register", c.Name())
+
+	// All should include the registered checker.
+	all := All()
+	found := false
+	for _, chk := range all {
+		if chk.Name() == "__test-pkg-register" {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "All() should include the registered checker")
+
+	// Duplicate registration returns an error.
+	err = Register(newStub("__test-pkg-register"))
+	assert.Error(t, err)
+
+	// MustRegister panics on duplicate.
+	assert.Panics(t, func() {
+		MustRegister(newStub("__test-pkg-register"))
+	})
+
+	// MustRegister succeeds for a new name.
+	assert.NotPanics(t, func() {
+		MustRegister(newStub("__test-pkg-must-register"))
+	})
+}
+
 func TestRegistry_Len(t *testing.T) {
 	t.Run("zero for empty registry", func(t *testing.T) {
 		r := NewRegistry()
