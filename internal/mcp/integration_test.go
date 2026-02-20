@@ -92,7 +92,7 @@ func TestIntegrationScanManifestsThenFindings(t *testing.T) {
 		t.Fatalf("get_findings with severity filter failed: %v", err)
 	}
 	for _, f := range critOutput.Findings {
-		if f.Severity != checker.SeverityCritical {
+		if f.Severity != "Critical" {
 			t.Errorf("finding %q has severity %s, want Critical", f.Checker, f.Severity)
 		}
 	}
