@@ -68,6 +68,27 @@ docker run --rm -v ~/.kube/config:/root/.kube/config ghcr.io/stribog-cloud/kubev
 go install github.com/stribog-cloud/kubevigil/cmd/kubevigil@latest
 ```
 
+## AI Assistant Integration (MCP)
+
+KubeVigil includes a built-in MCP server that lets AI assistants like Claude,
+Cursor, and VS Code Copilot scan clusters, query findings, and get remediation
+guidance through natural conversation. Add this to your Claude Desktop
+configuration (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "kubevigil": {
+      "command": "kubevigil",
+      "args": ["mcp-server"]
+    }
+  }
+}
+```
+
+See the [MCP Setup Guide](docs/mcp-setup.md) for Cursor, VS Code, advanced
+configuration, and example conversations.
+
 ## Quick Start
 
 ```bash
@@ -106,6 +127,7 @@ Full documentation lives in [`docs/`](docs/index.md):
 | [Compliance](docs/compliance/overview.md) | CIS, MITRE ATT&CK, NSA/CISA mappings |
 | [Configuration](docs/configuration/config-file.md) | `.kubevigil.yaml`, exemptions, tuning |
 | [CLI Reference](docs/reference/cli-reference.md) | All commands and flags |
+| [AI Assistants (MCP)](docs/mcp-setup.md) | Claude, Cursor, VS Code integration |
 | [Integrations](docs/integrations/sarif.md) | SARIF, JUnit, IDE workflows |
 | [Architecture](docs/architecture/overview.md) | Internal design for contributors |
 | [Contributing](docs/contributing/guide.md) | How to add checks and fix strategies |
@@ -181,7 +203,7 @@ See [Exit Codes](docs/reference/exit-codes.md) for CI/CD usage examples.
 - [x] **Phase 2** — 85 additional checks (110 total), 6 new formats, compliance mapping
 - [x] **Phase 3** — Auto-remediation, 20 fixable checks, YAML round-trip, safety model
 - [x] **Phase 4a** — Distribution (GoReleaser, GitHub Releases, Homebrew, Krew, Docker, install script)
-- [ ] **Phase 4b** — MCP Server (AI assistant integration — scan, query, remediate via Claude/Cursor/Copilot)
+- [x] **Phase 4b** — MCP Server (AI assistant integration — scan, query, remediate via Claude/Cursor/Copilot)
 - [ ] **Phase 5** — Feedback, hardening & polish (real-world testing, severity calibration, MCP polish, bug fixes)
 - [ ] **Phase 6** — CI/CD integration (GitHub Action, baseline management, PR decoration)
 - [ ] **Phase 7** — Runtime (admission webhooks, operator mode, Prometheus metrics)
