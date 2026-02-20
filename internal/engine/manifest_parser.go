@@ -117,10 +117,16 @@ func ParseBytes(data []byte) (*checker.ResourceCache, []error) {
 	return cache, errs
 }
 
+// maxDocumentCount is the maximum number of YAML documents allowed in a single file.
+// Combined with the 10 MiB file size limit, this prevents excessive memory use
+// from files with many tiny documents.
+const maxDocumentCount = 10000
+
 // parseYAMLBytes parses potentially multi-document YAML into an existing ResourceCache.
 func parseYAMLBytes(data []byte, cache *checker.ResourceCache) []error {
 	var errs []error
 
+	docCount := 0
 	reader := yaml.NewYAMLReader(bufio.NewReader(bytes.NewReader(data)))
 	for {
 		doc, err := reader.Read()
@@ -129,6 +135,12 @@ func parseYAMLBytes(data []byte, cache *checker.ResourceCache) []error {
 		}
 		if err != nil {
 			errs = append(errs, fmt.Errorf("reading YAML document: %w", err))
+			break
+		}
+
+		docCount++
+		if docCount > maxDocumentCount {
+			errs = append(errs, fmt.Errorf("YAML contains more than %d documents, stopping", maxDocumentCount))
 			break
 		}
 

@@ -190,7 +190,18 @@ func (f *Fixer) Apply(ctx context.Context, plan *Plan) (*Summary, error) {
 	failed := 0
 	for _, path := range filePaths {
 		fp := plan.Files[path]
-		info, statErr := os.Stat(path)
+		// Use Lstat to detect symlinks — writing through a symlink could
+		// overwrite an unrelated file (e.g. /etc/hosts, ~/.kube/config).
+		info, statErr := os.Lstat(path)
+		if statErr == nil && info.Mode()&os.ModeSymlink != 0 {
+			slog.Warn("skipping symlink in fix apply", "file", path)
+			plan.Summary.Errors = append(plan.Summary.Errors, FileError{
+				FilePath: path,
+				Err:      "file is a symlink (rejected for security)",
+			})
+			failed++
+			continue
+		}
 		perm := os.FileMode(0o644)
 		if statErr == nil {
 			perm = info.Mode().Perm()
@@ -315,9 +326,14 @@ const maxManifestFileSize = 10 << 20
 // Returns nil if there are no fixable findings.
 // Rejects files larger than maxManifestFileSize to prevent resource exhaustion.
 func (f *Fixer) planFile(ctx context.Context, scanner *engine.Scanner, path string) (*FilePlan, error) {
-	info, err := os.Stat(path)
+	// Use Lstat to detect symlinks before reading — a symlink to a sensitive
+	// file outside the intended directory must not be scanned or patched.
+	info, err := os.Lstat(path)
 	if err != nil {
 		return nil, fmt.Errorf("reading file: %w", err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return nil, fmt.Errorf("reading file: %s is a symlink (rejected for security)", path)
 	}
 	if info.Size() > maxManifestFileSize {
 		return nil, fmt.Errorf("reading file: file size %d bytes exceeds maximum of %d bytes",
@@ -673,9 +689,15 @@ func collectFiles(paths []string) ([]string, error) {
 			return nil, fmt.Errorf("resolving path %s: %w", path, err)
 		}
 
-		info, err := os.Stat(abs)
+		// Use Lstat to detect symlinks — skip symlinked files and directories
+		// to avoid following links to sensitive files outside the intended scope.
+		info, err := os.Lstat(abs)
 		if err != nil {
 			return nil, fmt.Errorf("stat %s: %w", abs, err)
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			slog.Warn("skipping symlink during file collection", "path", abs)
+			continue
 		}
 
 		if !info.IsDir() {
