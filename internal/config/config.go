@@ -105,8 +105,20 @@ func Default() *Config {
 	}
 }
 
+// maxConfigFileSize is the maximum allowed size for a config file (1 MiB).
+const maxConfigFileSize = 1 << 20
+
 // Load reads and parses a config file at the given path.
+// Rejects files larger than maxConfigFileSize to prevent resource exhaustion.
 func Load(path string) (*Config, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading config file: %w", err)
+	}
+	if info.Size() > maxConfigFileSize {
+		return nil, fmt.Errorf("reading config file: file size %d bytes exceeds maximum of %d bytes",
+			info.Size(), maxConfigFileSize)
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("reading config file: %w", err)

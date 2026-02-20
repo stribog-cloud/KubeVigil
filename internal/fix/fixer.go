@@ -308,9 +308,21 @@ func (f *Fixer) Fix(ctx context.Context, paths []string) (*Plan, *Summary, error
 	return plan, summary, err
 }
 
+// maxManifestFileSize is the maximum allowed size for a single YAML manifest file (10 MiB).
+const maxManifestFileSize = 10 << 20
+
 // planFile scans a single file and builds a FilePlan.
 // Returns nil if there are no fixable findings.
+// Rejects files larger than maxManifestFileSize to prevent resource exhaustion.
 func (f *Fixer) planFile(ctx context.Context, scanner *engine.Scanner, path string) (*FilePlan, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading file: %w", err)
+	}
+	if info.Size() > maxManifestFileSize {
+		return nil, fmt.Errorf("reading file: file size %d bytes exceeds maximum of %d bytes",
+			info.Size(), maxManifestFileSize)
+	}
 	original, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("reading file: %w", err)

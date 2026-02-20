@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stribog-cloud/kubevigil/internal/checker"
@@ -252,14 +253,23 @@ func TestHandleScanManifestsInvalidPath(t *testing.T) {
 }
 
 func TestValidateManifestPath(t *testing.T) {
+	tmpDir := t.TempDir()
+	tmpFile, err := os.CreateTemp(tmpDir, "manifest-*.yaml")
+	if err != nil {
+		t.Fatalf("creating temp file: %v", err)
+	}
+	tmpFile.Close()
+
 	tests := []struct {
 		name    string
 		path    string
 		wantErr bool
 	}{
-		{"valid path", "/tmp/manifests", false},
-		{"relative path cleaned", "../manifests", false},
+		{"valid file path", tmpFile.Name(), false},
+		{"valid directory path", tmpDir, false},
+		{"relative path to existing dir", ".", false},
 		{"too long", string(make([]byte, maxInputPathLen+1)), true},
+		{"nonexistent path", "/nonexistent/path/that/does/not/exist", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -268,6 +278,24 @@ func TestValidateManifestPath(t *testing.T) {
 				t.Errorf("validateManifestPath(%q) error = %v, wantErr %v", tt.path, err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestValidateManifestPath_RejectsNonRegularNonDir(t *testing.T) {
+	_, err := validateManifestPath("/dev/null")
+	if err == nil {
+		t.Error("expected error for device file /dev/null, got nil")
+	}
+}
+
+func TestValidateManifestPath_ErrorContainsPath(t *testing.T) {
+	const wantPath = "/nonexistent/foo/bar"
+	_, err := validateManifestPath(wantPath)
+	if err == nil {
+		t.Fatal("expected error for nonexistent path")
+	}
+	if !strings.Contains(err.Error(), wantPath) {
+		t.Errorf("error should contain the path %q, got: %v", wantPath, err)
 	}
 }
 

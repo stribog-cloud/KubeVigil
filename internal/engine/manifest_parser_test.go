@@ -300,6 +300,42 @@ spec:
 	}
 }
 
+func TestParseFile_RejectsOversizedFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	bigFile := filepath.Join(tmpDir, "huge.yaml")
+
+	size := 10*1024*1024 + 1
+	data := make([]byte, size)
+	for i := range data {
+		data[i] = 'x'
+	}
+	require.NoError(t, os.WriteFile(bigFile, data, 0o644))
+
+	_, errs := ParseFile(bigFile)
+	require.NotEmpty(t, errs, "ParseFile should reject files > 10 MiB")
+	assert.Contains(t, errs[0].Error(), "exceeds maximum", "error should mention size limit")
+}
+
+func TestParseFile_AcceptsFileAtLimit(t *testing.T) {
+	tmpDir := t.TempDir()
+	okFile := filepath.Join(tmpDir, "ok.yaml")
+
+	podYAML := []byte(`apiVersion: v1
+kind: Pod
+metadata:
+  name: ok-pod
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: nginx:1.25
+`)
+	require.NoError(t, os.WriteFile(okFile, podYAML, 0o644))
+
+	_, errs := ParseFile(okFile)
+	assert.Empty(t, errs, "ParseFile should accept files within size limit")
+}
+
 func TestParseDir_Recursive(t *testing.T) {
 	// Create a temp dir with subdirectories
 	tmpDir := t.TempDir()
