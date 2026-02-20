@@ -35,9 +35,7 @@ jobs:
 
       - name: Install KubeVigil
         run: |
-          curl -sL https://github.com/stribog-cloud/kubevigil/releases/latest/download/kubevigil-linux-amd64 -o kubevigil
-          chmod +x kubevigil
-          sudo mv kubevigil /usr/local/bin/
+          curl -sSL https://raw.githubusercontent.com/stribog-cloud/KubeVigil/master/install.sh | bash
 
       - name: Run security scan
         run: kubevigil scan -f ./manifests/ -o results.sarif --no-color
@@ -91,8 +89,7 @@ security-scan:
   stage: test
   image: golang:1.22
   before_script:
-    - curl -sL https://github.com/stribog-cloud/kubevigil/releases/latest/download/kubevigil-linux-amd64 -o /usr/local/bin/kubevigil
-    - chmod +x /usr/local/bin/kubevigil
+    - curl -sSL https://raw.githubusercontent.com/stribog-cloud/KubeVigil/master/install.sh | bash
   script:
     - kubevigil scan -f ./manifests/ -o results.xml --no-color
     - kubevigil scan -f ./manifests/ --fail-on high --no-color
@@ -212,13 +209,15 @@ settings:
   severity_threshold: medium
   concurrency: 5
 
+version: "1"
+
 exemptions:
-  - check: resource-limits-missing
+  - checks: [resource-limits-missing]
     resource: debug-tools
     namespace: dev
     reason: "Debug tooling, limits not applicable"
 
-  - check: image-tag-latest
+  - checks: [image-tag-latest]
     resource: dev-runner
     reason: "Dev image, always pulls latest"
 ```

@@ -46,11 +46,11 @@ This page covers common issues, their causes, and solutions. For exit code meani
 2. **Checks disabled.** Your `.kubevigil.yaml` may have checks disabled:
    ```yaml
    checks:
-     disable:
+     disabled:
        - privileged
        - run-as-root
    ```
-   Remove entries from the `disable` list or temporarily scan without a config:
+   Remove entries from the `disabled` list or temporarily scan without a config:
    ```bash
    kubevigil scan -f ./manifests/ --config /dev/null
    ```

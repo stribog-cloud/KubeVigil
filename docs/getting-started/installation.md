@@ -56,7 +56,7 @@ go install github.com/stribog-cloud/kubevigil/cmd/kubevigil@latest
 Or clone and build with version injection:
 
 ```bash
-git clone https://github.com/stribog-cloud/kubevigil.git
+git clone https://github.com/stribog-cloud/KubeVigil.git
 cd kubevigil
 make build
 ```

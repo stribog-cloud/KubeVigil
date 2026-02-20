@@ -62,6 +62,10 @@ KubeVigil is a Kubernetes Security Posture Management (KSPM) CLI tool that scans
 - [JUnit (CI/CD)](integrations/junit.md) — Test result integration
 - [IDE Integration](integrations/ide.md) — Editor workflows
 
+### AI Assistant Integration
+
+- [MCP Setup](mcp/setup.md) — Connect KubeVigil to AI assistants via the Model Context Protocol
+
 ### More
 
 - [Troubleshooting](troubleshooting/common-issues.md) — Common issues and solutions
