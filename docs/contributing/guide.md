@@ -13,7 +13,7 @@ KubeVigil welcomes contributions. This guide covers the development setup, code 
 ## Clone and Build
 
 ```bash
-git clone https://github.com/stribog-cloud/kubevigil.git
+git clone https://github.com/stribog-cloud/KubeVigil.git
 cd kubevigil
 make build
 ```
