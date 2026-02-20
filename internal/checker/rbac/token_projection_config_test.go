@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/utils/ptr"
 
 	"github.com/stribog-cloud/kubevigil/internal/checker"
 	"github.com/stribog-cloud/kubevigil/test/helpers"
@@ -86,7 +85,7 @@ func TestTokenProjectionConfigChecker_Run(t *testing.T) {
 							Sources: []corev1.VolumeProjection{
 								{
 									ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
-										ExpirationSeconds: ptr.To[int64](3600),
+										ExpirationSeconds: int64Ptr(3600),
 										Audience:          "api",
 										Path:              "token",
 									},
@@ -227,6 +226,8 @@ func TestTokenProjectionConfigChecker_Run(t *testing.T) {
 		})
 	}
 }
+
+func int64Ptr(v int64) *int64 { return &v }
 
 func TestTokenProjectionConfigChecker_CancelledContext(t *testing.T) {
 	c := &TokenProjectionConfigChecker{}
