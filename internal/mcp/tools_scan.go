@@ -20,6 +20,12 @@ import (
 // maxInputPathLen is the maximum length for user-supplied paths in MCP inputs.
 const maxInputPathLen = 4096
 
+// maxNamespaceLen is the maximum Kubernetes namespace name length (RFC 1123).
+const maxNamespaceLen = 253
+
+// maxContextLen is a practical limit for kubeconfig context names.
+const maxContextLen = 512
+
 // handleScanCluster scans a live Kubernetes cluster and returns a summary.
 func (kv *KubeVigilMCP) handleScanCluster(
 	ctx context.Context,
@@ -28,6 +34,12 @@ func (kv *KubeVigilMCP) handleScanCluster(
 ) (*mcp.CallToolResult, ScanSummaryOutput, error) {
 	if err := validateKubeconfig(input.Kubeconfig); err != nil {
 		return nil, ScanSummaryOutput{}, fmt.Errorf("scan_cluster: %w", err)
+	}
+	if len(input.Namespace) > maxNamespaceLen {
+		return nil, ScanSummaryOutput{}, fmt.Errorf("scan_cluster: namespace exceeds maximum length of %d characters", maxNamespaceLen)
+	}
+	if len(input.Context) > maxContextLen {
+		return nil, ScanSummaryOutput{}, fmt.Errorf("scan_cluster: context exceeds maximum length of %d characters", maxContextLen)
 	}
 
 	cfg := kv.configWithOverrides(input.Severity, input.Framework, input.ExcludeInfra, input.Namespace)
@@ -243,14 +255,25 @@ func buildSummary(result *checker.ScanResult) ScanSummaryOutput {
 
 // validateManifestPath validates and cleans a user-supplied manifest path.
 // It verifies the path exists and is either a regular file or a directory.
+// Symlinks are rejected to prevent the scan engine from following links to
+// sensitive files outside the intended directory.
+//
+// Note: this function does NOT restrict which directories can be scanned.
+// The MCP server runs locally with the same trust model as other MCP tools;
+// the caller already has filesystem access. Path restriction is deferred to
+// a future phase with configurable allowed-paths.
 func validateManifestPath(path string) (string, error) {
 	if len(path) > maxInputPathLen {
 		return "", fmt.Errorf("path exceeds maximum length of %d characters", maxInputPathLen)
 	}
 	clean := filepath.Clean(path)
-	info, err := os.Stat(clean) //nolint:gosec // path validated above (length-bounded)
+	// Use Lstat to detect symlinks (Stat follows them silently).
+	info, err := os.Lstat(clean)
 	if err != nil {
 		return "", fmt.Errorf("manifest path %q: %w", clean, err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return "", fmt.Errorf("manifest path %q is a symlink (rejected for security)", clean)
 	}
 	if !info.Mode().IsRegular() && !info.IsDir() {
 		return "", fmt.Errorf("manifest path %q is not a regular file or directory", clean)
@@ -267,9 +290,12 @@ func validateKubeconfig(path string) error {
 	if len(path) > maxInputPathLen {
 		return fmt.Errorf("kubeconfig path exceeds maximum length of %d characters", maxInputPathLen)
 	}
-	info, err := os.Stat(path) //nolint:gosec // path validated above (length-bounded, no taint from user beyond kubeconfig)
+	info, err := os.Lstat(path)
 	if err != nil {
 		return fmt.Errorf("kubeconfig path %q: %w", path, err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("kubeconfig path %q is a symlink (rejected for security)", path)
 	}
 	if !info.Mode().IsRegular() {
 		return fmt.Errorf("kubeconfig path %q is not a regular file", path)

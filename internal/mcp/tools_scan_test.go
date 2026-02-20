@@ -281,6 +281,28 @@ func TestValidateManifestPath(t *testing.T) {
 	}
 }
 
+func TestValidateManifestPath_RejectsSymlink(t *testing.T) {
+	tmpDir := t.TempDir()
+	target, err := os.CreateTemp(tmpDir, "target-*.yaml")
+	if err != nil {
+		t.Fatalf("creating target file: %v", err)
+	}
+	target.Close()
+
+	link := tmpDir + "/link.yaml"
+	if err := os.Symlink(target.Name(), link); err != nil {
+		t.Fatalf("creating symlink: %v", err)
+	}
+
+	_, err = validateManifestPath(link)
+	if err == nil {
+		t.Error("expected error for symlink, got nil")
+	}
+	if !strings.Contains(err.Error(), "symlink") {
+		t.Errorf("error should mention symlink, got: %v", err)
+	}
+}
+
 func TestValidateManifestPath_RejectsNonRegularNonDir(t *testing.T) {
 	_, err := validateManifestPath("/dev/null")
 	if err == nil {
@@ -335,4 +357,93 @@ func TestValidateKubeconfig(t *testing.T) {
 			t.Errorf("unexpected error for regular file: %v", err)
 		}
 	})
+
+	// Test with a symlink (should be rejected).
+	t.Run("symlink rejected", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		target, err := os.CreateTemp(tmpDir, "kubeconfig-target")
+		if err != nil {
+			t.Fatalf("creating target file: %v", err)
+		}
+		target.Close()
+
+		link := tmpDir + "/kubeconfig-link"
+		if err := os.Symlink(target.Name(), link); err != nil {
+			t.Fatalf("creating symlink: %v", err)
+		}
+
+		err = validateKubeconfig(link)
+		if err == nil {
+			t.Error("expected error for symlink, got nil")
+		}
+		if !strings.Contains(err.Error(), "symlink") {
+			t.Errorf("error should mention symlink, got: %v", err)
+		}
+	})
+}
+
+func TestHandleScanClusterNamespaceTooLong(t *testing.T) {
+	kv := testKVEmpty()
+	longNS := strings.Repeat("a", maxNamespaceLen+1)
+	_, _, err := kv.handleScanCluster(context.Background(), nil, ScanClusterInput{
+		Namespace: longNS,
+	})
+	if err == nil {
+		t.Error("expected error for namespace exceeding max length")
+	}
+	if !strings.Contains(err.Error(), "namespace") {
+		t.Errorf("error should mention namespace, got: %v", err)
+	}
+}
+
+func TestHandleScanClusterContextTooLong(t *testing.T) {
+	kv := testKVEmpty()
+	longCtx := strings.Repeat("a", maxContextLen+1)
+	_, _, err := kv.handleScanCluster(context.Background(), nil, ScanClusterInput{
+		Context: longCtx,
+	})
+	if err == nil {
+		t.Error("expected error for context exceeding max length")
+	}
+	if !strings.Contains(err.Error(), "context") {
+		t.Errorf("error should mention context, got: %v", err)
+	}
+}
+
+func TestHandleScanClusterInvalidKubeconfig(t *testing.T) {
+	kv := testKVEmpty()
+	_, _, err := kv.handleScanCluster(context.Background(), nil, ScanClusterInput{
+		Kubeconfig: "/nonexistent/kubeconfig/path",
+	})
+	if err == nil {
+		t.Error("expected error for invalid kubeconfig path")
+	}
+	if !strings.Contains(err.Error(), "scan_cluster") {
+		t.Errorf("error should be prefixed with scan_cluster, got: %v", err)
+	}
+}
+
+func TestHandleScanClusterKubeconfigSymlink(t *testing.T) {
+	tmpDir := t.TempDir()
+	target, err := os.CreateTemp(tmpDir, "kubeconfig-target")
+	if err != nil {
+		t.Fatalf("creating target file: %v", err)
+	}
+	target.Close()
+
+	link := tmpDir + "/kubeconfig-link"
+	if err := os.Symlink(target.Name(), link); err != nil {
+		t.Fatalf("creating symlink: %v", err)
+	}
+
+	kv := testKVEmpty()
+	_, _, err = kv.handleScanCluster(context.Background(), nil, ScanClusterInput{
+		Kubeconfig: link,
+	})
+	if err == nil {
+		t.Error("expected error for symlink kubeconfig")
+	}
+	if !strings.Contains(err.Error(), "symlink") {
+		t.Errorf("error should mention symlink, got: %v", err)
+	}
 }
