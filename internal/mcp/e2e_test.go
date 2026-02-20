@@ -183,13 +183,6 @@ func TestE2EManifestScanEndToEnd(t *testing.T) {
 
 // TestE2EFindingsQueryAfterScan verifies that get_findings returns filtered
 // results from a prior scan.
-//
-// NOTE: checker.Severity is type int with custom MarshalJSON that outputs
-// strings. The MCP SDK auto-generates a JSON schema expecting "integer" but
-// the actual JSON contains strings like "Critical". This causes client-side
-// schema validation to fail. This is audit finding AF-01 — once the schema
-// override is applied in the audit phase, this test will pass without the
-// error handling workaround below.
 func TestE2EFindingsQueryAfterScan(t *testing.T) {
 	session := connectToServer(t)
 	ctx := context.Background()
@@ -204,42 +197,38 @@ func TestE2EFindingsQueryAfterScan(t *testing.T) {
 		t.Fatalf("scan_manifests failed: %v", err)
 	}
 
-	// Verify the scan produced findings via get_summary (no schema issue).
-	summaryResult, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name:      "get_summary",
-		Arguments: map[string]any{},
-	})
-	if err != nil {
-		t.Fatalf("get_summary failed: %v", err)
-	}
-	summary := extractSummary(t, summaryResult)
-	if summary.TotalFindings == 0 {
-		t.Fatal("expected findings from scan")
-	}
-
-	// Query findings — may fail with schema validation error (audit AF-01).
+	// Query all findings.
 	allResult, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name:      "get_findings",
 		Arguments: map[string]any{"limit": 100},
 	})
 	if err != nil {
-		// If the error is a schema validation issue for severity type, that's
-		// the known audit finding AF-01. Verify the summary counts instead.
-		if containsSubstring(err.Error(), "severity") &&
-			containsSubstring(err.Error(), "integer") {
-			t.Logf("get_findings returned expected schema validation error (audit AF-01): %v", err)
-			// Verify findings exist via summary.
-			if summary.SeverityCounts["Critical"] == 0 {
-				t.Error("expected critical findings in summary severity counts")
-			}
-			return
-		}
-		t.Fatalf("get_findings failed with unexpected error: %v", err)
+		t.Fatalf("get_findings failed: %v", err)
 	}
-
 	allFindings := extractFindings(t, allResult)
 	if allFindings.Total == 0 {
 		t.Fatal("expected findings from scan")
+	}
+
+	// Query only critical findings.
+	critResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "get_findings",
+		Arguments: map[string]any{"severity": "critical", "limit": 100},
+	})
+	if err != nil {
+		t.Fatalf("get_findings with severity filter failed: %v", err)
+	}
+	critFindings := extractFindings(t, critResult)
+
+	// Verify all returned findings are critical.
+	for _, f := range critFindings.Findings {
+		if f.Severity != "Critical" {
+			t.Errorf("finding %q has severity %q, want Critical", f.Checker, f.Severity)
+		}
+	}
+	// Critical should be <= total.
+	if critFindings.Total > allFindings.Total {
+		t.Errorf("critical findings (%d) > all findings (%d)", critFindings.Total, allFindings.Total)
 	}
 
 	// Verify pagination metadata.

@@ -48,7 +48,7 @@ func TestHandleGetFindingsSeverityFilter(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	for _, f := range output.Findings {
-		if f.Severity != checker.SeverityCritical {
+		if f.Severity != "Critical" {
 			t.Errorf("finding %q has severity %s, want Critical", f.Checker, f.Severity)
 		}
 	}
@@ -160,7 +160,7 @@ func TestHandleGetFindingsMultipleFilters(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	for _, f := range output.Findings {
-		if f.Severity != checker.SeverityCritical {
+		if f.Severity != "Critical" {
 			t.Errorf("finding %q severity %s, want Critical", f.Checker, f.Severity)
 		}
 		if f.Namespace != "default" {
