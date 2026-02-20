@@ -24,7 +24,7 @@ Checks are organized into 12 categories:
 
 | Category | Checks | What it covers |
 |----------|--------|----------------|
-| Workload | 24 | Container and pod security context, privilege escalation, capabilities |
+| Workload | 25 | Container and pod security context, privilege escalation, capabilities |
 | Image | 9 | Tag pinning, allowed/blocked registries, pull policies |
 | RBAC | 15 | Roles, ClusterRoles, wildcards, privilege escalation bindings |
 | Secrets | 7 | Secrets management, environment variable exposure, entropy detection |
@@ -33,7 +33,7 @@ Checks are organized into 12 categories:
 | Scheduling | 8 | Tolerations, node affinity, priority classes, spread constraints |
 | Storage | 5 | HostPath mounts, persistent volume access modes, ephemeral storage |
 | Cluster Configuration | 10 | API server settings, admission controllers, audit logging |
-| Supply Chain | 6 | Image signatures, SBOMs, provenance attestations |
+| Supply Chain | 5 | Container runtime sockets, health probes, image age, lifecycle hooks |
 | Cloud Provider | 4 | AWS, GCP, Azure-specific misconfigurations |
 | CRD | 4 | Custom resource validation, conversion webhooks |
 
