@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/cobra"
@@ -26,7 +27,7 @@ func runMCPServer(_ *cobra.Command, _ []string) error {
 	setupLogging()
 	cfg, err := loadConfig()
 	if err != nil {
-		return err
+		return fmt.Errorf("loading config: %w", err)
 	}
 	server := mcpserver.NewServer(cfg, checker.DefaultRegistry())
 	return server.Run(context.Background(), &mcp.StdioTransport{})

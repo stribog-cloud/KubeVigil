@@ -48,13 +48,6 @@ func (c *KubeletConfigChecker) Run(ctx context.Context, resources *checker.Resou
 	for i := range nodes {
 		node := &nodes[i]
 		name := node.GetName()
-		annotations := node.GetAnnotations()
-
-		// Check for kubelet config annotation that may reveal settings.
-		kubeletConfig, ok := annotations["kubeadm.alpha.kubernetes.io/cri-socket"]
-		if !ok {
-			kubeletConfig = ""
-		}
 
 		// Check node status for kubelet version info.
 		readOnlyPort, _, _ := unstructured.NestedFloat64(node.Object, "status", "daemonEndpoints", "kubeletEndpoint", "Port")
@@ -77,7 +70,6 @@ func (c *KubeletConfigChecker) Run(ctx context.Context, resources *checker.Resou
 					"See https://kubernetes.io/docs/reference/config-api/kubelet-config.v1beta1/ for all kubelet security settings.",
 			})
 		}
-		_ = kubeletConfig
 	}
 
 	return findings, nil
