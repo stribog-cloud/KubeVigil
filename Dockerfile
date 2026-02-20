@@ -1,5 +1,5 @@
 # Stage 1: Build static binary
-FROM golang:1.25 AS builder
+FROM golang:1.25.7 AS builder
 
 WORKDIR /src
 

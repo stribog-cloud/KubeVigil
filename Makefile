@@ -11,7 +11,7 @@ LDFLAGS  := -X $(MODULE)/internal/version.Version=$(VERSION) \
 .PHONY: build test test-cover lint vet fmt cover vulncheck clean check
 
 build:
-	go build -ldflags "$(LDFLAGS)" -o $(BIN) ./cmd/kubevigil
+	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o $(BIN) ./cmd/kubevigil
 
 test:
 	go test -race -count=1 ./...
