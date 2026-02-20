@@ -14,9 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Contract test infrastructure moved from production code to test helpers (removes testify from binary)
 - Internal engineering documents removed from git tracking (will not ship in public repo)
 - README and documentation checker counts corrected (Workload: 25, Supply Chain: 5)
-- File size limits added to YAML parsing paths (manifest parser, config loader, fix engine)
-- MCP manifest path validation now verifies file existence and type
-- Duplicate system namespace definitions consolidated into shared package
+- File size limits added to YAML parsing paths (manifest parser 10 MiB, config loader 1 MiB, fix engine 10 MiB)
+- MCP manifest path validation now verifies file existence and rejects non-regular files
+- Duplicate system namespace definitions consolidated into shared `internal/k8s` package
+- MCP `checkerDefaultSeverity` replaced hardcoded "Medium" with per-checker severity map (110 entries)
+- Test coverage improved from 94.0% to 94.6% (ScanLive, NewClient, CreateGitOpsPR)
 
 ## [0.4.5] - 2026-02-15
 
