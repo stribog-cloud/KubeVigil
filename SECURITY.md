@@ -4,10 +4,7 @@
 
 If you discover a security vulnerability in KubeVigil, **please do not open a public issue.**
 
-Instead, report it through one of these channels:
-
-- **GitHub Private Vulnerability Reporting:** Use the "Report a vulnerability" button on the [Security tab](https://github.com/stribog-cloud/KubeVigil/security) of this repository.
-- **Email:** Send details to **security@stribog.cloud**
+Instead, report it through **GitHub Private Vulnerability Reporting:** use the "Report a vulnerability" button on the [Security tab](https://github.com/stribog-cloud/KubeVigil/security) of this repository.
 
 Please include:
 
