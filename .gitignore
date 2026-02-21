@@ -64,3 +64,6 @@ CLAUDE-Phase*.md
 AGENTS.md
 .claude/
 
+
+# Local issue tracker
+.beads/
