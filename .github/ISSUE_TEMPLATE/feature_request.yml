@@ -1,0 +1,44 @@
+name: Feature Request
+description: Suggest a new feature or improvement for KubeVigil.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea to make KubeVigil better? We'd love to hear it.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or motivation
+      description: What problem does this feature solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How do you envision this working?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any other approaches you thought about?
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - New security checker
+        - Auto-fix / remediation
+        - Output format / reporting
+        - MCP / AI integration
+        - CI/CD integration
+        - Performance
+        - Documentation
+        - Other

@@ -1,0 +1,14 @@
+# Gitleaks configuration for KubeVigil
+# Test fixtures contain intentional dummy secrets for testing KubeVigil's
+# secret detection checkers. These are not real credentials.
+
+title = "KubeVigil gitleaks config"
+
+[allowlist]
+  description = "Allow intentional test fixtures with dummy secrets"
+  paths = [
+    '''test/fixtures/.*''',
+    '''test/e2e/.*''',
+    '''test/benchdata/.*''',
+    '''internal/checker/secrets/helpers_test\.go''',
+  ]
