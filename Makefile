@@ -8,7 +8,7 @@ LDFLAGS  := -X $(MODULE)/internal/version.Version=$(VERSION) \
             -X $(MODULE)/internal/version.Commit=$(COMMIT) \
             -X $(MODULE)/internal/version.Date=$(DATE)
 
-.PHONY: build test test-cover lint vet fmt cover vulncheck clean check
+.PHONY: build test test-cover lint vet fmt cover vulncheck clean check graph-install graph graph-serve
 
 build:
 	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o $(BIN) ./cmd/kubevigil
@@ -42,3 +42,16 @@ clean:
 
 check: vet lint test
 	@echo "All quality gates passed."
+
+# --- Code graph analysis (dev tool) ---
+CODEGRAPH_VERSION ?= latest
+
+graph-install:
+	go install github.com/brutski/go-code-graph/cmd/analyze@$(CODEGRAPH_VERSION)
+	go install github.com/brutski/go-code-graph/cmd/server@$(CODEGRAPH_VERSION)
+
+graph:
+	$(shell go env GOPATH)/bin/analyze -repo=. -output=code-graph.json -summary=true
+
+graph-serve: graph
+	$(shell go env GOPATH)/bin/server -graph=code-graph.json -port=8080
