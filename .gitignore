@@ -63,7 +63,12 @@ CLAUDE.md
 CLAUDE-Phase*.md
 AGENTS.md
 .claude/
+.goosehints
 
 
 # Local issue tracker
 .beads/
+
+# Code graph analysis output (regenerate via `make graph`)
+code-graph.json
+code-graph.json.summary
