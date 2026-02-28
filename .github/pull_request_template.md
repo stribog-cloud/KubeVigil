@@ -13,6 +13,7 @@
 - [ ] `golangci-lint run ./...` passes locally
 - [ ] Documentation updated (if applicable)
 - [ ] No breaking changes (or clearly noted below)
+- [ ] No secrets, PII, or local paths in the diff
 
 ## Breaking changes
 
