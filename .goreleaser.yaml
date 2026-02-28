@@ -57,16 +57,16 @@ release:
   prerelease: auto
   name_template: "v{{.Version}}"
 
-# Homebrew tap — uncomment when repo is made public.
-# brews:
-#   - repository:
-#       owner: stribog-cloud
-#       name: homebrew-tap
-#     name: kubevigil
-#     homepage: "https://github.com/stribog-cloud/KubeVigil"
-#     description: "Kubernetes Security Posture Management CLI — know your clusters before attackers do."
-#     license: "Apache-2.0"
-#     install: |
-#       bin.install "kubevigil"
-#     test: |
-#       system "#{bin}/kubevigil", "version"
+# Homebrew tap — auto-publishes formula on each release.
+brews:
+  - repository:
+      owner: stribog-cloud
+      name: homebrew-tap
+    name: kubevigil
+    homepage: "https://github.com/stribog-cloud/KubeVigil"
+    description: "Kubernetes Security Posture Management CLI — know your clusters before attackers do."
+    license: "Apache-2.0"
+    install: |
+      bin.install "kubevigil"
+    test: |
+      system "#{bin}/kubevigil", "version"
