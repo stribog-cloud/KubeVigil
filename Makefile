@@ -8,7 +8,7 @@ LDFLAGS  := -X $(MODULE)/internal/version.Version=$(VERSION) \
             -X $(MODULE)/internal/version.Commit=$(COMMIT) \
             -X $(MODULE)/internal/version.Date=$(DATE)
 
-.PHONY: build test test-cover lint vet fmt cover vulncheck clean check graph-install graph graph-serve
+.PHONY: build test test-cover lint vet fmt cover vulncheck clean check setup-hooks graph-install graph graph-serve
 
 build:
 	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o $(BIN) ./cmd/kubevigil
@@ -42,6 +42,11 @@ clean:
 
 check: vet lint test
 	@echo "All quality gates passed."
+
+## Setup local git hooks for pre-commit secrets scanning
+setup-hooks:
+	git config core.hooksPath .githooks
+	@echo "Git hooks configured. Pre-commit will now scan for secrets via gitleaks."
 
 # --- Code graph analysis (dev tool) ---
 CODEGRAPH_VERSION ?= latest
