@@ -45,13 +45,20 @@ check: vet lint test
 
 # --- Code graph analysis (dev tool) ---
 CODEGRAPH_VERSION ?= latest
+CODEGRAPH_CACHE   := $(HOME)/.cache/go-code-graph
 
 graph-install:
 	go install github.com/brutski/go-code-graph/cmd/analyze@$(CODEGRAPH_VERSION)
-	go install github.com/brutski/go-code-graph/cmd/server@$(CODEGRAPH_VERSION)
+	@if [ ! -d "$(CODEGRAPH_CACHE)" ]; then \
+		echo "Cloning go-code-graph for web assets..."; \
+		git clone --depth 1 https://github.com/brutski/go-code-graph.git $(CODEGRAPH_CACHE); \
+	fi
 
 graph:
 	$(shell go env GOPATH)/bin/analyze -repo=. -output=code-graph.json -summary=true
 
 graph-serve: graph
-	$(shell go env GOPATH)/bin/server -graph=code-graph.json -port=8080
+	@cp code-graph.json $(CODEGRAPH_CACHE)/
+	@cp code-graph.json.summary $(CODEGRAPH_CACHE)/
+	@echo "Opening visualization at http://localhost:8080/visualization"
+	cd $(CODEGRAPH_CACHE) && $(shell go env GOPATH)/bin/server -graph=code-graph.json -port=8080
