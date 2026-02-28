@@ -1,6 +1,12 @@
 # KubeVigil
 
-![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/msambare/1248dd902276859b5cdea636aa5ba175/raw/kubevigil-coverage.json)
+[![CI](https://github.com/stribog-cloud/KubeVigil/actions/workflows/ci.yml/badge.svg)](https://github.com/stribog-cloud/KubeVigil/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/stribog-cloud/kubevigil)](https://goreportcard.com/report/github.com/stribog-cloud/kubevigil)
+[![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/msambare/1248dd902276859b5cdea636aa5ba175/raw/kubevigil-coverage.json)](https://github.com/stribog-cloud/KubeVigil/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/stribog-cloud/KubeVigil)](https://github.com/stribog-cloud/KubeVigil/releases/latest)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/stribog-cloud/KubeVigil)](https://go.dev/)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Downloads](https://img.shields.io/github/downloads/stribog-cloud/KubeVigil/total)](https://github.com/stribog-cloud/KubeVigil/releases)
 
 **Know your clusters before attackers do.**
 
