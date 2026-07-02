@@ -28,3 +28,25 @@ func TestRunMCPServer_InvalidConfigPath(t *testing.T) {
 	err := runMCPServer(mcpCmd, nil)
 	require.Error(t, err)
 }
+
+func TestRunMCPServer_ExplicitWorkspaceRootConfigError(t *testing.T) {
+	saveAndRestoreFlags(t)
+	mcpWorkspaceRoot = t.TempDir()
+	flagConfig = "/nonexistent/kubevigil-config.yaml"
+
+	err := runMCPServer(mcpCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "loading config")
+}
+
+func TestRunMCPServer_DefaultWorkspaceRootFromEnv(t *testing.T) {
+	saveAndRestoreFlags(t)
+	root := t.TempDir()
+	t.Setenv("KUBEVIGIL_WORKSPACE_ROOT", root)
+	mcpWorkspaceRoot = ""
+	flagConfig = "/nonexistent/kubevigil-config.yaml"
+
+	err := runMCPServer(mcpCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "loading config")
+}

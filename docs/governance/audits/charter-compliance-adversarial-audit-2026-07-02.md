@@ -9,7 +9,8 @@ tags: [audit, charter, kubevigil, red-team, adversarial]
 project: kubevigil
 version: "1.0.0"
 revision: 1
-owners: maintainers (@msambare)
+owners: [maintainers (@msambare)]
+parent_moc: "[[MOC - KubeVigil Governance]]"
 ---
 
 # Charter Compliance — Independent Adversarial Audit — 2026-07-02

@@ -9,6 +9,7 @@ project: kubevigil
 version: "1.0.0"
 revision: 1
 last_updated: 2026-07-02
+parent_moc: "[[MOC - KubeVigil Governance]]"
 ---
 
 # KubeVigil — Master Reference

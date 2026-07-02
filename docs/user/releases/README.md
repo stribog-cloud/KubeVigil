@@ -2,8 +2,15 @@
 title: "User Release Notes"
 audience: operator, integrator
 created: 2026-07-02
+updated: 2026-07-02
 type: project/user-releases
-status: reference
+status: review-draft
+tags: [kubevigil, user, releases, changelog]
+version: "1.0.0"
+revision: 1
+project: kubevigil
+parent_moc: "[[MOC - KubeVigil User Documentation]]"
+owners: [maintainers (@msambare)]
 ---
 
 # User Release Notes

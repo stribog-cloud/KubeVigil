@@ -31,7 +31,7 @@ func fixturesDir() string {
 // TestIntegrationScanManifestsThenSummary tests the full scan_manifests →
 // get_summary chain with real engine, real checkers, and real fixture files.
 func TestIntegrationScanManifestsThenSummary(t *testing.T) {
-	kv := NewKubeVigilMCP(config.Default(), checker.DefaultRegistry())
+	kv := NewKubeVigilMCP(config.Default(), checker.DefaultRegistry(), repoWorkspaceRoot())
 
 	// Scan a fixture directory with known failing manifests.
 	fixtureDir := filepath.Join(fixturesDir(), "privileged")
@@ -62,7 +62,7 @@ func TestIntegrationScanManifestsThenSummary(t *testing.T) {
 // TestIntegrationScanManifestsThenFindings tests the full scan_manifests →
 // get_findings chain with severity filtering on real data.
 func TestIntegrationScanManifestsThenFindings(t *testing.T) {
-	kv := NewKubeVigilMCP(config.Default(), checker.DefaultRegistry())
+	kv := NewKubeVigilMCP(config.Default(), checker.DefaultRegistry(), repoWorkspaceRoot())
 
 	fixtureDir := filepath.Join(fixturesDir(), "privileged")
 	_, _, err := kv.handleScanManifests(context.Background(), nil, ScanManifestsInput{
@@ -104,7 +104,7 @@ func TestIntegrationScanManifestsThenFindings(t *testing.T) {
 // TestIntegrationListChecksMatchesRegistry verifies that list_checks returns
 // the same count as the real checker registry.
 func TestIntegrationListChecksMatchesRegistry(t *testing.T) {
-	kv := NewKubeVigilMCP(config.Default(), checker.DefaultRegistry())
+	kv := NewKubeVigilMCP(config.Default(), checker.DefaultRegistry(), repoWorkspaceRoot())
 
 	_, output, err := kv.handleListChecks(context.Background(), nil, ListChecksInput{})
 	if err != nil {
@@ -120,7 +120,7 @@ func TestIntegrationListChecksMatchesRegistry(t *testing.T) {
 // TestIntegrationGetRemediationWithFindings tests get_remediation when a
 // matching finding exists from a previous scan.
 func TestIntegrationGetRemediationWithFindings(t *testing.T) {
-	kv := NewKubeVigilMCP(config.Default(), checker.DefaultRegistry())
+	kv := NewKubeVigilMCP(config.Default(), checker.DefaultRegistry(), repoWorkspaceRoot())
 
 	fixtureDir := filepath.Join(fixturesDir(), "privileged")
 	_, _, err := kv.handleScanManifests(context.Background(), nil, ScanManifestsInput{
@@ -147,7 +147,7 @@ func TestIntegrationGetRemediationWithFindings(t *testing.T) {
 // TestIntegrationGetRemediationNoScan tests get_remediation without a scan —
 // should still return generic remediation for a valid checker.
 func TestIntegrationGetRemediationNoScan(t *testing.T) {
-	kv := NewKubeVigilMCP(config.Default(), checker.DefaultRegistry())
+	kv := NewKubeVigilMCP(config.Default(), checker.DefaultRegistry(), repoWorkspaceRoot())
 
 	_, output, err := kv.handleGetRemediation(context.Background(), nil, GetRemediationInput{
 		Checker: "privileged",

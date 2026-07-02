@@ -7,3 +7,9 @@
 | [003](003-mcp-path-hardening.md) | MCP and fix path hardening (v0.5.0) | accepted |
 
 New ADRs use `templates/ADR-Template.md` from the Stribog charter set.
+
+## Revision History
+
+| Revision | Date | Author | Change |
+|----------|------|--------|--------|
+| 1 | 2026-07-02 | maintainers | Initial ADR index for charter compliance program. |

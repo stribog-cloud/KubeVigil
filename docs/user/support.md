@@ -2,8 +2,15 @@
 title: "Support and Escalation"
 audience: operator, integrator, evaluator
 created: 2026-07-02
+updated: 2026-07-02
 type: project/user-support
-status: reference
+status: review-draft
+tags: [kubevigil, user, support, escalation]
+version: "1.0.0"
+revision: 1
+project: kubevigil
+parent_moc: "[[MOC - KubeVigil User Documentation]]"
+owners: [maintainers (@msambare)]
 ---
 
 # Support and Escalation

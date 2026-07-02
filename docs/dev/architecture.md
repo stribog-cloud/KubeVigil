@@ -2,8 +2,15 @@
 title: "Architecture for Contributors"
 audience: contributor
 created: 2026-07-02
+updated: 2026-07-02
 type: project/dev-architecture
-status: reference
+status: design-reference
+tags: [kubevigil, developer, architecture, contributors]
+version: "1.0.0"
+revision: 1
+project: kubevigil
+parent_moc: "[[MOC - KubeVigil Developer Documentation]]"
+owners: [maintainers (@msambare)]
 ---
 
 # Architecture for Contributors
@@ -36,7 +43,7 @@ Derived from `docs/governance/MASTER-REFERENCE.md`. Read the master reference fo
 ```bash
 make all          # full gate set
 make test         # race-enabled unit/integration
-go test ./test/integration/ -run TestCheckerContract
+go test ./test/integration/ -run TestAllCheckersContract
 ```
 
 ## Common pitfalls

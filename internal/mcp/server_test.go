@@ -14,7 +14,7 @@ func TestNewKubeVigilMCP(t *testing.T) {
 	cfg := config.Default()
 	reg := checker.NewRegistry()
 
-	kv := NewKubeVigilMCP(cfg, reg)
+	kv := NewKubeVigilMCP(cfg, reg, repoWorkspaceRoot())
 	if kv == nil {
 		t.Fatal("NewKubeVigilMCP returned nil")
 	}
@@ -30,14 +30,14 @@ func TestNewKubeVigilMCP(t *testing.T) {
 }
 
 func TestLastResultNilBeforeScan(t *testing.T) {
-	kv := NewKubeVigilMCP(config.Default(), checker.NewRegistry())
+	kv := NewKubeVigilMCP(config.Default(), checker.NewRegistry(), repoWorkspaceRoot())
 	if kv.LastResult() != nil {
 		t.Error("LastResult should be nil before any scan")
 	}
 }
 
 func TestNewMCPServerRegistersAllTools(t *testing.T) {
-	kv := NewKubeVigilMCP(config.Default(), checker.NewRegistry())
+	kv := NewKubeVigilMCP(config.Default(), checker.NewRegistry(), repoWorkspaceRoot())
 	server := newMCPServer(kv)
 	if server == nil {
 		t.Fatal("newMCPServer returned nil")
@@ -48,7 +48,7 @@ func TestNewMCPServerRegistersAllTools(t *testing.T) {
 }
 
 func TestServerRunsWithInMemoryTransport(t *testing.T) {
-	kv := NewKubeVigilMCP(config.Default(), checker.DefaultRegistry())
+	kv := NewKubeVigilMCP(config.Default(), checker.DefaultRegistry(), repoWorkspaceRoot())
 	server := newMCPServer(kv)
 
 	// Use InMemoryTransport to test that the server can accept connections
@@ -100,7 +100,7 @@ func TestServerRunsWithInMemoryTransport(t *testing.T) {
 }
 
 func TestNewServerConvenience(t *testing.T) {
-	server := NewServer(config.Default(), checker.DefaultRegistry())
+	server := NewServer(config.Default(), checker.DefaultRegistry(), repoWorkspaceRoot())
 	if server == nil {
 		t.Fatal("NewServer returned nil")
 	}

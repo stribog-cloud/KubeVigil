@@ -1,5 +1,11 @@
 name: CI
 
+# Coverage gate enforcement relocated from inline YAML to Makefile (charter-compliance
+# program); see docs/governance/Charter-Compliance-Annex.md §1.3 and ADR-003.
+
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]
@@ -10,15 +16,17 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '1.25.7'
       - name: Run go vet
         run: go vet ./...
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v7
+        uses: golangci/golangci-lint-action@9fae48acfc02a90574d7c304a1758ef9895495fa # v7
         with:
           version: v2.10.1
 
@@ -26,9 +34,11 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     needs: lint
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '1.25.7'
       - name: Build binary for MCP E2E tests
@@ -38,12 +48,12 @@ jobs:
       - name: Export coverage percent for badge
         id: coverage
         run: |
-          COVERAGE=$(go tool cover -func=coverage.out | awk '/^total:/ {gsub(/%/,""); print $3}')
+          COVERAGE=$(awk '/^mode:/ {next} NF >= 3 { stmts += $2 + 0; if (($3 + 0) > 0) covered += $2 + 0 } END { if (stmts > 0) printf "%.1f", covered / stmts * 100; else print "0" }' coverage.out)
           echo "Coverage: ${COVERAGE}%"
           echo "percent=$COVERAGE" >> "$GITHUB_OUTPUT"
       - name: Update coverage badge
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: schneegans/dynamic-badges-action@v1.7.0
+        uses: schneegans/dynamic-badges-action@e9a478b16159b4d31420099ba146cdc50f134483 # v1.7.0
         with:
           auth: ${{ secrets.GIST_TOKEN }}
           gistID: 1248dd902276859b5cdea636aa5ba175
@@ -58,9 +68,11 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     needs: test
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '1.25.7'
       - name: Build and smoke test
@@ -70,9 +82,11 @@ jobs:
     name: Documentation Gates
     runs-on: ubuntu-latest
     needs: lint
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '1.25.7'
       - name: Run documentation gates
@@ -86,9 +100,11 @@ jobs:
     name: Vulnerability Check
     runs-on: ubuntu-latest
     needs: lint
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '1.25.7'
       - name: Install govulncheck
@@ -96,12 +112,13 @@ jobs:
       - name: Run govulncheck
         run: govulncheck ./...
 
-
   secrets-scan:
     name: Secrets Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
       - name: Install gitleaks

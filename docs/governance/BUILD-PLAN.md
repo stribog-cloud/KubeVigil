@@ -9,6 +9,8 @@ project: kubevigil
 version: "1.0.0"
 revision: 1
 last_updated: 2026-07-02
+parent_moc: "[[MOC - KubeVigil Governance]]"
+owners: [maintainers (@msambare)]
 ---
 
 # KubeVigil Build Plan
@@ -32,7 +34,7 @@ KubeVigil v0.5.0 completed Phase 3 (110 checks, auto-remediation). Current phase
 
 - [x] Charter Compliance Annex filed with public release profile
 - [x] Master reference, testing strategy, waiver register, ADRs, audit closeout
-- [x] `make all` enforces 96% coverage and full gate set
+- [x] `make all` enforces 96% coverage and full gate set (including `doc-gate`, `doc-drift-gate`, `doc-samples-test`, `doc-a11y`)
 - [x] CI mirrors `make coverage` and documentation gates
 - [x] Developer and user doc gates (`doc-gate`, `doc-drift-gate`, `doc-samples-test`)
 - [x] Threat model and security ADRs published
@@ -41,10 +43,7 @@ KubeVigil v0.5.0 completed Phase 3 (110 checks, auto-remediation). Current phase
 ### Quality gates (phase closeout)
 
 ```bash
-make all
-make doc-gate
-make doc-drift-gate
-make doc-samples-test
+make all   # includes doc-gate, doc-drift-gate, doc-samples-test, doc-a11y
 ```
 
 ### Dependencies
@@ -56,3 +55,9 @@ None blocking — documentation and gate wiring only; code changes limited to co
 - Rewriting checker registry or report HTML implementation
 - New security checks beyond compliance-driven test coverage
 - Hosted service / operational delivery artifacts
+
+## 1. Revision History
+
+| Version | Revision | Date | Change |
+|---------|----------|------|--------|
+| 1.0.0 | 1 | 2026-07-02 | Initial build plan; Phase 4 charter compliance in progress. |

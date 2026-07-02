@@ -36,11 +36,26 @@ func NewScanner(registry *checker.Registry, cfg *config.Config) *Scanner {
 
 // ScanManifest scans YAML manifests at the given path (file or directory).
 func (s *Scanner) ScanManifest(ctx context.Context, path string) (*checker.ScanResult, error) {
+	return s.scanManifestAt(ctx, path, "")
+}
+
+// ScanManifestWithinRoot scans manifests confined to workspaceRoot (MCP untrusted input).
+func (s *Scanner) ScanManifestWithinRoot(ctx context.Context, path, workspaceRoot string) (*checker.ScanResult, error) {
+	return s.scanManifestAt(ctx, path, workspaceRoot)
+}
+
+func (s *Scanner) scanManifestAt(ctx context.Context, path, workspaceRoot string) (*checker.ScanResult, error) {
 	start := time.Now()
 
 	enabled := s.enabledChecks(checker.ScanModeManifest)
 
-	cache, parseErrs := ParsePath(path)
+	var cache *checker.ResourceCache
+	var parseErrs []error
+	if workspaceRoot != "" {
+		cache, parseErrs = ParsePathWithinRoot(path, workspaceRoot)
+	} else {
+		cache, parseErrs = ParsePath(path)
+	}
 	for _, err := range parseErrs {
 		slog.Warn("manifest parse error", "error", err)
 	}

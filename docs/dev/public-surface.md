@@ -2,8 +2,15 @@
 title: "Public Surface Map"
 audience: consumer, embedder, contributor
 created: 2026-07-02
+updated: 2026-07-02
 type: project/public-surface
-status: reference
+status: design-reference
+tags: [kubevigil, developer, api, mcp, cli]
+version: "1.0.0"
+revision: 1
+project: kubevigil
+parent_moc: "[[MOC - KubeVigil Developer Documentation]]"
+owners: [maintainers (@msambare)]
 ---
 
 # KubeVigil Public Surface Map
@@ -22,11 +29,14 @@ Stable contracts for integrators and contributors. Breaking changes require ADR 
 
 ## MCP tools
 
-| Tool | Stability |
-|------|-----------|
-| `kubevigil_scan` | stable |
-| `kubevigil_get_findings` | stable |
-| `kubevigil_get_summary` | stable |
+| Tool | Stability | Notes |
+|------|-----------|-------|
+| `scan_cluster` | stable | Live cluster scan |
+| `scan_manifests` | stable | Manifest scan (workspace-confined) |
+| `get_findings` | stable | Query last scan findings |
+| `get_summary` | stable | Summary of last scan |
+| `list_checks` | stable | Registered checker catalog |
+| `get_remediation` | stable | Remediation hint for a finding |
 
 ## Checker interface
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Markdown structure check for user docs (headings, alt text placeholders).
+# Markdown structure check for user docs (headings, alt text).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -12,14 +12,10 @@ for f in docs/getting-started/quickstart.md docs/user/support.md docs/index.md; 
   grep -q '^#' "$f" || fail "$f has no headings"
 done
 
-# Images in docs should declare alt text when present
-while IFS= read -r -d '' img; do
-  if ! grep -B1 -F "$img" "${img%.md}.md" 2>/dev/null | grep -q '!\['; then
-    : # skip — checked via rg below
-  fi
-done < /dev/null
-
-if rg '!\[\]\(' docs/ >/dev/null 2>&1; then
+# Images must have non-empty alt text (reject ![](path) and ![ ](path))
+bad_alt=$(grep -rE '!\[\]\([^)]+\)|!\[[[:space:]]*\]\([^)]+\)' docs/ --include='*.md' 2>/dev/null || true)
+if [[ -n "$bad_alt" ]]; then
+  echo "$bad_alt" >&2
   fail "found markdown images without alt text"
 fi
 

@@ -15,6 +15,7 @@ import (
 	"github.com/stribog-cloud/kubevigil/internal/engine"
 	"github.com/stribog-cloud/kubevigil/internal/frameworks"
 	"github.com/stribog-cloud/kubevigil/internal/k8s"
+	"github.com/stribog-cloud/kubevigil/internal/pathguard"
 )
 
 // maxInputPathLen is the maximum length for user-supplied paths in MCP inputs.
@@ -73,7 +74,7 @@ func (kv *KubeVigilMCP) handleScanManifests(
 	if input.Path == "" {
 		return nil, ScanSummaryOutput{}, fmt.Errorf("scan_manifests: path is required")
 	}
-	cleanPath, err := validateManifestPath(input.Path)
+	cleanPath, err := validateManifestPath(kv.workspaceRoot, input.Path)
 	if err != nil {
 		return nil, ScanSummaryOutput{}, fmt.Errorf("scan_manifests: %w", err)
 	}
@@ -81,7 +82,7 @@ func (kv *KubeVigilMCP) handleScanManifests(
 	cfg := kv.configWithOverrides(input.Severity, input.Framework, false, "")
 	scanner := engine.NewScanner(kv.registry, cfg)
 
-	result, err := scanner.ScanManifest(ctx, cleanPath)
+	result, err := scanner.ScanManifestWithinRoot(ctx, cleanPath, kv.workspaceRoot)
 	if err != nil {
 		return nil, ScanSummaryOutput{}, fmt.Errorf("scan_manifests: scanning path %q: %w", input.Path, err)
 	}
@@ -253,32 +254,20 @@ func buildSummary(result *checker.ScanResult) ScanSummaryOutput {
 	return summary
 }
 
-// validateManifestPath validates and cleans a user-supplied manifest path.
-// It verifies the path exists and is either a regular file or a directory.
-// Symlinks are rejected to prevent the scan engine from following links to
-// sensitive files outside the intended directory.
-//
-// Note: this function does NOT restrict which directories can be scanned.
-// The MCP server runs locally with the same trust model as other MCP tools;
-// the caller already has filesystem access. Path restriction is deferred to
-// a future phase with configurable allowed-paths.
-func validateManifestPath(path string) (string, error) {
+// validateManifestPath validates a user-supplied manifest path within workspaceRoot.
+// Paths outside the root, containing .. escape, or traversing symlinks are rejected.
+func validateManifestPath(workspaceRoot, path string) (string, error) {
 	if len(path) > maxInputPathLen {
 		return "", fmt.Errorf("path exceeds maximum length of %d characters", maxInputPathLen)
 	}
-	clean := filepath.Clean(path)
-	// Use Lstat to detect symlinks (Stat follows them silently).
-	info, err := os.Lstat(clean)
+	if workspaceRoot == "" {
+		return "", fmt.Errorf("workspace root is not configured")
+	}
+	confined, err := pathguard.ResolveWithinRoot(workspaceRoot, path)
 	if err != nil {
-		return "", fmt.Errorf("manifest path %q: %w", clean, err)
+		return "", fmt.Errorf("manifest path %q: %w", path, err)
 	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return "", fmt.Errorf("manifest path %q is a symlink (rejected for security)", clean)
-	}
-	if !info.Mode().IsRegular() && !info.IsDir() {
-		return "", fmt.Errorf("manifest path %q is not a regular file or directory", clean)
-	}
-	return clean, nil
+	return confined, nil
 }
 
 // validateKubeconfig validates a user-supplied kubeconfig path.
@@ -291,7 +280,7 @@ func validateKubeconfig(path string) error {
 		return fmt.Errorf("kubeconfig path exceeds maximum length of %d characters", maxInputPathLen)
 	}
 	clean := filepath.Clean(path)
-	info, err := os.Lstat(clean) //nolint:gosec // Path is cleaned above; no directory restriction by design (local MCP).
+	info, err := os.Lstat(clean) //nolint:gosec // G304: kubeconfig is operator-supplied; symlink and regular-file checks follow.
 	if err != nil {
 		return fmt.Errorf("kubeconfig path %q: %w", path, err)
 	}

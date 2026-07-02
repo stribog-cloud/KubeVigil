@@ -6,9 +6,11 @@ type: project/testing-strategy
 status: governing-reference
 tags: [charter, governance, kubevigil, testing, tdd]
 project: kubevigil
-version: "1.0.0"
-revision: 1
+version: "1.1.0"
+revision: 2
 last_updated: 2026-07-02
+parent_moc: "[[MOC - KubeVigil Governance]]"
+owners: [maintainers (@msambare)]
 ---
 
 # KubeVigil Testing Strategy
@@ -78,11 +80,20 @@ AI-assisted work must show observable failure before implementation (AI Agent Ex
 
 ## 4. Coverage Policy
 
-Measurement boundary: all packages under `internal/` and `cmd/`.
+### Measurement boundary
 
-Excluded from measurement: `test/` helpers and fixtures.
+Coverage is measured on **shipped production code only**: all packages under `internal/` and `cmd/`. This boundary reflects what operators and integrators receive in the binary and MCP server — not test harnesses, fixtures, or golden generators.
 
-`make coverage` fails below 96%. Per-package gaps on critical paths are tracked even when aggregate passes.
+### Excluded paths (principled, not number-driven)
+
+| Path | Rationale |
+|------|-----------|
+| `test/` | Fixtures, contract harnesses, and e2e scripts are exercised by integration and Bats layers; including them would dilute the signal on production packages and reward vacuous helper coverage |
+| Generated artifacts | None currently; if introduced, excluded per Charter §5.4 governance-change rule |
+
+The exclusion is **not** drawn to hit a coverage target. Integration tests in `test/integration/` remain mandatory (`TestAllCheckersContract`, fix pipelines) and run on every `make test` / CI test job. The 96% floor applies to production packages because that is the trust surface; helper coverage is enforced by layer-specific gates instead of aggregate percentage.
+
+`make coverage` fails below 96%. Per-package gaps on critical paths (`internal/fix/`, `internal/mcp/`, `internal/checker/secrets/`) are tracked at 98% even when aggregate passes.
 
 ## 5. Security Testing
 
@@ -101,3 +112,10 @@ Local: `make all`
 CI: lint → test (96% coverage) → build → vulncheck; secrets-scan parallel
 
 Gates must match (Engineering Charter §7.3).
+
+## 7. Revision History
+
+| Version | Revision | Date | Change |
+|---------|----------|------|--------|
+| 1.0.0 | 1 | 2026-07-02 | Initial testing strategy for charter compliance program. |
+| 1.1.0 | 2 | 2026-07-02 | Expanded §4 with principled internal/+cmd boundary justification (audit F19). |

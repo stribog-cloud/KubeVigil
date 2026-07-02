@@ -7,9 +7,10 @@ status: governing-reference
 tags: [charter, governance, kubevigil, k8s, stribog]
 project: kubevigil
 version: "1.0.0"
-revision: 1
+revision: 3
 last_updated: 2026-07-02
-owners: [stribog-team]
+parent_moc: "[[MOC - KubeVigil Governance]]"
+owners: [maintainers (@msambare)]
 ---
 
 # KubeVigil — Charter Compliance Annex
@@ -22,22 +23,24 @@ owners: [stribog-team]
 
 | Governing Document | Applicability | Pinned Version | Pinned Revision (last reviewed at) |
 |--------------------|---------------|----------------|------------------------------------|
-| Universal Stribog Engineering Charter | Applies | 1.3 | revision 1, 2026-07-02 |
-| Stribog Documentation Standard | Applies | 2.1 | revision 9, 2026-07-02 |
-| Stribog AI Agent Execution Standard | Applies | 1.1 | revision 9, 2026-07-02 |
+| Universal Stribog Engineering Charter | Applies | 1.3 | revision 1, 2026-05-12 |
+| Stribog Documentation Standard | Applies | 2.1 | revision 9, 2026-05-12 |
+| Stribog AI Agent Execution Standard | Applies | 1.1 | revision 9, 2026-05-12 |
 | Stribog Operational Delivery Standard | N/A — CLI tool, no managed-service scope | N/A | |
-| Stribog Security Posture Standard | Applies — security tool, untrusted manifest input | 1.0 | revision 6, 2026-07-02 |
-| Stribog Data and Privacy Standard | N/A — no PII collection or storage; scan input is cluster/manifest config | N/A | |
-| Stribog User Documentation Standard | Applies — operator/integrator CLI and MCP | 1.0 | revision 2, 2026-07-02 |
-| Stribog Developer Documentation Standard | Applies — public Go API, MCP surface, contributors | 1.0 | revision 2, 2026-07-02 |
+| Stribog Security Posture Standard | Applies — security tool, untrusted manifest input | 1.0 | revision 6, 2026-05-12 |
+| Stribog Data and Privacy Standard | Partial — no persistent PII store; MCP/scan may surface secrets from operator-supplied paths within workspace confinement | 1.0 | revision 2, 2026-05-12 |
+| Stribog User Documentation Standard | Applies — operator/integrator CLI and MCP | 1.0 | revision 2, 2026-05-12 |
+| Stribog Developer Documentation Standard | Applies — public Go API, MCP surface, contributors | 1.0 | revision 2, 2026-05-12 |
 | Stribog UI/UX Standard | N/A — line-oriented CLI per UI/UX §0.2 | N/A | |
-| Stribog Glossary | Applies | 1.4 | revision 1, 2026-07-02 |
-| Charter Governance | Applies | 1.4 | revision 1, 2026-07-02 |
+| Stribog Glossary | Applies | 1.4 | revision 1, 2026-05-12 |
+| Charter Governance | Applies | 1.4 | revision 1, 2026-05-12 |
 
 | Property | Value |
 |----------|-------|
 | Project profile (Charter §0.4) | public library / package (CLI binary + MCP server) |
-| Public release profile | See §X below |
+| Public release profile | See §8.1 below |
+| Project applicability matrix | `docs/governance/Project-Applicability-Matrix.md` |
+| Release evidence (v0.5.0) | `docs/governance/Release-Evidence-v0.5.0.md` |
 
 ## 0.1 Project Posture
 
@@ -52,7 +55,7 @@ owners: [stribog-team]
 | Operational scope | none |
 | AI-assisted contribution | yes |
 | Security Posture Standard binds | yes |
-| Data and Privacy Standard binds | no |
+| Data and Privacy Standard binds | partial — no collection/store; transient exposure via scan findings if manifests contain secrets |
 
 ## 1. Toolchain
 
@@ -85,6 +88,8 @@ Exposes: `format`, `lint`, `vet`, `test`, `coverage`, `secrets`, `vuln`, `build`
 | Per-package floor for critical paths | 98% for `internal/fix/`, `internal/mcp/`, `internal/checker/secrets/` |
 | Measurement boundary | `internal/` and `cmd/` production packages |
 | Excluded paths | `test/` (fixtures and harnesses), generated artifacts (none currently) |
+| Coverage gate location | `Makefile` `coverage` target (relocated from inline CI YAML, charter-compliance program) |
+| Coverage percent parser | `awk` on `coverage.out` (avoids `go tool cover` bufio.Scanner flake on long profiles) |
 
 ### 1.4 Test Layers
 
@@ -118,6 +123,8 @@ Exposes: `format`, `lint`, `vet`, `test`, `coverage`, `secrets`, `vuln`, `build`
 | Local agent rules | `AGENTS.md` |
 | Waiver register | `docs/governance/WAIVER-REGISTER.md` |
 | Charter Compliance Annex | `docs/governance/Charter-Compliance-Annex.md` |
+| Project applicability matrix | `docs/governance/Project-Applicability-Matrix.md` |
+| Release evidence | `docs/governance/Release-Evidence-v0.5.0.md` |
 
 Internal engineering specs (`docs/internal/`) are **excluded** from the public release profile. Public governing documents must not depend on paths under `docs/internal/`.
 
@@ -154,6 +161,8 @@ Internal engineering specs (`docs/internal/`) are **excluded** from the public r
 | Explanations | `docs/getting-started/concepts.md`, `docs/compliance/` |
 | Troubleshooting + FAQ | `docs/troubleshooting/common-issues.md` |
 | User-facing release notes | `docs/user/releases/` |
+| Tutorial | `docs/user/tutorial-first-scan.md` |
+| Explanation | `docs/user/explanation-why-manifest-scan.md` |
 | Support escalation map | `docs/user/support.md` |
 | Doc-to-release sync gate | `make doc-gate` |
 | Doc accessibility command | `make doc-a11y` |
@@ -214,7 +223,7 @@ No planned sunset.
 
 ## 7. Active Waivers
 
-No active waivers as of revision 1.
+No active waivers as of revision 2.
 
 ## 8. Annex Review Cadence
 
@@ -222,7 +231,7 @@ Reviewed at charter MAJOR bumps, phase boundaries, quarterly minimum, and toolch
 
 ---
 
-## §X. Public Release Profile
+## 8.1 Public Release Profile
 
 **Applies:** yes — public derived projection at `https://github.com/stribog-cloud/KubeVigil`
 
@@ -248,3 +257,11 @@ Reviewed at charter MAJOR bumps, phase boundaries, quarterly minimum, and toolch
 
 - [x] No included artifact references an excluded artifact (Charter Governance §3.6, rule 1).
 - [x] All gates bind to the included set (Charter Governance §3.6, rule 2).
+
+## 9. Revision History
+
+| Version | Revision | Date | Change |
+|---------|----------|------|--------|
+| 1.0.0 | 1 | 2026-07-02 | Initial charter compliance annex filed on branch `charter-compliance`. |
+| 1.0.0 | 2 | 2026-07-02 | Corrected charter pin review dates to source `last_updated` (2026-05-12); renamed §X to §8.1; filed applicability matrix and v0.5.0 release evidence references. Closes audit findings F5, F11. |
+| 1.0.0 | 3 | 2026-07-02 | Re-evaluated Data-Privacy partial applicability; documented coverage gate relocation; user Diátaxis tutorial/explanation paths (audit F7/F18/F20/F23). |

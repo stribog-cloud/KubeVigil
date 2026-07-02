@@ -40,7 +40,7 @@ fmt:
 cover: coverage
 coverage:
 	go test -race -count=1 -coverprofile=coverage.out $(COVER_PKGS)
-	@pct=$$(go tool cover -func=coverage.out | awk '/^total:/ {gsub(/%/,""); print $$3}'); \
+	@pct=$$(awk '/^mode:/ {next} NF >= 3 { stmts += $$2 + 0; if (($$3 + 0) > 0) covered += $$2 + 0 } END { if (stmts > 0) printf "%.1f", covered / stmts * 100; else print "0" }' coverage.out); \
 	echo "Coverage: $${pct}% (floor: $(COVERAGE_FLOOR)%)"; \
 	awk -v p="$$pct" -v f="$(COVERAGE_FLOOR)" 'BEGIN {exit !(p+0 >= f+0)}' || \
 	(echo "ERROR: coverage $${pct}% below floor $(COVERAGE_FLOOR)%" && exit 1)
@@ -61,7 +61,7 @@ clean:
 
 check: vet lint test coverage secrets vuln build smoke
 
-all: format lint vet test coverage secrets vuln build smoke
+all: format lint vet test coverage secrets vuln build smoke doc-gate doc-drift-gate doc-samples-test doc-a11y doc-gate doc-drift-gate doc-samples-test doc-a11y
 
 hooks-install setup-hooks:
 	git config core.hooksPath .githooks

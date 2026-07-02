@@ -6,9 +6,11 @@ type: project/threat-model
 status: governing-reference
 tags: [charter, governance, kubevigil, security, stride]
 project: kubevigil
-version: "1.0.0"
-revision: 1
+version: "1.1.0"
+revision: 2
 last_updated: 2026-07-02
+parent_moc: "[[MOC - KubeVigil Governance]]"
+owners: [maintainers (@msambare)]
 ---
 
 # KubeVigil Threat Model
@@ -36,7 +38,7 @@ last_updated: 2026-07-02
 1. **Operator → CLI/MCP** — user invokes commands; flags and paths are attacker-controlled if malware supplies them
 2. **CLI → Kubernetes API** — read-only list/get in scan; credentials scoped by kubeconfig
 3. **CLI → Filesystem** — manifest read, fix write, backup directories
-4. **MCP host → stdio MCP** — AI harness sends tool arguments
+4. **MCP host → stdio MCP** — AI harness sends tool arguments (untrusted path input)
 
 ## 3. STRIDE Summary
 
@@ -46,8 +48,19 @@ last_updated: 2026-07-02
 | Tampering | Symlink escape on fix path | `os.Lstat`, `filepath.Rel` boundary checks |
 | Repudiation | Deny destructive fix | Backup dir + RESTORE.md; audit logs via slog |
 | Information disclosure | Secrets in scan output | `.gitignore` scan-results; operator redaction |
+| Information disclosure (MCP egress) | Prompt injection requests `scan_manifests` on `~/.ssh/id_rsa` or repo secrets | Workspace root confinement (`pathguard.ResolveWithinRoot`, ADR-003); kubeconfig symlink rejection; 10 MiB file cap |
 | Denial of service | YAML bomb / huge files | 10 MiB file limit, 10k document cap |
 | Elevation of privilege | Write outside target dir | Backup path enforcement, no cluster apply |
+
+### 3.1 MCP data-egress control mapping
+
+| Control | Implementation | Test |
+|---------|----------------|------|
+| Workspace root jail | `KUBEVIGIL_WORKSPACE_ROOT`, `--workspace-root`, `validateManifestPath` | `internal/pathguard/pathguard_test.go`, `internal/mcp/tools_scan_test.go` |
+| `..` and absolute-path escape rejection | `pathguard.ResolveWithinRoot` | `TestResolveWithinRoot_RejectsDotDotEscape` |
+| Symlink traversal block | `Lstat` on entry + parent walk | `TestResolveWithinRoot_RejectsSymlinkEscape` |
+| Bounded directory read | `engine.parseDirBounded` | `internal/engine/manifest_parser_bounded_test.go` |
+| PII/secrets in findings payload | Severity + resource metadata only; no arbitrary file dump | MCP e2e tests; operator configures workspace to manifest tree |
 
 ## 4. Attack Surfaces
 
@@ -55,7 +68,7 @@ last_updated: 2026-07-02
 |---------|--------------|-------|
 | `kubevigil scan -f` | Local/CI | Integration + path validation |
 | `kubevigil fix --apply` | Local/CI | Fix integration, symlink tests |
-| `kubevigil mcp-server` | IDE agents | `internal/mcp/e2e_test.go` |
+| `kubevigil mcp-server` | IDE agents | `internal/mcp/e2e_test.go`, pathguard tests |
 | Container image | Pull from ghcr.io | Distroless non-root, minimal base |
 
 ## 5. Residual Risks
@@ -63,7 +76,16 @@ last_updated: 2026-07-02
 - Operator runs fix on production git branch without review — **mitigated by dry-run default**
 - Compromised dependency in build chain — **mitigated by govulncheck CI + pinned go.sum**
 - Stale kubeconfig with excessive RBAC — **out of scope; operator responsibility**
+- Backup files inherit ambient umask permissions and use predictable `<path>.kubevigil-backup-<timestamp>` names — **residual accepted**; operators should restrict backup directory permissions and treat backups as sensitive; see `internal/fix/backup.go`
+- MCP kubeconfig path is not workspace-jailed (operator supplies cluster credentials by design) — **accepted**; symlink and regular-file validation only
 
 ## 6. Maintenance Triggers
 
-Update this model when adding: new MCP tools, network calls, cluster write paths, or new parsers.
+Update this model when adding: new MCP tools, network calls, cluster write paths, new parsers, or changes to PII/secrets leak prevention layers on `main`.
+
+## 7. Revision History
+
+| Version | Revision | Date | Change |
+|---------|----------|------|--------|
+| 1.0.0 | 1 | 2026-07-02 | Initial STRIDE threat model for CLI and MCP surfaces. |
+| 1.1.0 | 2 | 2026-07-02 | Added MCP egress STRIDE row, control mapping, backup residual, PII-layer maintenance trigger (audit F7/F8/F24). |

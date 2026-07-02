@@ -2,8 +2,15 @@
 title: "Deprecation Register"
 audience: consumer, contributor
 created: 2026-07-02
+updated: 2026-07-02
 type: project/deprecations
-status: reference
+status: design-reference
+tags: [kubevigil, developer, deprecations, compatibility]
+version: "1.0.0"
+revision: 1
+project: kubevigil
+parent_moc: "[[MOC - KubeVigil Developer Documentation]]"
+owners: [maintainers (@msambare)]
 ---
 
 # Deprecation Register

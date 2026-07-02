@@ -16,7 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- CI and Makefile enforce **96%** coverage floor on `internal/` + `cmd/` (Stribog Engineering Charter §5.4)
+- CI and Makefile enforce **96%** coverage floor on `internal/` + `cmd/` (Stribog Engineering Charter §5.4); supersedes the prior **94%** project floor documented in v0.5.0 release notes
+- `//nolint:gosec` on manifest reads documents G304 justification (path confinement or operator trust), not security hardening by annotation alone
+- Governing documentation standardized on **96%** floor across Annex, `AGENTS.md`, `CONTRIBUTING.md`, and `testing-strategy.md`
 - `make all` is the canonical quality gate entrypoint; install script URLs use `main` branch
 - Bumped `github.com/modelcontextprotocol/go-sdk` to v1.4.1 and `golang.org/x/net` to v0.55.0 (govulncheck clean)
 
