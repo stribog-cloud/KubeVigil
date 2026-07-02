@@ -31,7 +31,7 @@ func openConfinedAt(absRoot string, components []string) (*os.File, error) {
 			Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_SYMLINKS,
 		}
 
-		nextFD, err := unix.Openat2(dirFD, comp, how, unix.SizeofOpenHow)
+		nextFD, err := unix.Openat2(dirFD, comp, how)
 		if err != nil {
 			return nil, fmt.Errorf("opening %q: %w", comp, err)
 		}
