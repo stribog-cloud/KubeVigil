@@ -58,6 +58,7 @@ func openConfinedAt(absRoot string, components []string) (*os.File, error) {
 			return nil, fmt.Errorf("path component %q is not a regular file", comp)
 		}
 
+		//nolint:gosec // G115: nextFD is a non-negative fd from Openat2 (error-checked above); uintptr is required by os.NewFile.
 		return os.NewFile(uintptr(nextFD), filepath.Join(absRoot, filepath.Join(components...))), nil
 	}
 
