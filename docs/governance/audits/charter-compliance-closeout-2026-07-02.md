@@ -71,7 +71,7 @@ Round-3 blockers closed: F4 cites the external audit series as the independent c
 
 ## 3. Validation Performed (reproducible on HEAD)
 
-Captured 2026-07-02 on branch `charter-compliance` at commit `6b9cc18` (log: `/tmp/kubevigil-make-all-r3-head.log`):
+Captured 2026-07-02 on branch `charter-compliance` (log: `/tmp/kubevigil-make-all-r3-final.log`):
 
 ```text
 $ make all
