@@ -197,6 +197,7 @@ Internal engineering specs (`docs/internal/`) are **excluded** from the public r
 | Conventional Commits | yes — feat, fix, docs, chore, ci, test, perf |
 | Git identity | `25719166+msambare@users.noreply.github.com` |
 | AI attribution | `Co-authored-by: <AgentName> <noreply-address>` per AI Agent Execution Standard §5.1 |
+| Co-author trailers (this repo) | Use the harness in use — do not rewrite published history to “fix” past commits. Claude Code / Cursor: `Co-authored-by: Claude <noreply@anthropic.com>`. Grok: `Co-authored-by: Grok <grok@x.ai>`. Codex / OpenCode: match the harness identity. |
 
 ## 4. AI Agent Posture
 

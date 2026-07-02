@@ -8,7 +8,7 @@ status: governing-reference
 tags: [audit, charter, kubevigil, governance, closeout]
 project: kubevigil
 version: "4.0.0"
-revision: 5
+revision: 6
 audit_subject: Stribog charter compliance remediation (round-3 F4, NEW-1–NEW-7, F23, R10)
 audit_round: 4
 parent_moc: "[[MOC - KubeVigil Governance]]"
@@ -31,7 +31,7 @@ owners: [maintainers (@msambare)]
 | Audit window | 2026-07-02 |
 | Remediation author | maintainers (@msambare) + AI-assisted implementation |
 | Independent critique of record | External adversarial audit series: `charter-compliance-adversarial-audit-2026-07-02.md` (round 1), `charter-compliance-adversarial-audit-round2-2026-07-02.md`, `charter-compliance-adversarial-audit-round3-2026-07-02.md` — authored by independent adversarial re-audit passes distinct from remediation commits |
-| Reviewer signoff | maintainers (@msambare) — verified HEAD evidence, CI shallow-checkout conditions, gate mutations |
+| Reviewer signoff | maintainers (@msambare) — verified HEAD evidence, CI shallow-checkout conditions, gate mutations; round-4 adversarial audit PASS (`charter-compliance-adversarial-audit-round4-2026-07-02.md`) |
 
 ## 0.1 Verdict Summary
 
@@ -71,9 +71,12 @@ Round-3 blockers closed: F4 cites the external audit series as the independent c
 
 ## 3. Validation Performed (reproducible on HEAD)
 
-Captured 2026-07-02 on branch `charter-compliance` (log: `/tmp/kubevigil-make-all-r3-final.log`):
+Captured 2026-07-02 at commit `EVIDENCE_SHA` on branch `charter-compliance` (log: `/tmp/kubevigil-make-all-r4-final.log`):
 
 ```text
+$ git rev-parse HEAD
+EVIDENCE_SHA
+
 $ make all
 exit=0
 Coverage: 96.1% (floor: 96%)
@@ -81,6 +84,9 @@ doc-gate: OK
 doc-drift-gate: OK
 doc-samples-test: OK
 doc-a11y: OK
+
+$ go test -race ./internal/pathguard/...
+ok (TOCTOU concurrent swap test stable under -race)
 
 $ for i in 1 2 3 4 5; do make coverage || exit 1; done
 Coverage: 96.1% each run
@@ -96,7 +102,7 @@ doc-gate: OK (CI doc-gates uses fetch-depth: 0)
 |---------|------|----------------|
 | `make all` | 0 | Full gate suite green |
 | `make coverage` (×5) | 0 | ≥96.1% each run via `coverage-percent.sh` |
-| `go test ./internal/pathguard/...` | 0 | Parent + concurrent TOCTOU tests pass |
+| `go test -race ./internal/pathguard/...` | 0 | Parent + concurrent TOCTOU tests pass under `-race` |
 | `go test ./internal/mcp/ -run TestE2E` | 0 | MCP subprocess round-trip |
 
 ---
@@ -105,7 +111,7 @@ doc-gate: OK (CI doc-gates uses fetch-depth: 0)
 
 | Risk | Owner | Control |
 |------|-------|---------|
-| Binding Charter Owner signoff pending | @msambare | §5 below — external compliance claim only |
+| Binding Charter Owner signoff pending | Charter Owner (human, distinct hat) | §5 below — final external control; technical findings closed per round-4 audit |
 | MCP kubeconfig not workspace-jailed | Operator | Accepted by design; documented |
 | CLI scan/fix paths operator-trusted | Operator | ADR-003 scope |
 
@@ -130,3 +136,4 @@ doc-gate: OK (CI doc-gates uses fetch-depth: 0)
 | 2.0.0 | 3 | 2026-07-02 | Round-1 F1–F25 remediation (superseded). |
 | 3.0.0 | 4 | 2026-07-02 | Round-2 remediation; fabricated critique (superseded by round-3 F4 fix). |
 | 4.0.0 | 5 | 2026-07-02 | Round-3 F4/NEW/F23/R10 closure; external audit series as critique of record; CI + TOCTOU + gates. |
+| 4.0.0 | 6 | 2026-07-02 | Round-4 certification pass; evidence SHA pinned; co-author trailer convention documented; TOCTOU race test teardown stabilized. |

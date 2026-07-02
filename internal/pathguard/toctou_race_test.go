@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"testing"
 )
@@ -55,10 +56,12 @@ func TestOpenRegularWithinRoot_RejectsConcurrentParentSymlinkSwap(t *testing.T) 
 
 	relPath := filepath.Join("sub", "pod.yaml")
 	done := make(chan struct{})
-	defer close(done)
 
 	var swaps atomic.Uint64
+	var swapWG sync.WaitGroup
+	swapWG.Add(1)
 	go func() {
+		defer swapWG.Done()
 		for {
 			select {
 			case <-done:
@@ -74,6 +77,13 @@ func TestOpenRegularWithinRoot_RejectsConcurrentParentSymlinkSwap(t *testing.T) 
 			}
 		}
 	}()
+	t.Cleanup(func() {
+		close(done)
+		swapWG.Wait()
+		// Restore a real directory so t.TempDir() cleanup does not race the swap loop.
+		_ = os.RemoveAll(subDir)
+		_ = os.Mkdir(subDir, 0o755)
+	})
 
 	for i := 0; i < 2000; i++ {
 		f, err := OpenRegularWithinRoot(root, relPath)

@@ -14,7 +14,7 @@ Read these documents **in order** before broad implementation work:
 - **Coverage:** 96% floor on `internal/` + `cmd/` (`make coverage`)
 - **Gates:** `make all` must pass before claiming completion
 - **Mutating safety:** `fix` is dry-run by default; never patch live clusters from agents
-- **Attribution:** AI-assisted commits include `Co-authored-by:` trailer per Annex §3
+- **Attribution:** AI-assisted commits include `Co-authored-by:` trailer per Annex §3 (harness-specific: Claude `noreply@anthropic.com`, Grok `grok@x.ai`, etc.)
 - **Public release profile:** do not reference `docs/internal/` from public docs
 
 ## Workflow
