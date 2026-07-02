@@ -5,6 +5,8 @@ COMMIT   ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE     ?= $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 COVER_PKGS := $(shell go list ./internal/... ./cmd/...)
 COVERAGE_FLOOR := 96
+GOPATH_BIN := $(shell go env GOPATH)/bin
+GOVULNCHECK := $(GOPATH_BIN)/govulncheck
 
 LDFLAGS  := -X $(MODULE)/internal/version.Version=$(VERSION) \
             -X $(MODULE)/internal/version.Commit=$(COMMIT) \
@@ -47,7 +49,8 @@ secrets:
 	gitleaks detect --source . --config .gitleaks.toml --redact -v
 
 vuln:
-	govulncheck ./...
+	@test -x "$(GOVULNCHECK)" || go install golang.org/x/vuln/cmd/govulncheck@latest
+	"$(GOVULNCHECK)" ./...
 
 smoke: build
 	$(BIN) version
