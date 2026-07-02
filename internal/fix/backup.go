@@ -64,7 +64,7 @@ func BackupFile(srcPath, sourceBase, backupDir string) error {
 	}
 
 	// Write to backup location preserving permissions.
-	if err := os.WriteFile(dstPath, data, info.Mode().Perm()); err != nil {
+	if err := os.WriteFile(dstPath, data, info.Mode().Perm()); err != nil { //nolint:gosec // dstPath from relPath validated against path traversal above.
 		return fmt.Errorf("writing backup file: %w", err)
 	}
 

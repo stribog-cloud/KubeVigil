@@ -38,7 +38,7 @@ kubevigil fix manifests/ --apply --risk-level moderate
 Use relative links from the file's location:
 
 ```markdown
-See [Output Formats](../scanning/output-formats.md) for details.
+See [Output Formats](scanning/output-formats.md) for details.
 ```
 
 ## Tables

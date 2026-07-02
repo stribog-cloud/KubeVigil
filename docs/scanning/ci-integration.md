@@ -35,7 +35,7 @@ jobs:
 
       - name: Install KubeVigil
         run: |
-          curl -sSL https://raw.githubusercontent.com/stribog-cloud/KubeVigil/master/install.sh | bash
+          curl -sSL https://raw.githubusercontent.com/stribog-cloud/KubeVigil/main/install.sh | bash
 
       - name: Run security scan
         run: kubevigil scan -f ./manifests/ -o results.sarif --no-color
@@ -89,7 +89,7 @@ security-scan:
   stage: test
   image: golang:1.22
   before_script:
-    - curl -sSL https://raw.githubusercontent.com/stribog-cloud/KubeVigil/master/install.sh | bash
+    - curl -sSL https://raw.githubusercontent.com/stribog-cloud/KubeVigil/main/install.sh | bash
   script:
     - kubevigil scan -f ./manifests/ -o results.xml --no-color
     - kubevigil scan -f ./manifests/ --fail-on high --no-color

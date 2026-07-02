@@ -3,6 +3,8 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+	"runtime"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
@@ -92,16 +94,27 @@ func testResult(findings []checker.Finding) *checker.ScanResult {
 	}
 }
 
+// repoWorkspaceRoot is the repository root used to confine MCP manifest scans in tests.
+func repoWorkspaceRoot() string {
+	_, file, _, _ := runtime.Caller(0)
+	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
+}
+
 // testKV creates a KubeVigilMCP with a pre-populated lastResult.
 func testKV(findings []checker.Finding) *KubeVigilMCP {
-	kv := NewKubeVigilMCP(config.Default(), checker.DefaultRegistry())
+	kv := NewKubeVigilMCP(config.Default(), checker.DefaultRegistry(), repoWorkspaceRoot())
 	kv.lastResult = testResult(findings)
 	return kv
 }
 
 // testKVEmpty creates a KubeVigilMCP with no scan result.
 func testKVEmpty() *KubeVigilMCP {
-	return NewKubeVigilMCP(config.Default(), checker.DefaultRegistry())
+	return NewKubeVigilMCP(config.Default(), checker.DefaultRegistry(), repoWorkspaceRoot())
+}
+
+// testKVWithRoot creates a KubeVigilMCP confined to an explicit workspace root.
+func testKVWithRoot(workspaceRoot string) *KubeVigilMCP {
+	return NewKubeVigilMCP(config.Default(), checker.DefaultRegistry(), workspaceRoot)
 }
 
 // sampleFindings returns a representative set of findings for testing.

@@ -117,6 +117,37 @@ configuration:
 }
 ```
 
+### Workspace root (path confinement)
+
+MCP `scan_manifests` accepts filesystem paths from AI agents. KubeVigil confines reads to a
+**workspace root** so prompt injection cannot request arbitrary files (for example `~/.ssh/id_rsa`).
+
+| Mechanism | Value |
+|-----------|-------|
+| CLI flag | `--workspace-root /path/to/manifest/tree` |
+| Environment | `KUBEVIGIL_WORKSPACE_ROOT=/path/to/manifest/tree` |
+| Default if unset | Process current working directory at server start |
+
+**Always set an explicit narrow root** in MCP configuration — do not rely on cwd when the IDE
+launches the server from `$HOME` or `/`.
+
+```json
+{
+  "mcpServers": {
+    "kubevigil": {
+      "command": "kubevigil",
+      "args": ["mcp-server", "--workspace-root", "/path/to/your/repo"],
+      "env": {
+        "KUBECONFIG": "/path/to/your/.kube/config"
+      }
+    }
+  }
+}
+```
+
+CLI `kubevigil scan -f` is **not** workspace-confined — operators supply trusted paths in CI
+and local workflows. See ADR-003 and the threat model for scope.
+
 ### Verification
 
 After configuring your AI assistant, verify the integration by asking:
@@ -410,8 +441,9 @@ scan:
 kubevigil mcp-server [flags]
 
 Flags:
-  -h, --help               help for mcp-server
-      --transport string   transport type (stdio) (default "stdio")
+  -h, --help                    help for mcp-server
+      --transport string        transport type (stdio) (default "stdio")
+      --workspace-root string   confine manifest reads to this directory (default: cwd or KUBEVIGIL_WORKSPACE_ROOT)
 
 Global Flags:
       --config string   config file path (default: auto-discover)

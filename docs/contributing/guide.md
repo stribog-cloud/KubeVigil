@@ -25,9 +25,23 @@ The binary is written to `bin/kubevigil`. Verify it works:
 ./bin/kubevigil list checks
 ```
 
+## Development Method
+
+KubeVigil follows **Test-Driven Development** (Engineering Charter §4.1):
+
+1. Write a failing test
+2. Observe the failure
+3. Implement the smallest correct change
+4. Refactor while tests stay green
+
+Bug fixes require a regression test. See `docs/governance/testing-strategy.md`.
+
 ## Run Tests
 
 ```bash
+# Full gate set (format, lint, vet, test, 96% coverage, secrets, vuln, build, smoke)
+make all
+
 # Run all tests with race detection
 make test
 
@@ -40,11 +54,11 @@ make lint
 # Run go vet
 make vet
 
-# Run all quality gates (vet + lint + test)
+# Run core gates (vet + lint + test + coverage + secrets + vuln + build + smoke)
 make check
 ```
 
-All three gates -- `vet`, `lint`, and `test` -- must pass before submitting a PR.
+`make all` must pass before submitting a PR (includes 96% coverage floor).
 
 ## Code Standards
 

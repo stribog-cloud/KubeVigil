@@ -109,6 +109,26 @@ func TestLoadConfig(t *testing.T) {
 		assert.NotNil(t, cfg)
 		assert.Equal(t, "high", cfg.Settings.FailOn)
 	})
+
+	t.Run("discovers config in working directory", func(t *testing.T) {
+		origFlag := flagConfig
+		origWd, err := os.Getwd()
+		require.NoError(t, err)
+		defer func() {
+			flagConfig = origFlag
+			_ = os.Chdir(origWd)
+		}()
+
+		dir := t.TempDir()
+		path := filepath.Join(dir, ".kubevigil.yaml")
+		require.NoError(t, os.WriteFile(path, []byte("version: \"1\"\nsettings:\n  fail_on: medium\n"), 0o644))
+		require.NoError(t, os.Chdir(dir))
+		flagConfig = ""
+
+		cfg, err := loadConfig()
+		require.NoError(t, err)
+		assert.Equal(t, "medium", cfg.Settings.FailOn)
+	})
 }
 
 func TestResolveContextName(t *testing.T) {
@@ -213,4 +233,21 @@ func TestExecute(t *testing.T) {
 		code := execute()
 		assert.Equal(t, 0, code)
 	})
+}
+
+func TestExitError_Error(t *testing.T) {
+	ee := &exitError{code: 3, err: assert.AnError}
+	assert.Equal(t, assert.AnError.Error(), ee.Error())
+}
+
+func TestExecute_ListChecks(t *testing.T) {
+	rootCmd.SetArgs([]string{"list", "checks"})
+	defer rootCmd.SetArgs(nil)
+	assert.Equal(t, 0, execute())
+}
+
+func TestExecute_ScanHelp(t *testing.T) {
+	rootCmd.SetArgs([]string{"scan", "--help"})
+	defer rootCmd.SetArgs(nil)
+	assert.Equal(t, 0, execute())
 }

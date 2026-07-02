@@ -1,0 +1,13 @@
+direction: right
+
+cli: "CLI / MCP" {shape: rectangle}
+engine: "Scan Engine" {shape: rectangle}
+checkers: "Checker Registry\n(110 checks)" {shape: rectangle}
+fix: "Fix Engine" {shape: rectangle}
+report: "Reporters (8 formats)" {shape: rectangle}
+
+cli -> engine: scan
+cli -> fix: fix manifests
+engine -> checkers: ResourceCache
+checkers -> report: ScanResult
+fix -> engine: verify re-scan

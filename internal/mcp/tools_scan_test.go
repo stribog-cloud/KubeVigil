@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -253,8 +254,8 @@ func TestHandleScanManifestsInvalidPath(t *testing.T) {
 }
 
 func TestValidateManifestPath(t *testing.T) {
-	tmpDir := t.TempDir()
-	tmpFile, err := os.CreateTemp(tmpDir, "manifest-*.yaml")
+	root := t.TempDir()
+	tmpFile, err := os.CreateTemp(root, "manifest-*.yaml")
 	if err != nil {
 		t.Fatalf("creating temp file: %v", err)
 	}
@@ -266,18 +267,39 @@ func TestValidateManifestPath(t *testing.T) {
 		wantErr bool
 	}{
 		{"valid file path", tmpFile.Name(), false},
-		{"valid directory path", tmpDir, false},
+		{"valid directory path", root, false},
 		{"relative path to existing dir", ".", false},
 		{"too long", string(make([]byte, maxInputPathLen+1)), true},
-		{"nonexistent path", "/nonexistent/path/that/does/not/exist", true},
+		{"nonexistent path", filepath.Join(root, "missing.yaml"), true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateManifestPath(tt.path)
+			_, err := validateManifestPath(root, tt.path)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("validateManifestPath(%q) error = %v, wantErr %v", tt.path, err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestValidateManifestPath_RejectsOutsideWorkspace(t *testing.T) {
+	root := t.TempDir()
+	_, err := validateManifestPath(root, "/etc/passwd")
+	if err == nil {
+		t.Fatal("expected error for path outside workspace")
+	}
+	if !strings.Contains(err.Error(), "outside") {
+		t.Errorf("error = %v, want outside workspace", err)
+	}
+}
+
+func TestValidateManifestPath_EmptyWorkspaceRoot(t *testing.T) {
+	_, err := validateManifestPath("", "pod.yaml")
+	if err == nil {
+		t.Fatal("expected error for empty workspace root")
+	}
+	if !strings.Contains(err.Error(), "workspace root is not configured") {
+		t.Errorf("error = %v, want workspace root configuration error", err)
 	}
 }
 
@@ -294,7 +316,7 @@ func TestValidateManifestPath_RejectsSymlink(t *testing.T) {
 		t.Fatalf("creating symlink: %v", err)
 	}
 
-	_, err = validateManifestPath(link)
+	_, err = validateManifestPath(tmpDir, link)
 	if err == nil {
 		t.Error("expected error for symlink, got nil")
 	}
@@ -304,15 +326,17 @@ func TestValidateManifestPath_RejectsSymlink(t *testing.T) {
 }
 
 func TestValidateManifestPath_RejectsNonRegularNonDir(t *testing.T) {
-	_, err := validateManifestPath("/dev/null")
+	root := t.TempDir()
+	_, err := validateManifestPath(root, "/dev/null")
 	if err == nil {
-		t.Error("expected error for device file /dev/null, got nil")
+		t.Error("expected error for path outside workspace, got nil")
 	}
 }
 
 func TestValidateManifestPath_ErrorContainsPath(t *testing.T) {
-	const wantPath = "/nonexistent/foo/bar"
-	_, err := validateManifestPath(wantPath)
+	root := t.TempDir()
+	const wantPath = "missing/foo/bar"
+	_, err := validateManifestPath(root, wantPath)
 	if err == nil {
 		t.Fatal("expected error for nonexistent path")
 	}
@@ -420,6 +444,47 @@ func TestHandleScanClusterInvalidKubeconfig(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "scan_cluster") {
 		t.Errorf("error should be prefixed with scan_cluster, got: %v", err)
+	}
+}
+
+func TestHandleScanManifestsValidFixture(t *testing.T) {
+	kv := testKVEmpty()
+	fixture := filepath.Join(fixturesDir(), "privileged", "pod-privileged-true.yaml")
+	_, summary, err := kv.handleScanManifests(context.Background(), nil, ScanManifestsInput{
+		Path: fixture,
+	})
+	if err != nil {
+		t.Fatalf("handleScanManifests: %v", err)
+	}
+	if summary.TotalFindings == 0 {
+		t.Error("expected findings for privileged pod fixture")
+	}
+}
+
+func TestHandleScanManifestsDirectoryInsideWorkspace(t *testing.T) {
+	root := t.TempDir()
+	manifests := filepath.Join(root, "manifests")
+	if err := os.MkdirAll(manifests, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	src := filepath.Join(fixturesDir(), "privileged", "pod-privileged-true.yaml")
+	data, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(manifests, "pod.yaml"), data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	kv := testKVWithRoot(root)
+	_, summary, err := kv.handleScanManifests(context.Background(), nil, ScanManifestsInput{
+		Path: manifests,
+	})
+	if err != nil {
+		t.Fatalf("handleScanManifests directory: %v", err)
+	}
+	if summary.TotalFindings == 0 {
+		t.Error("expected findings when scanning manifest directory")
 	}
 }
 

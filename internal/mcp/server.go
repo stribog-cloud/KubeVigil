@@ -23,8 +23,9 @@ var ToolNames = []string{
 // KubeVigilMCP is the MCP server state. It holds the checker registry,
 // configuration, and the most recent scan result.
 type KubeVigilMCP struct {
-	config   *config.Config
-	registry *checker.Registry
+	config        *config.Config
+	registry      *checker.Registry
+	workspaceRoot string
 	// lastResult holds the most recent scan result. It is treated as
 	// immutable after assignment: writers replace the pointer under mu
 	// (Lock), and readers copy the pointer under mu (RLock) then access
@@ -35,11 +36,12 @@ type KubeVigilMCP struct {
 }
 
 // NewKubeVigilMCP creates a new MCP server instance with the given
-// configuration and checker registry.
-func NewKubeVigilMCP(cfg *config.Config, registry *checker.Registry) *KubeVigilMCP {
+// configuration and checker registry. workspaceRoot confines scan_manifests paths.
+func NewKubeVigilMCP(cfg *config.Config, registry *checker.Registry, workspaceRoot string) *KubeVigilMCP {
 	return &KubeVigilMCP{
-		config:   cfg,
-		registry: registry,
+		config:        cfg,
+		registry:      registry,
+		workspaceRoot: workspaceRoot,
 	}
 }
 
@@ -54,8 +56,8 @@ func (kv *KubeVigilMCP) LastResult() *checker.ScanResult {
 // NewServer creates an MCP server with all KubeVigil tools registered.
 // The caller is responsible for running the server with an appropriate
 // transport (e.g., [mcp.StdioTransport] for CLI use).
-func NewServer(cfg *config.Config, registry *checker.Registry) *mcp.Server {
-	kv := NewKubeVigilMCP(cfg, registry)
+func NewServer(cfg *config.Config, registry *checker.Registry, workspaceRoot string) *mcp.Server {
+	kv := NewKubeVigilMCP(cfg, registry, workspaceRoot)
 	return newMCPServer(kv)
 }
 

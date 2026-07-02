@@ -58,10 +58,9 @@ test/e2e/third-party/microservices-demo/
 # Internal engineering docs (specs, prompts, strategies — not for public repo)
 docs/internal/
 
-# AI agent instructions (local-only)
+# AI agent instructions (local-only overrides; canonical rules in AGENTS.md)
 CLAUDE.md
 CLAUDE-Phase*.md
-AGENTS.md
 .claude/
 .goosehints
 

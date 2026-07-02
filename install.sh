@@ -2,7 +2,7 @@
 # KubeVigil installer — downloads the latest release binary for your platform.
 #
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/stribog-cloud/KubeVigil/master/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/stribog-cloud/KubeVigil/main/install.sh | bash
 #
 # Environment variables:
 #   KUBEVIGIL_INSTALL_DIR  — Override install directory (default: /usr/local/bin or ~/.local/bin)

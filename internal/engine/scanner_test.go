@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -47,6 +49,40 @@ func TestScanManifest_BadPath(t *testing.T) {
 
 	_, err := scanner.ScanManifest(context.Background(), "/nonexistent/path/xyz")
 	require.Error(t, err)
+}
+
+func TestScanManifestWithinRoot_RejectsOutsideWorkspace(t *testing.T) {
+	cfg := config.Default()
+	scanner := NewScanner(checker.DefaultRegistry(), cfg)
+	root := t.TempDir()
+
+	_, err := scanner.ScanManifestWithinRoot(context.Background(), "/etc/passwd", root)
+	require.Error(t, err)
+}
+
+func TestScanManifestWithinRoot_ScansInsideWorkspace(t *testing.T) {
+	root := t.TempDir()
+	manifest := filepath.Join(root, "pod.yaml")
+	require.NoError(t, os.WriteFile(manifest, []byte(`apiVersion: v1
+kind: Pod
+metadata:
+  name: privileged-pod
+  namespace: default
+spec:
+  containers:
+  - name: c
+    image: nginx
+    securityContext:
+      privileged: true
+`), 0o644))
+
+	cfg := config.Default()
+	scanner := NewScanner(checker.DefaultRegistry(), cfg)
+
+	result, err := scanner.ScanManifestWithinRoot(context.Background(), manifest, root)
+	require.NoError(t, err)
+	assert.NotEmpty(t, result.Findings, "should produce findings from confined manifest")
+	assert.Equal(t, checker.ScanModeManifest, result.ScanMeta.ScanMode)
 }
 
 func TestScanManifest_DisabledChecks(t *testing.T) {

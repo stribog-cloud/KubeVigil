@@ -19,7 +19,7 @@ kubectl krew install vigil
 ## Install Script
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/stribog-cloud/KubeVigil/master/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/stribog-cloud/KubeVigil/main/install.sh | bash
 ```
 
 The script auto-detects your OS and architecture, downloads the latest release,

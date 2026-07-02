@@ -51,7 +51,7 @@ kubectl krew install vigil
 ### Install script
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/stribog-cloud/KubeVigil/master/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/stribog-cloud/KubeVigil/main/install.sh | bash
 ```
 
 ### Download from GitHub Releases

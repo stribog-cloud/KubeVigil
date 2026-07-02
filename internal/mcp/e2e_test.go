@@ -28,18 +28,22 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// kubevigiBinary returns the path to the kubevigil binary, or skips the test
-// if the binary is not found.
-func kubevigilBinary(t *testing.T) string {
+// repoRoot returns the repository root from this test file's location.
+func repoRoot(t *testing.T) string {
 	t.Helper()
-
-	// Find the repo root from this test file's location.
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("cannot determine test file path")
 	}
-	repoRoot := filepath.Join(filepath.Dir(file), "..", "..")
-	binary := filepath.Join(repoRoot, "bin", "kubevigil")
+	return filepath.Join(filepath.Dir(file), "..", "..")
+}
+
+// kubevigilBinary returns the path to the kubevigil binary, or skips the test
+// if the binary is not found.
+func kubevigilBinary(t *testing.T) string {
+	t.Helper()
+
+	binary := filepath.Join(repoRoot(t), "bin", "kubevigil")
 
 	if _, err := os.Stat(binary); err != nil {
 		t.Skipf("kubevigil binary not found at %s (run 'make build' first)", binary)
@@ -50,11 +54,7 @@ func kubevigilBinary(t *testing.T) string {
 // e2eFixturesDir returns the path to the test fixtures directory.
 func e2eFixturesDir(t *testing.T) string {
 	t.Helper()
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("cannot determine test file path")
-	}
-	return filepath.Join(filepath.Dir(file), "..", "..", "test", "fixtures")
+	return filepath.Join(repoRoot(t), "test", "fixtures")
 }
 
 // connectToServer starts the kubevigil MCP server as a subprocess and returns
@@ -64,7 +64,7 @@ func connectToServer(t *testing.T) *mcp.ClientSession {
 	t.Helper()
 
 	binary := kubevigilBinary(t)
-	cmd := exec.Command(binary, "mcp-server")
+	cmd := exec.Command(binary, "mcp-server", "--workspace-root", repoRoot(t))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	t.Cleanup(cancel)
@@ -403,7 +403,7 @@ func TestE2EErrorHandlingNoScan(t *testing.T) {
 // session is closed.
 func TestE2ECleanShutdown(t *testing.T) {
 	binary := kubevigilBinary(t)
-	cmd := exec.Command(binary, "mcp-server")
+	cmd := exec.Command(binary, "mcp-server", "--workspace-root", repoRoot(t))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

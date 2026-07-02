@@ -5,6 +5,23 @@ All notable changes to KubeVigil are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Stribog Charter compliance program: Charter Compliance Annex, master reference, testing strategy, threat model, ADRs, waiver register, and public release profile (`docs/governance/`)
+- `AGENTS.md` and root `CONTRIBUTING.md` for agent and contributor onboarding
+- Documentation gates: `make doc-gate`, `make doc-drift-gate`, `make doc-samples-test`, `make doc-a11y`
+- User support escalation map (`docs/user/support.md`) and user-facing release notes index
+
+### Changed
+
+- CI and Makefile enforce **96%** coverage floor on `internal/` + `cmd/` (Stribog Engineering Charter §5.4); supersedes the prior **94%** project floor documented in v0.5.0 release notes
+- `//nolint:gosec` on manifest reads documents G304 justification (path confinement or operator trust), not security hardening by annotation alone
+- Governing documentation standardized on **96%** floor across Annex, `AGENTS.md`, `CONTRIBUTING.md`, and `testing-strategy.md`
+- `make all` is the canonical quality gate entrypoint; install script URLs use `main` branch
+- Bumped `github.com/modelcontextprotocol/go-sdk` to v1.4.1 and `golang.org/x/net` to v0.55.0 (govulncheck clean)
+
 ## [0.5.0] - 2026-02-20
 
 ### Security
