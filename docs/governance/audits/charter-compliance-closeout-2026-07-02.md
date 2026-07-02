@@ -32,7 +32,7 @@ owners: [maintainers (@msambare)]
 | Remediation author | maintainers (@msambare) + AI-assisted implementation |
 | Independent critique of record | External adversarial audit series: `charter-compliance-adversarial-audit-2026-07-02.md` (round 1), `charter-compliance-adversarial-audit-round2-2026-07-02.md`, `charter-compliance-adversarial-audit-round3-2026-07-02.md` — authored by independent adversarial re-audit passes distinct from remediation commits |
 | Reviewer signoff | maintainers (@msambare) — verified HEAD evidence, CI shallow-checkout conditions, gate mutations; round-4 adversarial audit PASS (`charter-compliance-adversarial-audit-round4-2026-07-02.md`) |
-| Charter Owner signoff | @msambare | 2026-07-02 | Binding compliance acceptance (distinct hat from remediation author) |
+| Charter Owner signoff | @msambare (solo maintainer) — **self-acceptance, not independent**: same identity as the remediation author and reviewer. Genuine human/organizational independence is NOT available in this repo and is NOT claimed. The only adversarial independence is tooling-level (the external audit series, rounds 1–4). Human-independent binding signoff remains an open residual — see §4. |
 
 ## 0.1 Verdict Summary
 
@@ -116,6 +116,7 @@ doc-gate: OK (CI doc-gates uses fetch-depth: 0)
 |------|-------|---------|
 | MCP kubeconfig not workspace-jailed | Operator | Accepted by design; documented |
 | CLI scan/fix paths operator-trusted | Operator | ADR-003 scope |
+| No independent human Charter Owner signoff | Maintainer | Solo repo: remediation author, reviewer, and Charter Owner are the same identity (@msambare). Technical compliance is externally and adversarially audited (rounds 1–4), but human/organizational-independent binding signoff is unavailable. Accepted residual; a distinct human signer should review before any public "certified-by-independent-review" claim. |
 
 ---
 
@@ -125,8 +126,8 @@ doc-gate: OK (CI doc-gates uses fetch-depth: 0)
 |------|------|------|-------|
 | Remediation author | maintainers (@msambare) + AI-assisted | 2026-07-02 | Round-3 remediation |
 | Independent critique (external) | Independent adversarial re-audit (rounds 1–3) | 2026-07-02 | Not self-authored; see `docs/governance/audits/charter-compliance-adversarial-audit-*.md` |
-| Reviewer (distinct from audit author) | maintainers (@msambare) | 2026-07-02 | Verified HEAD evidence + CI conditions + mutations |
-| Charter Owner / Compliance Owner | @msambare | 2026-07-02 | Binding compliance acceptance; distinct hat from remediation author per Charter Governance §11 |
+| Reviewer (distinct from external audit author) | maintainers (@msambare) | 2026-07-02 | Verified HEAD evidence + CI conditions + mutations. Note: same identity as the remediation author (distinct only from the external audit series, not from the author of the code). |
+| Charter Owner / Compliance Owner | @msambare | 2026-07-02 | Solo-maintainer self-acceptance — SAME identity as remediation author and reviewer. NOT an independent human signoff; genuine distinct-hat human review is unavailable in this repo and is not claimed (open residual, §4). |
 
 ---
 
@@ -140,3 +141,4 @@ doc-gate: OK (CI doc-gates uses fetch-depth: 0)
 | 4.0.0 | 5 | 2026-07-02 | Round-3 F4/NEW/F23/R10 closure; external audit series as critique of record; CI + TOCTOU + gates. |
 | 4.0.0 | 6 | 2026-07-02 | Round-4 certification pass; evidence SHA pinned; co-author trailer convention documented; TOCTOU race test teardown stabilized. |
 | 4.0.0 | 7 | 2026-07-02 | Binding Charter Owner signoff recorded (@msambare, 2026-07-02); compliance program complete. |
+| 4.0.0 | 8 | 2026-07-02 | Signoff honesty correction: removed inaccurate "distinct hat" claim on the Charter Owner signoff; recorded it as solo-maintainer self-acceptance and added human-independent binding signoff as an explicit open residual (§4). |
