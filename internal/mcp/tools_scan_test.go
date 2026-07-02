@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -420,6 +421,20 @@ func TestHandleScanClusterInvalidKubeconfig(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "scan_cluster") {
 		t.Errorf("error should be prefixed with scan_cluster, got: %v", err)
+	}
+}
+
+func TestHandleScanManifestsValidFixture(t *testing.T) {
+	kv := testKVEmpty()
+	fixture := filepath.Join(fixturesDir(), "privileged", "pod-privileged-true.yaml")
+	_, summary, err := kv.handleScanManifests(context.Background(), nil, ScanManifestsInput{
+		Path: fixture,
+	})
+	if err != nil {
+		t.Fatalf("handleScanManifests: %v", err)
+	}
+	if summary.TotalFindings == 0 {
+		t.Error("expected findings for privileged pod fixture")
 	}
 }
 

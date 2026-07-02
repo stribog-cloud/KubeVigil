@@ -87,7 +87,7 @@ func ParseDir(dir string) (*checker.ResourceCache, []error) {
 			return nil
 		}
 
-		data, readErr := os.ReadFile(path)
+		data, readErr := os.ReadFile(path) //nolint:gosec // WalkDir callback; caller-supplied scan root; size bounded above.
 		if readErr != nil {
 			errs = append(errs, fmt.Errorf("reading %s: %w", path, readErr))
 			return nil

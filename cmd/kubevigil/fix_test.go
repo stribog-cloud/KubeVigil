@@ -1452,6 +1452,68 @@ func TestPrintFixSummary_AggressiveRiskLevel(t *testing.T) {
 	assert.GreaterOrEqual(t, appliedCount, 3, "all three risk tiers should show 'applied'")
 }
 
+const helmManagedDeploymentYAML = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: helm-web
+  namespace: production
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: web-1.0.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: web
+        image: nginx:latest
+        securityContext:
+          privileged: true
+`
+
+func TestRunFix_HelmManagedWarning(t *testing.T) {
+	saveAndRestoreFlags(t)
+	dir := t.TempDir()
+	writeFixture(t, dir, "deploy.yaml", helmManagedDeploymentYAML)
+
+	fixCmd.SetContext(context.Background())
+	err := runFix(fixCmd, []string{dir})
+	assert.NoError(t, err)
+}
+
+func TestRunFix_KustomizeDetectWarning(t *testing.T) {
+	saveAndRestoreFlags(t)
+	dir := t.TempDir()
+	writeFixture(t, dir, "deploy.yaml", insecureDeploymentYAML)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "kustomization.yaml"), []byte("resources:\n- deploy.yaml\n"), 0o644))
+
+	fixCmd.SetContext(context.Background())
+	err := runFix(fixCmd, []string{dir})
+	assert.NoError(t, err)
+}
+
+func TestRunFix_GitPRAfterApply(t *testing.T) {
+	saveAndRestoreFlags(t)
+	dir := t.TempDir()
+	writeFixture(t, dir, "deploy.yaml", insecureDeploymentYAML)
+
+	flagFixApply = true
+	flagFixYes = true
+	flagFixGitPR = true
+	flagFixBackupDir = filepath.Join(t.TempDir(), "backup-gitpr")
+
+	fixCmd.SetContext(context.Background())
+	err := runFix(fixCmd, []string{dir})
+	// Apply succeeds; git-pr may fail without gh — error is logged, not returned.
+	assert.NoError(t, err)
+}
+
 // --- isInteractive() additional coverage ---
 
 func TestIsInteractive_CI_Value1(t *testing.T) {

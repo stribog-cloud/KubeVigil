@@ -4,6 +4,17 @@
 
 KubeVigil is a Kubernetes Security Posture Management (KSPM) CLI tool that scans clusters and manifests for security misconfigurations, maps findings to compliance frameworks, and auto-remediates fixable issues.
 
+Documentation follows the [Diátaxis](https://diataxis.fr/) model:
+
+| Quadrant | Purpose | Sections |
+|----------|---------|----------|
+| Tutorial | Learn by doing | [Quick Start](getting-started/quickstart.md) |
+| How-to | Solve specific tasks | [Scanning](scanning/), [Auto-Remediation](auto-fix/), [Configuration](configuration/) |
+| Reference | Facts and contracts | [CLI Reference](reference/), [Checks](checks/) |
+| Explanation | Concepts and context | [Core Concepts](getting-started/concepts.md), [Compliance](compliance/) |
+
+Governance and contributor docs: `docs/governance/`, `docs/dev/`, [Contributing](contributing/guide.md).
+
 ## Quick Links
 
 - [Installation](getting-started/installation.md)

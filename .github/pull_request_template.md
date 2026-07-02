@@ -9,8 +9,7 @@
 ## Checklist
 
 - [ ] Tests added or updated
-- [ ] `go test -race ./...` passes locally
-- [ ] `golangci-lint run ./...` passes locally
+- [ ] `make all` passes locally (96% coverage floor)
 - [ ] Documentation updated (if applicable)
 - [ ] No breaking changes (or clearly noted below)
 - [ ] No secrets, PII, or local paths in the diff

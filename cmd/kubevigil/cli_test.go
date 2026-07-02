@@ -214,3 +214,20 @@ func TestExecute(t *testing.T) {
 		assert.Equal(t, 0, code)
 	})
 }
+
+func TestExitError_Error(t *testing.T) {
+	ee := &exitError{code: 3, err: assert.AnError}
+	assert.Equal(t, assert.AnError.Error(), ee.Error())
+}
+
+func TestExecute_ListChecks(t *testing.T) {
+	rootCmd.SetArgs([]string{"list", "checks"})
+	defer rootCmd.SetArgs(nil)
+	assert.Equal(t, 0, execute())
+}
+
+func TestExecute_ScanHelp(t *testing.T) {
+	rootCmd.SetArgs([]string{"scan", "--help"})
+	defer rootCmd.SetArgs(nil)
+	assert.Equal(t, 0, execute())
+}

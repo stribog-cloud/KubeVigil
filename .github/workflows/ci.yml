@@ -34,16 +34,12 @@ jobs:
       - name: Build binary for MCP E2E tests
         run: make build
       - name: Run tests with coverage
-        run: go test -race -count=1 -coverprofile=coverage.out ./...
-      - name: Check coverage threshold
+        run: make coverage
+      - name: Export coverage percent for badge
         id: coverage
         run: |
-          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          COVERAGE=$(go tool cover -func=coverage.out | awk '/^total:/ {gsub(/%/,""); print $3}')
           echo "Coverage: ${COVERAGE}%"
-          if (( $(echo "$COVERAGE < 94" | bc -l) )); then
-            echo "::error::Coverage ${COVERAGE}% is below 94% threshold"
-            exit 1
-          fi
           echo "percent=$COVERAGE" >> "$GITHUB_OUTPUT"
       - name: Update coverage badge
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -67,15 +63,24 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25.7'
-      - name: Build binary
+      - name: Build and smoke test
+        run: make smoke
+
+  doc-gates:
+    name: Documentation Gates
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.7'
+      - name: Run documentation gates
         run: |
-          CGO_ENABLED=0 go build -ldflags "-s -w \
-                             -X github.com/stribog-cloud/kubevigil/internal/version.Version=${{ github.ref_name }} \
-                             -X github.com/stribog-cloud/kubevigil/internal/version.Commit=$(echo ${{ github.sha }} | cut -c1-7) \
-                             -X github.com/stribog-cloud/kubevigil/internal/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            -o kubevigil ./cmd/kubevigil
-      - name: Verify binary runs
-        run: ./kubevigil version
+          chmod +x scripts/*.sh
+          make doc-gate doc-drift-gate doc-a11y
+          make build
+          make doc-samples-test
 
   vulncheck:
     name: Vulnerability Check

@@ -3,21 +3,25 @@ BIN      := bin/kubevigil
 VERSION  ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT   ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE     ?= $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
+COVER_PKGS := $(shell go list ./internal/... ./cmd/...)
+COVERAGE_FLOOR := 96
 
 LDFLAGS  := -X $(MODULE)/internal/version.Version=$(VERSION) \
             -X $(MODULE)/internal/version.Commit=$(COMMIT) \
             -X $(MODULE)/internal/version.Date=$(DATE)
 
-.PHONY: build test test-cover lint vet fmt cover vulncheck clean check setup-hooks graph-install graph graph-serve
+.PHONY: build test test-cover lint vet format fmt cover coverage secrets vuln clean check all \
+        hooks-install setup-hooks graph-install graph graph-serve \
+        doc-gate doc-drift-gate doc-samples-test doc-a11y smoke
 
 build:
 	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o $(BIN) ./cmd/kubevigil
 
 test:
-	go test -race -count=1 ./...
+	go test -race -count=1 $(COVER_PKGS)
 
 test-cover:
-	go test -race -count=1 -coverprofile=coverage.out ./...
+	go test -race -count=1 -coverprofile=coverage.out $(COVER_PKGS)
 	go tool cover -func=coverage.out
 
 lint:
@@ -26,27 +30,51 @@ lint:
 vet:
 	go vet ./...
 
+format: fmt
 fmt:
 	gofmt -w .
 	goimports -w -local $(MODULE) .
 
-cover:
-	go test -coverprofile=coverage.out ./...
-	go tool cover -func=coverage.out | tail -1
+cover: coverage
+coverage:
+	go test -race -count=1 -coverprofile=coverage.out $(COVER_PKGS)
+	@pct=$$(go tool cover -func=coverage.out | awk '/^total:/ {gsub(/%/,""); print $$3}'); \
+	echo "Coverage: $${pct}% (floor: $(COVERAGE_FLOOR)%)"; \
+	awk -v p="$$pct" -v f="$(COVERAGE_FLOOR)" 'BEGIN {exit !(p+0 >= f+0)}' || \
+	(echo "ERROR: coverage $${pct}% below floor $(COVERAGE_FLOOR)%" && exit 1)
 
-vulncheck:
+secrets:
+	gitleaks detect --source . --config .gitleaks.toml --redact -v
+
+vuln:
 	govulncheck ./...
+
+smoke: build
+	$(BIN) version
+	$(BIN) list checks >/dev/null
 
 clean:
 	rm -rf bin/ coverage.out
 
-check: vet lint test
-	@echo "All quality gates passed."
+check: vet lint test coverage secrets vuln build smoke
 
-## Setup local git hooks for pre-commit secrets scanning
-setup-hooks:
+all: format lint vet test coverage secrets vuln build smoke
+
+hooks-install setup-hooks:
 	git config core.hooksPath .githooks
-	@echo "Git hooks configured. Pre-commit will now scan for secrets via gitleaks."
+	@echo "Git hooks configured. Pre-commit runs gitleaks on staged changes."
+
+doc-gate:
+	@./scripts/doc-gate.sh
+
+doc-drift-gate:
+	@./scripts/doc-drift-gate.sh
+
+doc-samples-test:
+	@./scripts/doc-samples-test.sh
+
+doc-a11y:
+	@./scripts/doc-a11y.sh
 
 # --- Code graph analysis (dev tool) ---
 CODEGRAPH_VERSION ?= latest

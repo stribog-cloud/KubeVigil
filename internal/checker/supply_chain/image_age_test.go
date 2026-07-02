@@ -73,6 +73,38 @@ func TestImageAgeChecker_Run(t *testing.T) {
 		assert.Empty(t, findings)
 	})
 
+	t.Run("invalid annotation date skipped", func(t *testing.T) {
+		cache := checker.NewResourceCache()
+		dep := makeDeploymentWithAnnotations(t, "bad-date", "default",
+			map[string]string{imageAgeAnnotation: "not-a-date"},
+			corev1.PodSpec{
+				Containers: []corev1.Container{{Name: "app", Image: "img:1"}},
+			},
+		)
+		cache.Add(workload.GVRs()[1], dep)
+		findings, err := c.Run(ctx, cache)
+		require.NoError(t, err)
+		assert.Empty(t, findings)
+	})
+
+	t.Run("init containers skipped", func(t *testing.T) {
+		cache := checker.NewResourceCache()
+		oldDate := time.Now().AddDate(0, -7, 0).Format(time.RFC3339)
+		dep := makeDeploymentWithAnnotations(t, "init-only", "default",
+			map[string]string{imageAgeAnnotation: oldDate},
+			corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Name:  "init",
+					Image: "old-init:1.0",
+				}},
+			},
+		)
+		cache.Add(workload.GVRs()[1], dep)
+		findings, err := c.Run(ctx, cache)
+		require.NoError(t, err)
+		assert.Empty(t, findings, "init-only workloads should not produce findings")
+	})
+
 	t.Run("no annotation", func(t *testing.T) {
 		cache := checker.NewResourceCache()
 		dep := makeDeployment(t, "no-anno", "default", corev1.PodSpec{

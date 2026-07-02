@@ -336,6 +336,20 @@ spec:
 	assert.Empty(t, errs, "ParseFile should accept files within size limit")
 }
 
+func TestParseDir_RejectsOversizedYAMLFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	bigFile := filepath.Join(tmpDir, "huge.yaml")
+	data := make([]byte, maxManifestFileSize+1)
+	for i := range data {
+		data[i] = 'x'
+	}
+	require.NoError(t, os.WriteFile(bigFile, data, 0o644))
+
+	_, errs := ParseDir(tmpDir)
+	require.NotEmpty(t, errs)
+	assert.Contains(t, errs[0].Error(), "exceeds maximum")
+}
+
 func TestParseDir_Recursive(t *testing.T) {
 	// Create a temp dir with subdirectories
 	tmpDir := t.TempDir()
