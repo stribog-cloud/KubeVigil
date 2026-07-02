@@ -1,7 +1,6 @@
 # KubeVigil
 
 [![CI](https://github.com/stribog-cloud/KubeVigil/actions/workflows/ci.yml/badge.svg)](https://github.com/stribog-cloud/KubeVigil/actions/workflows/ci.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/stribog-cloud/kubevigil)](https://goreportcard.com/report/github.com/stribog-cloud/kubevigil)
 [![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/msambare/1248dd902276859b5cdea636aa5ba175/raw/kubevigil-coverage.json)](https://github.com/stribog-cloud/KubeVigil/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/stribog-cloud/KubeVigil)](https://github.com/stribog-cloud/KubeVigil/releases/latest)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/stribog-cloud/KubeVigil)](https://go.dev/)
