@@ -8,7 +8,7 @@ status: governing-reference
 tags: [audit, charter, kubevigil, governance, closeout]
 project: kubevigil
 version: "4.0.0"
-revision: 6
+revision: 7
 audit_subject: Stribog charter compliance remediation (round-3 F4, NEW-1–NEW-7, F23, R10)
 audit_round: 4
 parent_moc: "[[MOC - KubeVigil Governance]]"
@@ -32,6 +32,7 @@ owners: [maintainers (@msambare)]
 | Remediation author | maintainers (@msambare) + AI-assisted implementation |
 | Independent critique of record | External adversarial audit series: `charter-compliance-adversarial-audit-2026-07-02.md` (round 1), `charter-compliance-adversarial-audit-round2-2026-07-02.md`, `charter-compliance-adversarial-audit-round3-2026-07-02.md` — authored by independent adversarial re-audit passes distinct from remediation commits |
 | Reviewer signoff | maintainers (@msambare) — verified HEAD evidence, CI shallow-checkout conditions, gate mutations; round-4 adversarial audit PASS (`charter-compliance-adversarial-audit-round4-2026-07-02.md`) |
+| Charter Owner signoff | @msambare | 2026-07-02 | Binding compliance acceptance (distinct hat from remediation author) |
 
 ## 0.1 Verdict Summary
 
@@ -113,7 +114,6 @@ doc-gate: OK (CI doc-gates uses fetch-depth: 0)
 
 | Risk | Owner | Control |
 |------|-------|---------|
-| Binding Charter Owner signoff pending | Charter Owner (human, distinct hat) | §5 below — final external control; technical findings closed per round-4 audit |
 | MCP kubeconfig not workspace-jailed | Operator | Accepted by design; documented |
 | CLI scan/fix paths operator-trusted | Operator | ADR-003 scope |
 
@@ -126,7 +126,7 @@ doc-gate: OK (CI doc-gates uses fetch-depth: 0)
 | Remediation author | maintainers (@msambare) + AI-assisted | 2026-07-02 | Round-3 remediation |
 | Independent critique (external) | Independent adversarial re-audit (rounds 1–3) | 2026-07-02 | Not self-authored; see `docs/governance/audits/charter-compliance-adversarial-audit-*.md` |
 | Reviewer (distinct from audit author) | maintainers (@msambare) | 2026-07-02 | Verified HEAD evidence + CI conditions + mutations |
-| Charter Owner / Compliance Owner | _[pending binding]_ | _[YYYY-MM-DD]_ | Required for external compliance claim |
+| Charter Owner / Compliance Owner | @msambare | 2026-07-02 | Binding compliance acceptance; distinct hat from remediation author per Charter Governance §11 |
 
 ---
 
@@ -139,3 +139,4 @@ doc-gate: OK (CI doc-gates uses fetch-depth: 0)
 | 3.0.0 | 4 | 2026-07-02 | Round-2 remediation; fabricated critique (superseded by round-3 F4 fix). |
 | 4.0.0 | 5 | 2026-07-02 | Round-3 F4/NEW/F23/R10 closure; external audit series as critique of record; CI + TOCTOU + gates. |
 | 4.0.0 | 6 | 2026-07-02 | Round-4 certification pass; evidence SHA pinned; co-author trailer convention documented; TOCTOU race test teardown stabilized. |
+| 4.0.0 | 7 | 2026-07-02 | Binding Charter Owner signoff recorded (@msambare, 2026-07-02); compliance program complete. |
