@@ -54,6 +54,8 @@ Round-3 blockers closed: F4 cites the external audit series as the independent c
 | NEW-6 | Fixed | `doc-gate.sh` stale `## [0.5.` literal removed; tag-derived section check only |
 | NEW-7 | Fixed | `doc-drift-gate.sh` anchors checker count to `**NNN**` |
 | F6 | Note | Branch docs uniformly 96%; gitignored main-repo `CLAUDE.md` (lines 175/271) requires maintainer hand-edit outside branch |
+| LOW-1 (r4) | Fixed | §3 evidence pins `8b52367` — commit in branch ancestry, matches `make all` capture |
+| LOW-2 (r4) | Fixed | Annex §3 + `AGENTS.md` document harness-specific `Co-authored-by` trailers (no history rewrite) |
 
 ---
 
@@ -71,11 +73,11 @@ Round-3 blockers closed: F4 cites the external audit series as the independent c
 
 ## 3. Validation Performed (reproducible on HEAD)
 
-Captured 2026-07-02 at commit `EVIDENCE_SHA` on branch `charter-compliance` (log: `/tmp/kubevigil-make-all-r4-final.log`):
+Captured 2026-07-02 at commit `8b52367` on branch `charter-compliance` (log: `/tmp/kubevigil-make-all-r4-final.log`):
 
 ```text
 $ git rev-parse HEAD
-EVIDENCE_SHA
+8b52367241ee8796c5fc62b7a2a8d7bdb6d50ba3
 
 $ make all
 exit=0
