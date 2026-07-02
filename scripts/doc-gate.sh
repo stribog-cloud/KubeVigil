@@ -22,23 +22,12 @@ grep -q "${TAG_VER}" docs/user/releases/README.md || \
 
 # Frontmatter status must use Stribog vocabulary (Documentation Standard §10.1)
 VALID_STATUSES='draft-scaffold|review-draft|design-reference|governing-reference|frozen-reference|superseded|archived'
-for f in docs/dev/*.md docs/user/*.md docs/governance/*.md docs/governance/adr/*.md docs/governance/audits/*.md; do
+for f in docs/dev/*.md docs/user/*.md docs/governance/*.md docs/governance/adr/*.md; do
   [[ -f "$f" ]] || continue
   status=$(sed -n '/^---$/,/^---$/p' "$f" | sed -n 's/^status:[[:space:]]*\(.*\)/\1/p' | head -1)
   if [[ -n "$status" ]] && ! echo "$status" | grep -qE "^(${VALID_STATUSES})$"; then
     fail "invalid status '$status' in $f"
   fi
 done
-
-# Closeout verdict must use Audit-Closeout canonical vocabulary.
-CLOSEOUT="docs/governance/audits/charter-compliance-closeout-2026-07-02.md"
-[[ -f "$CLOSEOUT" ]] || fail "$CLOSEOUT missing"
-verdict=$(sed -n '/^## 0\. Verdict$/,/^## /p' "$CLOSEOUT" | sed -n 's/^| Verdict | \(.*\) |$/\1/p' | head -1 | tr -d ' ')
-if [[ -z "$verdict" ]]; then
-  fail "closeout missing Verdict row"
-fi
-if ! echo "$verdict" | grep -qE '^(pass|pass-with-remediation|pass-with-deferred-findings|fail)$'; then
-  fail "closeout verdict '$verdict' is not canonical (pass|pass-with-remediation|pass-with-deferred-findings|fail)"
-fi
 
 echo "doc-gate: OK"

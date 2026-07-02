@@ -118,7 +118,7 @@ Exposes: `format`, `lint`, `vet`, `test`, `coverage`, `secrets`, `vuln`, `build`
 | Threat model | `docs/governance/threat-model.md` |
 | Build plan | `docs/governance/BUILD-PLAN.md` |
 | ADRs | `docs/governance/adr/` |
-| Audit closeouts | `docs/governance/audits/` |
+| Audit closeouts | maintained internally (not published to the public repo) |
 | Testing strategy | `docs/governance/testing-strategy.md` |
 | Local agent rules | `AGENTS.md` |
 | Waiver register | `docs/governance/WAIVER-REGISTER.md` |
