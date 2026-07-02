@@ -3,6 +3,8 @@ title: "Architecture for Contributors"
 audience: contributor
 created: 2026-07-02
 updated: 2026-07-02
+last_updated: 2026-07-02
+aliases: [contributor-architecture, dev-architecture]
 type: project/dev-architecture
 status: design-reference
 tags: [kubevigil, developer, architecture, contributors]

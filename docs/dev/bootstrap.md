@@ -3,6 +3,8 @@ title: "Developer Bootstrap"
 audience: contributor
 created: 2026-07-02
 updated: 2026-07-02
+last_updated: 2026-07-02
+aliases: [developer-bootstrap, contributor-onboarding]
 type: project/dev-tutorial
 status: review-draft
 tags: [kubevigil, developer, bootstrap, onboarding, tutorial]

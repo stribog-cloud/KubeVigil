@@ -9,7 +9,7 @@ status: governing-reference
 tags: [adr, kubevigil, security, mcp]
 project: kubevigil
 version: "2.0.0"
-revision: 2
+revision: 3
 owners: [maintainers (@msambare)]
 parent_moc: "[[MOC - KubeVigil Governance]]"
 ---
@@ -34,8 +34,10 @@ Confine MCP manifest scans to an explicit workspace root:
 
 - Default root: `KUBEVIGIL_WORKSPACE_ROOT` or process cwd at server start; override via `kubevigil mcp-server --workspace-root`
 - `internal/pathguard.ResolveWithinRoot` rejects `..` escape, paths outside root, and symlink traversal (including parent symlinks)
-- `validateManifestPath` and `engine.ParsePathWithinRoot` enforce the boundary before read
-- CLI `scan -f` remains unrestricted (operator trust model)
+- `pathguard.OpenRegularWithinRoot` opens with `O_NOFOLLOW` and reads from the held fd — prevents TOCTOU symlink swap between validate and read
+- `validateManifestPath` and `engine.ParsePathWithinRoot` enforce the boundary on the **MCP surface only**
+- CLI `scan -f` and `fix` remain unrestricted (operator-trusted paths by design; G304 nolint documents this)
+- Integrators **must** set an explicit narrow `--workspace-root` (or `KUBEVIGIL_WORKSPACE_ROOT`); default cwd is unsafe when the server starts from `$HOME` or `/`
 
 ## Alternatives Considered
 
@@ -49,7 +51,7 @@ Confine MCP manifest scans to an explicit workspace root:
 
 - MCP clients are untrusted; operators may point workspace at a repo checkout
 - CLI scans must not regress for CI/CD absolute paths
-- TOCTOU: Lstat-before-read on entry and bounded directory walks
+- TOCTOU: `O_NOFOLLOW` fd open after path resolution; no `os.ReadFile` re-resolution on confined paths
 
 ## Verification
 
@@ -69,3 +71,4 @@ Confine MCP manifest scans to an explicit workspace root:
 |----------|------|--------|--------|
 | 1 | 2026-07-02 | maintainers | Initial ADR (incorrectly credited v0.5.0 hardening) |
 | 2 | 2026-07-02 | maintainers | Rewritten after adversarial audit F1 — documents workspace confinement on this branch |
+| 3 | 2026-07-02 | maintainers | O_NOFOLLOW fd reads (R1 TOCTOU); explicit MCP-only scope and workspace-root guidance (R12/R10) |

@@ -3,6 +3,8 @@ title: "Tutorial — Your First Manifest Scan"
 audience: operator
 created: 2026-07-02
 updated: 2026-07-02
+last_updated: 2026-07-02
+aliases: [first-scan-tutorial, manifest-scan-tutorial]
 type: project/user-tutorial
 status: review-draft
 tags: [kubevigil, tutorial, scanning, onboarding]

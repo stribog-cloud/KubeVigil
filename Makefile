@@ -61,7 +61,7 @@ clean:
 
 check: vet lint test coverage secrets vuln build smoke
 
-all: format lint vet test coverage secrets vuln build smoke doc-gate doc-drift-gate doc-samples-test doc-a11y doc-gate doc-drift-gate doc-samples-test doc-a11y
+all: format lint vet test coverage secrets vuln build smoke doc-gate doc-drift-gate doc-samples-test doc-a11y
 
 hooks-install setup-hooks:
 	git config core.hooksPath .githooks

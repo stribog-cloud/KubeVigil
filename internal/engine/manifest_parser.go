@@ -31,7 +31,7 @@ func ParsePathWithinRoot(path, root string) (*checker.ResourceCache, []error) {
 	if info.IsDir() {
 		return parseDirBounded(confined, root)
 	}
-	return ParseFile(confined)
+	return parseFileWithinRoot(root, path)
 }
 
 // ParsePath parses a file or directory at the given path into a ResourceCache.
@@ -51,6 +51,31 @@ func ParsePath(path string) (*checker.ResourceCache, []error) {
 
 // maxManifestFileSize is the maximum allowed size for a single YAML manifest file (10 MiB).
 const maxManifestFileSize = 10 << 20
+
+func parseFileWithinRoot(root, path string) (*checker.ResourceCache, []error) {
+	f, err := pathguard.OpenRegularWithinRoot(root, path)
+	if err != nil {
+		return checker.NewResourceCache(), []error{err}
+	}
+	defer f.Close()
+
+	info, err := f.Stat()
+	if err != nil {
+		return checker.NewResourceCache(), []error{fmt.Errorf("fstat: %w", err)}
+	}
+	if info.Size() > maxManifestFileSize {
+		return checker.NewResourceCache(), []error{
+			fmt.Errorf("file size %d bytes exceeds maximum of %d bytes",
+				info.Size(), maxManifestFileSize),
+		}
+	}
+
+	data, err := io.ReadAll(io.LimitReader(f, maxManifestFileSize+1))
+	if err != nil {
+		return checker.NewResourceCache(), []error{fmt.Errorf("reading manifest: %w", err)}
+	}
+	return ParseBytes(data)
+}
 
 // ParseFile parses a single YAML file into a ResourceCache.
 // Handles multi-document YAML files (separated by ---).
@@ -155,18 +180,30 @@ func parseDirBounded(dir, root string) (*checker.ResourceCache, []error) {
 			return nil
 		}
 
-		fi, fiErr := d.Info()
-		if fiErr != nil {
-			errs = append(errs, fmt.Errorf("stat %s: %w", path, fiErr))
+		rel, relErr := filepath.Rel(filepath.Clean(root), path)
+		if relErr != nil {
+			errs = append(errs, fmt.Errorf("walking %s: %w", path, relErr))
+			return nil
+		}
+		f, openErr := pathguard.OpenRegularWithinRoot(root, rel)
+		if openErr != nil {
+			errs = append(errs, fmt.Errorf("reading %s: %w", path, openErr))
+			return nil
+		}
+		fi, statErr := f.Stat()
+		if statErr != nil {
+			_ = f.Close()
+			errs = append(errs, fmt.Errorf("reading %s: %w", path, statErr))
 			return nil
 		}
 		if fi.Size() > maxManifestFileSize {
+			_ = f.Close()
 			errs = append(errs, fmt.Errorf("reading %s: file size %d bytes exceeds maximum of %d bytes",
 				path, fi.Size(), maxManifestFileSize))
 			return nil
 		}
-
-		data, readErr := os.ReadFile(path) //nolint:gosec // G304: path confined by pathguard.AssertWithinRoot before read; size bounded above.
+		data, readErr := io.ReadAll(io.LimitReader(f, maxManifestFileSize+1))
+		_ = f.Close()
 		if readErr != nil {
 			errs = append(errs, fmt.Errorf("reading %s: %w", path, readErr))
 			return nil

@@ -3,6 +3,8 @@ title: "Support and Escalation"
 audience: operator, integrator, evaluator
 created: 2026-07-02
 updated: 2026-07-02
+last_updated: 2026-07-02
+aliases: [user-support, escalation-map]
 type: project/user-support
 status: review-draft
 tags: [kubevigil, user, support, escalation]

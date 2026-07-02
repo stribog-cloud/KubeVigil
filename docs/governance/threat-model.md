@@ -6,8 +6,8 @@ type: project/threat-model
 status: governing-reference
 tags: [charter, governance, kubevigil, security, stride]
 project: kubevigil
-version: "1.1.0"
-revision: 2
+version: "1.2.0"
+revision: 3
 last_updated: 2026-07-02
 parent_moc: "[[MOC - KubeVigil Governance]]"
 owners: [maintainers (@msambare)]
@@ -48,7 +48,7 @@ owners: [maintainers (@msambare)]
 | Tampering | Symlink escape on fix path | `os.Lstat`, `filepath.Rel` boundary checks |
 | Repudiation | Deny destructive fix | Backup dir + RESTORE.md; audit logs via slog |
 | Information disclosure | Secrets in scan output | `.gitignore` scan-results; operator redaction |
-| Information disclosure (MCP egress) | Prompt injection requests `scan_manifests` on `~/.ssh/id_rsa` or repo secrets | Workspace root confinement (`pathguard.ResolveWithinRoot`, ADR-003); kubeconfig symlink rejection; 10 MiB file cap |
+| Information disclosure (MCP egress) | Prompt injection requests `scan_manifests` on `~/.ssh/id_rsa` or repo secrets | **MCP-only** workspace confinement (`pathguard.OpenRegularWithinRoot` with `O_NOFOLLOW`, ADR-003); CLI `scan -f` is operator-trusted by design; kubeconfig symlink rejection; 10 MiB file cap |
 | Denial of service | YAML bomb / huge files | 10 MiB file limit, 10k document cap |
 | Elevation of privilege | Write outside target dir | Backup path enforcement, no cluster apply |
 
@@ -56,7 +56,8 @@ owners: [maintainers (@msambare)]
 
 | Control | Implementation | Test |
 |---------|----------------|------|
-| Workspace root jail | `KUBEVIGIL_WORKSPACE_ROOT`, `--workspace-root`, `validateManifestPath` | `internal/pathguard/pathguard_test.go`, `internal/mcp/tools_scan_test.go` |
+| Workspace root jail (MCP only) | `KUBEVIGIL_WORKSPACE_ROOT`, `--workspace-root`, `validateManifestPath` | `internal/pathguard/pathguard_test.go`, `internal/mcp/tools_scan_test.go` |
+| TOCTOU symlink swap on read | Attacker replaces validated file with symlink before read | `O_NOFOLLOW` open + read from held fd (`OpenRegularWithinRoot`) | `TestOpenRegularWithinRoot_RejectsTOCTOUSymlinkSwap` |
 | `..` and absolute-path escape rejection | `pathguard.ResolveWithinRoot` | `TestResolveWithinRoot_RejectsDotDotEscape` |
 | Symlink traversal block | `Lstat` on entry + parent walk | `TestResolveWithinRoot_RejectsSymlinkEscape` |
 | Bounded directory read | `engine.parseDirBounded` | `internal/engine/manifest_parser_bounded_test.go` |
@@ -72,6 +73,10 @@ owners: [maintainers (@msambare)]
 | Container image | Pull from ghcr.io | Distroless non-root, minimal base |
 
 ## 5. Residual Risks
+
+### 5.1 Data and Privacy (Partial applicability)
+
+KubeVigil does not collect or persist PII. Scan and MCP outputs may **transiently surface secrets** present in operator-supplied manifests or files readable within the MCP workspace root. Controls: MCP-only workspace confinement, file size caps, operator responsibility to scope workspace to manifest trees. This is why the Data and Privacy Standard is **Partial**, not N/A — see Project Applicability Matrix and Annex §0.
 
 - Operator runs fix on production git branch without review — **mitigated by dry-run default**
 - Compromised dependency in build chain — **mitigated by govulncheck CI + pinned go.sum**
@@ -89,3 +94,4 @@ Update this model when adding: new MCP tools, network calls, cluster write paths
 |---------|----------|------|--------|
 | 1.0.0 | 1 | 2026-07-02 | Initial STRIDE threat model for CLI and MCP surfaces. |
 | 1.1.0 | 2 | 2026-07-02 | Added MCP egress STRIDE row, control mapping, backup residual, PII-layer maintenance trigger (audit F7/F8/F24). |
+| 1.2.0 | 3 | 2026-07-02 | MCP-only confinement scope, O_NOFOLLOW TOCTOU control, Data-Privacy §5.1 (audit R1/R3/R12). |

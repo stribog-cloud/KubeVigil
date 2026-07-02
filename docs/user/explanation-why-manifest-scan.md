@@ -3,6 +3,8 @@ title: "Explanation — Why Manifest Scanning?"
 audience: operator
 created: 2026-07-02
 updated: 2026-07-02
+last_updated: 2026-07-02
+aliases: [why-manifest-scan, manifest-vs-live]
 type: project/user-explanation
 status: review-draft
 tags: [kubevigil, explanation, scanning, gitops]

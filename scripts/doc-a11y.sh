@@ -12,8 +12,29 @@ for f in docs/getting-started/quickstart.md docs/user/support.md docs/index.md; 
   grep -q '^#' "$f" || fail "$f has no headings"
 done
 
-# Images must have non-empty alt text (reject ![](path) and ![ ](path))
-bad_alt=$(grep -rE '!\[\]\([^)]+\)|!\[[[:space:]]*\]\([^)]+\)' docs/ --include='*.md' 2>/dev/null || true)
+# Strip fenced code blocks and inline-code spans before scanning prose for image alt text.
+# This avoids false positives from documented examples (e.g. mutation-test tables).
+scan_prose() {
+  awk '
+    BEGIN { in_fence = 0 }
+    /^```/ { in_fence = !in_fence; next }
+    in_fence { next }
+    {
+      line = $0
+      while (match(line, /`[^`]*`/)) {
+        sub(/`[^`]*`/, "", line)
+      }
+      print line
+    }
+  '
+}
+
+bad_alt=$(
+  find docs -name '*.md' -print0 |
+    xargs -0 cat |
+    scan_prose |
+    grep -E '!\[\]\([^)]+\)|!\[[[:space:]]*\]\([^)]+\)' || true
+)
 if [[ -n "$bad_alt" ]]; then
   echo "$bad_alt" >&2
   fail "found markdown images without alt text"

@@ -34,7 +34,7 @@ Review this matrix at every charter version bump. A change to any row is a Compl
 | Stribog AI Agent Execution Standard | `bound` | AI-assisted contribution is permitted; agents must follow Annex reading order and attribution rules. |
 | Stribog Operational Delivery Standard | `not applicable` | CLI-only product; no managed-service or rolling-deployment scope. |
 | Stribog Security Posture Standard | `bound` | Security tool with untrusted manifest input, MCP channel, and filesystem side effects. |
-| Stribog Data and Privacy Standard | `not applicable` | No PII collection or storage; scan input is cluster/manifest configuration. MCP path egress risk tracked under Security Posture Standard and threat model. |
+| Stribog Data and Privacy Standard | `partial` | No persistent PII store; MCP/scan may transiently surface secrets from operator-supplied paths within workspace confinement. See threat model §5 and Annex §0.1. |
 | Stribog User Documentation Standard | `bound` | Operator/integrator CLI and MCP surface consumed by non-engineers. |
 | Stribog Developer Documentation Standard | `bound` | Public Go module, MCP schemas, and contributor onboarding. |
 | Stribog UI/UX Standard | `not applicable` | Line-oriented CLI per UI/UX Standard §0.2; no graphical UI. |

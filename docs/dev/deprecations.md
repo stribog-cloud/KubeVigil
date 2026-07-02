@@ -3,6 +3,8 @@ title: "Deprecation Register"
 audience: consumer, contributor
 created: 2026-07-02
 updated: 2026-07-02
+last_updated: 2026-07-02
+aliases: [deprecation-register, breaking-changes]
 type: project/deprecations
 status: design-reference
 tags: [kubevigil, developer, deprecations, compatibility]

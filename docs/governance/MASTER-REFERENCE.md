@@ -117,7 +117,7 @@ Scan → Filter → Classify → Gate (risk/system/known workload) → Plan → 
 |------|------------|--------|
 | Untrusted YAML bombs | Size/count limits in engine and fix parsers | Mitigated v0.5.0 |
 | Symlink escape on fix paths | `os.Lstat` boundary checks | Mitigated v0.5.0 |
-| MCP path injection | Validation + length limits | Mitigated v0.5.0 |
+| MCP path injection | Workspace root confinement (`pathguard`, ADR-003) | Mitigated `charter-compliance` branch |
 
 ## 7. Revision History
 

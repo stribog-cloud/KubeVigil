@@ -39,6 +39,19 @@ func TestRunMCPServer_ExplicitWorkspaceRootConfigError(t *testing.T) {
 	assert.Contains(t, err.Error(), "loading config")
 }
 
+func TestRunMCPServer_WorkspaceRootRelativePathConfigError(t *testing.T) {
+	saveAndRestoreFlags(t)
+	sub := "ws-subdir"
+	require.NoError(t, os.Mkdir(sub, 0o755))
+	t.Cleanup(func() { _ = os.Remove(sub) })
+	mcpWorkspaceRoot = sub
+	flagConfig = "/nonexistent/kubevigil-config.yaml"
+
+	err := runMCPServer(mcpCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "loading config")
+}
+
 func TestRunMCPServer_DefaultWorkspaceRootFromEnv(t *testing.T) {
 	saveAndRestoreFlags(t)
 	root := t.TempDir()

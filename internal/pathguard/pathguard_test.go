@@ -1,6 +1,7 @@
 package pathguard
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -202,6 +203,118 @@ func TestResolveWithinRoot_RejectsSymlinkParentDirectory(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "symlink") {
 		t.Errorf("error = %v, want symlink parent rejection", err)
+	}
+}
+
+func TestOpenRegularWithinRoot_ReadsFileInsideRoot(t *testing.T) {
+	root := t.TempDir()
+	manifest := filepath.Join(root, "pod.yaml")
+	content := []byte("apiVersion: v1\nkind: Pod\n")
+	if err := os.WriteFile(manifest, content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := OpenRegularWithinRoot(root, "pod.yaml")
+	if err != nil {
+		t.Fatalf("OpenRegularWithinRoot() error = %v", err)
+	}
+	defer f.Close()
+
+	got, err := io.ReadAll(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(content) {
+		t.Errorf("content mismatch: got %q", got)
+	}
+}
+
+func TestOpenRegularWithinRoot_RejectsFifoInsideRoot(t *testing.T) {
+	root := t.TempDir()
+	fifo := filepath.Join(root, "pipe")
+	if err := syscall.Mkfifo(fifo, 0o644); err != nil {
+		t.Skipf("mkfifo not supported: %v", err)
+	}
+
+	_, err := OpenRegularWithinRoot(root, "pipe")
+	if err == nil {
+		t.Fatal("expected error opening fifo as regular file")
+	}
+}
+
+func TestOpenRegularWithinRoot_RejectsTOCTOUSymlinkSwap(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	secret := filepath.Join(outside, "secret.yaml")
+	if err := os.WriteFile(secret, []byte("stolen"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	target := filepath.Join(root, "pod.yaml")
+	if err := os.WriteFile(target, []byte("apiVersion: v1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Remove(target); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(secret, target); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := OpenRegularWithinRoot(root, "pod.yaml")
+	if err == nil {
+		t.Fatal("expected rejection when validated path replaced by symlink before open")
+	}
+	if !strings.Contains(err.Error(), "symlink") && !strings.Contains(err.Error(), "opening") {
+		t.Errorf("error = %v, want symlink or open failure", err)
+	}
+}
+
+func TestOpenRegularWithinRoot_RejectsMissingFile(t *testing.T) {
+	root := t.TempDir()
+	_, err := OpenRegularWithinRoot(root, "missing.yaml")
+	if err == nil {
+		t.Fatal("expected error for missing file")
+	}
+}
+
+func TestOpenRegularWithinRoot_RejectsOutsideRoot(t *testing.T) {
+	root := t.TempDir()
+	outside := filepath.Join(filepath.Dir(root), "outside-open.yaml")
+	if err := os.WriteFile(outside, []byte("apiVersion: v1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Remove(outside) })
+
+	_, err := OpenRegularWithinRoot(root, outside)
+	if err == nil {
+		t.Fatal("expected error for absolute path outside root")
+	}
+}
+
+func TestDefaultWorkspaceRoot_UsesEnvWhenSet(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv(WorkspaceRootEnv, root)
+	got, err := DefaultWorkspaceRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, _ := filepath.Abs(root)
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestOpenRegularWithinRoot_RejectsDirectory(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "manifests"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := OpenRegularWithinRoot(root, "manifests")
+	if err == nil {
+		t.Fatal("expected error opening directory as regular file")
 	}
 }
 

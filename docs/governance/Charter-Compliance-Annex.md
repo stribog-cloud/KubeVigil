@@ -28,7 +28,7 @@ owners: [maintainers (@msambare)]
 | Stribog AI Agent Execution Standard | Applies | 1.1 | revision 9, 2026-05-12 |
 | Stribog Operational Delivery Standard | N/A — CLI tool, no managed-service scope | N/A | |
 | Stribog Security Posture Standard | Applies — security tool, untrusted manifest input | 1.0 | revision 6, 2026-05-12 |
-| Stribog Data and Privacy Standard | Partial — no persistent PII store; MCP/scan may surface secrets from operator-supplied paths within workspace confinement | 1.0 | revision 2, 2026-05-12 |
+| Stribog Data and Privacy Standard | Partial — no persistent PII store; MCP/scan may surface secrets from operator-supplied paths within workspace confinement | 1.0 | revision 5, 2026-05-12 |
 | Stribog User Documentation Standard | Applies — operator/integrator CLI and MCP | 1.0 | revision 2, 2026-05-12 |
 | Stribog Developer Documentation Standard | Applies — public Go API, MCP surface, contributors | 1.0 | revision 2, 2026-05-12 |
 | Stribog UI/UX Standard | N/A — line-oriented CLI per UI/UX §0.2 | N/A | |

@@ -31,6 +31,22 @@ if [ "$FIX_HASH_BEFORE" != "$FIX_HASH_AFTER" ]; then
   fail "fix dry-run modified fixture (expected no writes without --apply)"
 fi
 
+# Documented fix flags must remain wired (cli-reference.md).
+"$BIN" fix "$FIXTURE" --risk-level moderate >/dev/null || fail "fix --risk-level moderate failed"
+"$BIN" fix "$FIXTURE" -o diff >/dev/null || fail "fix -o diff failed"
+
+# --apply on scratch copy (documented in quickstart / auto-fix overview).
+SCRATCH=$(mktemp -d)
+trap 'rm -rf "$SCRATCH"' EXIT
+cp "$FIXTURE" "$SCRATCH/simple-deployment.yaml"
+SCRATCH_FILE="$SCRATCH/simple-deployment.yaml"
+SCRATCH_HASH_BEFORE=$(shasum -a 256 "$SCRATCH_FILE" | awk '{print $1}')
+"$BIN" fix "$SCRATCH_FILE" --apply --yes >/dev/null || fail "fix --apply --yes on scratch copy failed"
+SCRATCH_HASH_AFTER=$(shasum -a 256 "$SCRATCH_FILE" | awk '{print $1}')
+if [ "$SCRATCH_HASH_BEFORE" = "$SCRATCH_HASH_AFTER" ]; then
+  fail "fix --apply --yes did not modify scratch copy"
+fi
+
 # Contributor architecture doc: contract test name must match a real test.
 go test ./test/integration/ -run TestAllCheckersContract -count=1 >/dev/null || \
   fail "TestAllCheckersContract integration test failed"
