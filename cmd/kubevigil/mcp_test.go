@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -50,6 +52,39 @@ func TestRunMCPServer_WorkspaceRootRelativePathConfigError(t *testing.T) {
 	err := runMCPServer(mcpCmd, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "loading config")
+}
+
+func TestResolveMCPWorkspaceRoot_WarnsWhenUnset(t *testing.T) {
+	t.Setenv("KUBEVIGIL_WORKSPACE_ROOT", "")
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	origStderr := os.Stderr
+	os.Stderr = w
+	t.Cleanup(func() {
+		os.Stderr = origStderr
+		_ = r.Close()
+	})
+	setupLogging()
+
+	got, rootErr := resolveMCPWorkspaceRoot("")
+	require.NoError(t, rootErr)
+	require.NotEmpty(t, got)
+
+	_ = w.Close()
+	var buf bytes.Buffer
+	_, _ = buf.ReadFrom(r)
+	if !strings.Contains(buf.String(), "falling back to process cwd") {
+		t.Fatalf("expected cwd fallback warning on stderr, got: %q", buf.String())
+	}
+}
+
+func TestResolveMCPWorkspaceRoot_UsesExplicitPath(t *testing.T) {
+	root := t.TempDir()
+	got, err := resolveMCPWorkspaceRoot(root)
+	require.NoError(t, err)
+	want, _ := filepath.Abs(root)
+	assert.Equal(t, want, got)
 }
 
 func TestRunMCPServer_DefaultWorkspaceRootFromEnv(t *testing.T) {

@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 )
 
 // WorkspaceRootEnv is the environment variable overriding the MCP workspace root.
@@ -63,34 +62,29 @@ func ResolveWithinRoot(root, path string) (string, error) {
 	return candidate, nil
 }
 
-// OpenRegularWithinRoot opens a regular file confined to root using O_NOFOLLOW so a
-// symlink swapped onto the path after validation cannot be followed at read time.
+// OpenRegularWithinRoot opens a regular file confined to root via a dir-fd-relative walk
+// (openat2 RESOLVE_NO_SYMLINKS on Linux; openat+O_NOFOLLOW elsewhere) so symlink swaps on
+// parent components or the leaf cannot escape the workspace between validation and read.
 func OpenRegularWithinRoot(root, path string) (*os.File, error) {
 	confined, err := ResolveWithinRoot(root, path)
 	if err != nil {
 		return nil, err
 	}
 
-	f, err := os.OpenFile(confined, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	absRoot, err := filepath.Abs(filepath.Clean(root))
 	if err != nil {
-		return nil, fmt.Errorf("opening %q: %w", confined, err)
+		return nil, fmt.Errorf("resolving workspace root: %w", err)
 	}
 
-	info, err := f.Stat()
+	rel, err := filepath.Rel(absRoot, confined)
 	if err != nil {
-		_ = f.Close()
-		return nil, fmt.Errorf("fstat %q: %w", confined, err)
+		return nil, fmt.Errorf("path %q outside workspace root %q: %w", confined, absRoot, err)
 	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		_ = f.Close()
-		return nil, fmt.Errorf("path %q is a symlink (rejected for security)", confined)
-	}
-	if !info.Mode().IsRegular() {
-		_ = f.Close()
-		return nil, fmt.Errorf("path %q is not a regular file", confined)
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return nil, fmt.Errorf("path %q is outside workspace root %q", confined, absRoot)
 	}
 
-	return f, nil
+	return openConfinedRegularFile(absRoot, rel)
 }
 
 // AssertWithinRoot reports whether path resides inside root.

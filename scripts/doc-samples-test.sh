@@ -47,6 +47,24 @@ if [ "$SCRATCH_HASH_BEFORE" = "$SCRATCH_HASH_AFTER" ]; then
   fail "fix --apply --yes did not modify scratch copy"
 fi
 
+# Documented scan output formats (output-formats.md — 8 formats).
+SCAN_FIXTURE="$ROOT/test/fixtures/privileged/pod-privileged-true.yaml"
+[[ -f "$SCAN_FIXTURE" ]] || fail "scan fixture missing: $SCAN_FIXTURE"
+for fmt in text json yaml html sarif markdown csv junit; do
+  set +e
+  "$BIN" scan -f "$SCAN_FIXTURE" -o "$fmt" >/dev/null 2>&1
+  rc=$?
+  set -e
+  # Exit 0 = clean scan; exit 1 = findings present (expected for privileged fixture).
+  if [ "$rc" -ne 0 ] && [ "$rc" -ne 1 ]; then
+    fail "scan -o $fmt failed (exit $rc)"
+  fi
+done
+
+# MCP surface: subprocess round-trip on documented tools (mcp-setup.md / e2e_test.go).
+go test ./internal/mcp/ -run 'TestE2E(ManifestScanEndToEnd|ToolDiscovery)' -count=1 >/dev/null || \
+  fail "MCP E2E smoke test failed"
+
 # Contributor architecture doc: contract test name must match a real test.
 go test ./test/integration/ -run TestAllCheckersContract -count=1 >/dev/null || \
   fail "TestAllCheckersContract integration test failed"

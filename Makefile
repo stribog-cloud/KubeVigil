@@ -40,7 +40,7 @@ fmt:
 cover: coverage
 coverage:
 	go test -race -count=1 -coverprofile=coverage.out $(COVER_PKGS)
-	@pct=$$(awk '/^mode:/ {next} NF >= 3 { stmts += $$2 + 0; if (($$3 + 0) > 0) covered += $$2 + 0 } END { if (stmts > 0) printf "%.1f", covered / stmts * 100; else print "0" }' coverage.out); \
+	@pct=$$(./scripts/coverage-percent.sh coverage.out); \
 	echo "Coverage: $${pct}% (floor: $(COVERAGE_FLOOR)%)"; \
 	awk -v p="$$pct" -v f="$(COVERAGE_FLOOR)" 'BEGIN {exit !(p+0 >= f+0)}' || \
 	(echo "ERROR: coverage $${pct}% below floor $(COVERAGE_FLOOR)%" && exit 1)

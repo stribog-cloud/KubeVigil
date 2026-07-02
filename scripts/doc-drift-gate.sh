@@ -42,7 +42,7 @@ cli_from_doc=$(sed -n '/^## CLI commands/,/^## /p' "$MAP" \
 # Checker count from MustRegister calls in internal/checker/*/register.go
 checker_count=$(grep -h 'MustRegister' internal/checker/*/register.go 2>/dev/null | wc -l | tr -d ' ')
 [[ "$checker_count" -gt 0 ]] || fail "no checkers found in internal/checker"
-grep -q "$checker_count" "$MAP" || fail "public-surface.md missing checker count $checker_count"
+grep -qE "\\*\\*${checker_count}\\*\\*" "$MAP" || fail "public-surface.md missing checker count **${checker_count}**"
 
 diff_sets() {
   local label=$1 src=$2 doc=$3

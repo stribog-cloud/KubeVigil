@@ -57,7 +57,7 @@ owners: [maintainers (@msambare)]
 | Control | Implementation | Test |
 |---------|----------------|------|
 | Workspace root jail (MCP only) | `KUBEVIGIL_WORKSPACE_ROOT`, `--workspace-root`, `validateManifestPath` | `internal/pathguard/pathguard_test.go`, `internal/mcp/tools_scan_test.go` |
-| TOCTOU symlink swap on read | Attacker replaces validated file with symlink before read | `O_NOFOLLOW` open + read from held fd (`OpenRegularWithinRoot`) | `TestOpenRegularWithinRoot_RejectsTOCTOUSymlinkSwap` |
+| TOCTOU symlink swap on read | Attacker replaces validated file or parent directory with symlink before read | Dir-fd `openat2(RESOLVE_NO_SYMLINKS)` / `openat`+`O_NOFOLLOW` walk + read from held fd (`OpenRegularWithinRoot`) | `TestOpenRegularWithinRoot_RejectsTOCTOUSymlinkSwap`, `TestOpenRegularWithinRoot_RejectsParentSymlinkToOutside`, `TestOpenRegularWithinRoot_RejectsConcurrentParentSymlinkSwap` |
 | `..` and absolute-path escape rejection | `pathguard.ResolveWithinRoot` | `TestResolveWithinRoot_RejectsDotDotEscape` |
 | Symlink traversal block | `Lstat` on entry + parent walk | `TestResolveWithinRoot_RejectsSymlinkEscape` |
 | Bounded directory read | `engine.parseDirBounded` | `internal/engine/manifest_parser_bounded_test.go` |

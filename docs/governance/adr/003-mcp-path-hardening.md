@@ -34,7 +34,7 @@ Confine MCP manifest scans to an explicit workspace root:
 
 - Default root: `KUBEVIGIL_WORKSPACE_ROOT` or process cwd at server start; override via `kubevigil mcp-server --workspace-root`
 - `internal/pathguard.ResolveWithinRoot` rejects `..` escape, paths outside root, and symlink traversal (including parent symlinks)
-- `pathguard.OpenRegularWithinRoot` opens with `O_NOFOLLOW` and reads from the held fd — prevents TOCTOU symlink swap between validate and read
+- `pathguard.OpenRegularWithinRoot` opens via dir-fd `openat2(RESOLVE_NO_SYMLINKS)` (Linux) or `openat`+`O_NOFOLLOW` walk and reads from the held fd — prevents parent-component and leaf TOCTOU symlink swaps
 - `validateManifestPath` and `engine.ParsePathWithinRoot` enforce the boundary on the **MCP surface only**
 - CLI `scan -f` and `fix` remain unrestricted (operator-trusted paths by design; G304 nolint documents this)
 - Integrators **must** set an explicit narrow `--workspace-root` (or `KUBEVIGIL_WORKSPACE_ROOT`); default cwd is unsafe when the server starts from `$HOME` or `/`

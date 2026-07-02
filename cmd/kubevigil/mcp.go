@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/cobra"
@@ -28,25 +31,27 @@ func init() {
 	rootCmd.AddCommand(mcpCmd)
 }
 
+func resolveMCPWorkspaceRoot(explicit string) (string, error) {
+	if explicit != "" {
+		return filepath.Abs(explicit)
+	}
+	if strings.TrimSpace(os.Getenv(pathguard.WorkspaceRootEnv)) == "" {
+		slog.Warn("MCP workspace root not set; falling back to process cwd — set KUBEVIGIL_WORKSPACE_ROOT or --workspace-root for narrow confinement",
+			"env", pathguard.WorkspaceRootEnv,
+			"flag", "--workspace-root")
+	}
+	return pathguard.DefaultWorkspaceRoot()
+}
+
 func runMCPServer(_ *cobra.Command, _ []string) error {
 	setupLogging()
 	cfg, err := loadConfig()
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}
-	root := mcpWorkspaceRoot
-	if root == "" {
-		var rootErr error
-		root, rootErr = pathguard.DefaultWorkspaceRoot()
-		if rootErr != nil {
-			return fmt.Errorf("resolving workspace root: %w", rootErr)
-		}
-	} else {
-		abs, absErr := filepath.Abs(root)
-		if absErr != nil {
-			return fmt.Errorf("resolving workspace root: %w", absErr)
-		}
-		root = abs
+	root, err := resolveMCPWorkspaceRoot(mcpWorkspaceRoot)
+	if err != nil {
+		return fmt.Errorf("resolving workspace root: %w", err)
 	}
 	server := mcpserver.NewServer(cfg, checker.DefaultRegistry(), root)
 	return server.Run(context.Background(), &mcp.StdioTransport{})
