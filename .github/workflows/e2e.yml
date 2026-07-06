@@ -64,7 +64,7 @@ jobs:
           version: 'v1.32.0'
 
       - name: Install bats-core
-        run: npm install -g bats@1.13.0
+        run: sudo npm install -g bats@1.13.0
 
       - name: Verify prerequisites
         run: |
@@ -135,4 +135,5 @@ jobs:
 
       - name: Teardown Kind clusters (safety net)
         if: always()
-        run: ./test/e2e/scripts/teardown-clusters.sh --all --yes
+        # No --topology flag: the script's default is already "all".
+        run: ./test/e2e/scripts/teardown-clusters.sh --yes
