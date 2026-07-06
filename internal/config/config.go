@@ -257,5 +257,15 @@ func validate(cfg *Config) error {
 			return fmt.Errorf("config validation: invalid severity %q for check override %q", override.Severity, name)
 		}
 	}
+	// Structurally validate custom CEL policies at config load so a broken
+	// `customPolicies:` block is caught by every command that loads config
+	// (fix, mcp-server), not only scan. CEL expressions are compiled later at
+	// scan time; this checks ids, severities, and required fields.
+	if len(cfg.CustomPolicies) > 0 {
+		ps := &policy.Set{Version: policy.SpecVersion, Policies: cfg.CustomPolicies}
+		if err := ps.Validate(); err != nil {
+			return fmt.Errorf("config validation: %w", err)
+		}
+	}
 	return nil
 }

@@ -55,6 +55,14 @@ func newCelChecker(cp *compiled) (*celChecker, error) {
 		nsFilter: toSet(cp.spec.Match.Namespaces),
 	}
 	cc.gvrs = resolveGVRs(cp.spec.Match)
+	if len(cc.gvrs) == 0 {
+		// A policy that resolves to no resource types (e.g. a typo in
+		// match.kinds) will silently never fire — a false negative that is
+		// easy to miss in a security tool. Warn rather than fail: the policy
+		// may legitimately target kinds not present in this scan.
+		slog.Warn("custom policy matches no known resource types; it will never fire",
+			"policy", cp.spec.ID, "kinds", cp.spec.Match.Kinds, "apiGroups", cp.spec.Match.APIGroups)
+	}
 	return cc, nil
 }
 

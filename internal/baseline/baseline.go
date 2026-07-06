@@ -8,12 +8,12 @@ package baseline
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
-	"strings"
 
 	"github.com/stribog-cloud/kubevigil/internal/checker"
 )
@@ -55,17 +55,21 @@ type Baseline struct {
 // per-field targeting, while a baseline needs cross-scan stability. The two
 // must not be unified — changing either changes user-visible behavior.
 func Fingerprint(f *checker.Finding) string {
-	// Pipe-join identity fields; the fields themselves never contain a newline,
-	// and a null separator disambiguates empty components from each other.
-	id := strings.Join([]string{
-		f.Checker,
-		f.Kind,
-		f.Namespace,
-		f.Resource,
-		f.Container,
-	}, "\x00")
-	sum := sha256.Sum256([]byte(id))
-	return hex.EncodeToString(sum[:])
+	// Length-prefix each field before hashing so the field boundaries are
+	// unambiguous even when a field itself contains the delimiter byte. A naive
+	// separator-joined scheme (e.g. "\x00"-join) collides: a resource name
+	// containing an embedded NUL — reachable from a crafted manifest via
+	// `name: "foo\0bar"` — could shift the boundary and make two distinct
+	// findings hash identically, letting a new finding masquerade as
+	// "existing" and slip past --fail-on-new. Length-prefixing closes that.
+	h := sha256.New()
+	for _, field := range []string{f.Checker, f.Kind, f.Namespace, f.Resource, f.Container} {
+		var lenBuf [8]byte
+		binary.BigEndian.PutUint64(lenBuf[:], uint64(len(field)))
+		h.Write(lenBuf[:])
+		h.Write([]byte(field))
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // FromFindings builds a baseline from a set of findings.

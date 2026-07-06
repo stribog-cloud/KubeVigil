@@ -32,6 +32,23 @@ func TestFingerprint_StableAndIdentitySensitive(t *testing.T) {
 	}
 }
 
+func TestFingerprint_NoDelimiterCollision(t *testing.T) {
+	// Regression (red-team): a naive "\x00"-joined identity collides when a
+	// field contains an embedded NUL. These two findings have the SAME
+	// separator-joined bytes but are DIFFERENT resources — they must not share
+	// a fingerprint, or a crafted resource could masquerade as an existing
+	// baselined finding and slip past --fail-on-new.
+	a := f("chk", "Pod", "a", "\x00c", "") // namespace="a", resource="\x00c"
+	b := f("chk", "Pod", "a\x00", "c", "") // namespace="a\x00", resource="c"
+	if Fingerprint(&a) == Fingerprint(&b) {
+		t.Fatal("fingerprint collision: embedded-NUL fields must not shift the boundary")
+	}
+	c := f("chk", "Pod", "a", "\x00c", "")
+	if Fingerprint(&a) != Fingerprint(&c) {
+		t.Error("identical findings must share a fingerprint")
+	}
+}
+
 func TestAnnotate_ClassifiesNewExistingResolved(t *testing.T) {
 	base := FromFindings([]checker.Finding{
 		f("privileged", "Pod", "default", "web", "app"),  // stays

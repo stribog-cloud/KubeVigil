@@ -216,6 +216,15 @@ func runScan(cmd *cobra.Command, _ []string) error {
 
 	// Save a baseline from this scan's (filtered) findings and exit, if asked.
 	if flagSaveBaseline != "" {
+		// --save-baseline is a terminal action: it records the current findings
+		// and exits, so combining it with --baseline / --fail-on-new (which
+		// compare against a baseline) is contradictory. Reject it rather than
+		// silently ignoring the comparison flags.
+		if flagBaseline != "" || flagFailOnNew {
+			err := fmt.Errorf("--save-baseline cannot be combined with --baseline or --fail-on-new")
+			fmt.Fprintf(os.Stderr, "Config error: %v\n", err)
+			return &exitError{code: 3, err: err}
+		}
 		base := baseline.FromFindings(result.Findings)
 		base.ToolVersion = version.Version
 		if saveErr := base.Save(flagSaveBaseline); saveErr != nil {

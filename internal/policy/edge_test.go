@@ -72,6 +72,21 @@ func TestResolveGVRs_UnknownKindEmpty(t *testing.T) {
 	}
 }
 
+func TestNewCelChecker_ZeroGVRsWarnsButSucceeds(t *testing.T) {
+	// A policy whose kinds resolve to nothing (typo) still constructs — it just
+	// warns and will never fire. Constructing it must not error.
+	c, err := newCelChecker(&compiled{spec: Spec{
+		ID: "typo", Severity: "low", Expression: "true",
+		Match: Match{Kinds: []string{"Deploymnt"}}, // typo
+	}})
+	if err != nil {
+		t.Fatalf("zero-GVR policy should still construct: %v", err)
+	}
+	if len(c.RequiredResources()) != 0 {
+		t.Errorf("expected no resolved GVRs, got %v", c.RequiredResources())
+	}
+}
+
 func TestDescription_PrefersExplicitDescription(t *testing.T) {
 	c, err := newCelChecker(&compiled{spec: Spec{ID: "d", Name: "Name", Description: "Explicit desc", Severity: "low", Expression: "true"}})
 	if err != nil {

@@ -190,6 +190,37 @@ func TestRunScan_FailOnNewDetectsNewFindings(t *testing.T) {
 	assert.Equal(t, 1, ee.code, "new findings vs baseline must exit 1")
 }
 
+func TestRunScan_SaveBaselineConflictsWithBaseline(t *testing.T) {
+	saveAndRestoreScanFlags(t)
+	flagFile = writeTemp(t, "deploy.yaml", validDeploymentYAML)
+	flagSaveBaseline = filepath.Join(t.TempDir(), "b.json")
+	flagBaseline = writeTemp(t, "existing.json", `{"version":"v1","fingerprints":[]}`)
+
+	scanCmd.SetContext(context.Background())
+	err := runScan(scanCmd, nil)
+	var ee *exitError
+	require.ErrorAs(t, err, &ee)
+	assert.Equal(t, 3, ee.code, "--save-baseline + --baseline is a config error")
+}
+
+func TestRunScan_BadCustomPoliciesInConfigRejectedAtLoad(t *testing.T) {
+	saveAndRestoreScanFlags(t)
+	cfgPath := writeTemp(t, ".kubevigil.yaml", `version: "1"
+customPolicies:
+  - id: bad
+    severity: not-a-severity
+    expression: 'true'
+`)
+	flagConfig = cfgPath
+	flagFile = writeTemp(t, "deploy.yaml", validDeploymentYAML)
+
+	scanCmd.SetContext(context.Background())
+	err := runScan(scanCmd, nil)
+	var ee *exitError
+	require.ErrorAs(t, err, &ee)
+	assert.Equal(t, 3, ee.code, "bad customPolicies severity is a config-load error")
+}
+
 func TestRunScan_FailOnNewRequiresBaseline(t *testing.T) {
 	saveAndRestoreScanFlags(t)
 	flagFile = writeTemp(t, "deploy.yaml", validDeploymentYAML)
