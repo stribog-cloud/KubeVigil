@@ -89,7 +89,8 @@ func (c *HostAliasesInjectionChecker) Run(ctx context.Context, resources *checke
 					"If local DNS overrides are genuinely needed for testing, scope them to hostnames that are not part of the " +
 					"cluster's trusted internal namespace.\n\n" +
 					"## Learn More\n\n" +
-					"This check aligns with MITRE ATT&CK T1584.001 (Acquire Infrastructure: Domains). See the Kubernetes " +
+					"This check aligns with MITRE ATT&CK T1557 (Adversary-in-the-Middle): overriding a trusted cluster " +
+					"hostname redirects the workload's traffic through an attacker-controlled endpoint. See the Kubernetes " +
 					"documentation on adding entries to Pod /etc/hosts with HostAliases.",
 				FieldPath: fmt.Sprintf(".spec.hostAliases[%d]", aliasIdx),
 			})
