@@ -260,6 +260,10 @@ var knownGVRs = map[string]schema.GroupVersionResource{
 
 	// Deprecated (Phase 2 — detect lingering resources)
 	"policy/v1beta1/PodSecurityPolicy": {Group: "policy", Version: "v1beta1", Resource: "podsecuritypolicies"},
+
+	// Storage snapshots (v1.3.0 Batch 5 — required for volumesnapshotclass-no-encryption;
+	// the generic apiVersion+kind fallback below cannot pluralize "Class" correctly).
+	"snapshot.storage.k8s.io/v1/VolumeSnapshotClass": {Group: "snapshot.storage.k8s.io", Version: "v1", Resource: "volumesnapshotclasses"},
 }
 
 // AllKnownGVRs returns every GroupVersionResource KubeVigil recognizes,

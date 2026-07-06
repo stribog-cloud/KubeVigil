@@ -1,9 +1,17 @@
 // Package storage implements storage security checkers.
 // These checkers analyze PVC encryption, reclaim policies, CSI drivers,
-// emptyDir volumes, and projected volume permissions.
+// emptyDir volumes, projected volume permissions, subPath mounts, inline
+// CSI ephemeral volumes, generic ephemeral volumes, and VolumeSnapshotClass
+// encryption.
 package storage
 
-import "k8s.io/apimachinery/pkg/runtime/schema"
+import (
+	"fmt"
+
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/stribog-cloud/kubevigil/internal/checker/workload"
+)
 
 // GVR constants for storage-related resources.
 var (
@@ -23,4 +31,20 @@ var (
 	CSIDriverGVR = schema.GroupVersionResource{
 		Group: "storage.k8s.io", Version: "v1", Resource: "csidrivers",
 	}
+	// VolumeSnapshotClassGVR is the GroupVersionResource for snapshot.storage.k8s.io/v1
+	// VolumeSnapshotClass objects.
+	VolumeSnapshotClassGVR = schema.GroupVersionResource{
+		Group: "snapshot.storage.k8s.io", Version: "v1", Resource: "volumesnapshotclasses",
+	}
 )
+
+// containerFieldPath builds a JSON-style field path for a container field,
+// mirroring the equivalent helper in the workload package.
+func containerFieldPath(ct workload.ContainerType, idx int, field string) string {
+	switch ct {
+	case workload.ContainerTypeInit, workload.ContainerTypeSidecar:
+		return fmt.Sprintf(".spec.initContainers[%d].%s", idx, field)
+	default:
+		return fmt.Sprintf(".spec.containers[%d].%s", idx, field)
+	}
+}

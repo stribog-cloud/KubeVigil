@@ -28,6 +28,14 @@ var (
 	PriorityClassGVR = schema.GroupVersionResource{
 		Group: "scheduling.k8s.io", Version: "v1", Resource: "priorityclasses",
 	}
+	// JobGVR is the GroupVersionResource for batch/v1 Job objects.
+	JobGVR = schema.GroupVersionResource{
+		Group: "batch", Version: "v1", Resource: "jobs",
+	}
+	// CronJobGVR is the GroupVersionResource for batch/v1 CronJob objects.
+	CronJobGVR = schema.GroupVersionResource{
+		Group: "batch", Version: "v1", Resource: "cronjobs",
+	}
 )
 
 // systemPriorityClasses are priority class names reserved for system components.
