@@ -653,3 +653,58 @@ func TestGenerateRestoreInstructions_RelPathError(t *testing.T) {
 		t.Error("RESTORE.md should reference deploy.yaml")
 	}
 }
+
+func TestBackupFile_RelPathComputationError(t *testing.T) {
+	// filepath.Rel returns an error when one path is absolute and the other is
+	// relative, since it cannot resolve them without knowing the current
+	// working directory. This exercises BackupFile's own error wrapping for
+	// filepath.Rel, distinct from the path-traversal rejection below it.
+	backupDir := t.TempDir()
+
+	sourceBase := "/absolute/base"
+	srcPath := "relative/path/to/file.yaml"
+
+	err := BackupFile(srcPath, sourceBase, backupDir)
+	if err == nil {
+		t.Fatal("BackupFile() with mismatched absolute/relative paths should error")
+	}
+	if !strings.Contains(err.Error(), "computing relative path") {
+		t.Errorf("expected 'computing relative path' error, got: %v", err)
+	}
+}
+
+func TestGenerateRestoreInstructions_RelComputationErrorFallsBackToBase(t *testing.T) {
+	// Mirror the mismatched absolute/relative combination that makes
+	// filepath.Rel return an error, forcing GenerateRestoreInstructions to
+	// fall back to filepath.Base(f) for that file's table entry.
+	backupDir := t.TempDir()
+
+	sourceBase := "/absolute/base"
+	files := []string{"relative/nested/deploy.yaml"}
+
+	if err := GenerateRestoreInstructions(backupDir, sourceBase, files); err != nil {
+		t.Fatalf("GenerateRestoreInstructions() error = %v", err)
+	}
+
+	restorePath := filepath.Join(backupDir, "RESTORE.md")
+	data, err := os.ReadFile(restorePath)
+	if err != nil {
+		t.Fatalf("reading RESTORE.md: %v", err)
+	}
+	content := string(data)
+
+	// Since Rel() failed, the code falls back to filepath.Base(f) = "deploy.yaml",
+	// so the table row should reference the basename joined directly onto the
+	// backup/source directories rather than preserving "relative/nested".
+	wantBackupPath := filepath.Join(backupDir, "deploy.yaml")
+	wantSourcePath := filepath.Join(sourceBase, "deploy.yaml")
+	if !strings.Contains(content, wantBackupPath) {
+		t.Errorf("RESTORE.md missing fallback backup path %q\ncontent:\n%s", wantBackupPath, content)
+	}
+	if !strings.Contains(content, wantSourcePath) {
+		t.Errorf("RESTORE.md missing fallback source path %q\ncontent:\n%s", wantSourcePath, content)
+	}
+	if strings.Contains(content, filepath.Join(backupDir, "relative", "nested", "deploy.yaml")) {
+		t.Error("RESTORE.md should not contain the un-fallback-ed nested relative path")
+	}
+}

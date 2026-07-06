@@ -1,6 +1,7 @@
 package fix
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -2470,4 +2471,231 @@ func TestParseDocuments_AtMaxDocumentCount(t *testing.T) {
 	docs, err := ParseDocuments([]byte(b.String()))
 	require.NoError(t, err)
 	assert.Len(t, docs, 100)
+}
+
+// --- parsePath: direct coverage of the "skip empty path segment" branch ---
+// (leading/doubled/trailing dots produce empty parts between separators).
+
+func TestParsePath_SkipsEmptySegments(t *testing.T) {
+	tests := []struct {
+		name     string
+		path     string
+		wantSegs []pathSegment
+	}{
+		{
+			name: "leading dot",
+			path: ".spec.hostPID",
+			wantSegs: []pathSegment{
+				{Key: "spec", Index: -1},
+				{Key: "hostPID", Index: -1},
+			},
+		},
+		{
+			name: "doubled dot mid-path",
+			path: "spec..hostPID",
+			wantSegs: []pathSegment{
+				{Key: "spec", Index: -1},
+				{Key: "hostPID", Index: -1},
+			},
+		},
+		{
+			name:     "all-dots path yields zero segments",
+			path:     "...",
+			wantSegs: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			segs, err := parsePath(tt.path)
+			require.NoError(t, err, "empty segments between separators must not be an error")
+			assert.Equal(t, tt.wantSegs, segs)
+		})
+	}
+}
+
+// --- SetNode/AddNode/RemoveNode/MergeNode: "successfully parsed path yields
+// zero segments" branch. This differs from an empty-string path (which
+// parsePath itself rejects with a wrapped error) — a dots-only path parses
+// without error but decomposes to no segments at all.
+
+func TestSetNode_AllDotsPathYieldsEmptySegments(t *testing.T) {
+	node, err := ParseYAML([]byte("key: value"))
+	require.NoError(t, err)
+
+	err = SetNode(node, "...", "x")
+	require.Error(t, err)
+	// Unwrapped "empty path" (not "parsing path: empty path") proves this hit
+	// SetNode's own len(segments)==0 guard, not parsePath's own empty-string check.
+	assert.Equal(t, "empty path", err.Error())
+}
+
+func TestAddNode_AllDotsPathYieldsEmptySegments(t *testing.T) {
+	node, err := ParseYAML([]byte("key: value"))
+	require.NoError(t, err)
+
+	err = AddNode(node, "...", "x")
+	require.Error(t, err)
+	assert.Equal(t, "empty path", err.Error())
+}
+
+func TestRemoveNode_AllDotsPathYieldsEmptySegments(t *testing.T) {
+	node, err := ParseYAML([]byte("key: value"))
+	require.NoError(t, err)
+
+	err = RemoveNode(node, "...")
+	require.Error(t, err)
+	assert.Equal(t, "empty path", err.Error())
+}
+
+func TestMergeNode_AllDotsPathMergesAtRoot(t *testing.T) {
+	// A dots-only path parses to zero segments, so MergeNode targets the
+	// document root itself (contentNode(root)) rather than erroring.
+	input := `apiVersion: v1
+kind: Pod
+`
+	node, err := ParseYAML([]byte(input))
+	require.NoError(t, err)
+
+	err = MergeNode(node, "...", map[string]any{"newField": "rootMerge"})
+	require.NoError(t, err)
+
+	found, err := FindNode(node, "newField")
+	require.NoError(t, err)
+	require.NotNil(t, found)
+	assert.Equal(t, "rootMerge", found.Value)
+
+	// Existing top-level fields are untouched.
+	found, err = FindNode(node, "apiVersion")
+	require.NoError(t, err)
+	require.NotNil(t, found)
+	assert.Equal(t, "v1", found.Value)
+}
+
+// --- AddNode: navigateOrCreate error while navigating to the PARENT (not the
+// final segment) — an intermediate sequence index that's out of bounds.
+
+func TestAddNode_ParentNavigationIndexOutOfBounds(t *testing.T) {
+	input := `spec:
+  containers:
+  - name: only
+`
+	node, err := ParseYAML([]byte(input))
+	require.NoError(t, err)
+
+	// "containers[9]" is an intermediate segment, not the final one — the
+	// out-of-bounds error must surface while AddNode is still walking to the
+	// parent of "foo".
+	err = AddNode(node, "spec.containers[9].foo", "bar")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "navigating to")
+	assert.Contains(t, err.Error(), "out of bounds")
+}
+
+// --- RemoveNode: final path segment is a [*] wildcard. RemoveNode has no
+// defined "remove all matches" semantics, so the final-segment handling
+// falls through the empty-key no-op branch, leaving the sequence untouched.
+
+func TestRemoveNode_WildcardFinalSegmentIsNoOp(t *testing.T) {
+	input := `items:
+- a
+- b
+`
+	node, err := ParseYAML([]byte(input))
+	require.NoError(t, err)
+
+	err = RemoveNode(node, "items[*]")
+	require.NoError(t, err)
+
+	items, err := FindNode(node, "items")
+	require.NoError(t, err)
+	require.NotNil(t, items)
+	assert.Len(t, items.Content, 2, "wildcard removal is a no-op, not a bulk delete")
+}
+
+// --- MergeNode: navigatePath returns a genuine error (wildcard segments are
+// rejected), which MergeNode must propagate rather than swallow.
+
+func TestMergeNode_WildcardPathNavigationError(t *testing.T) {
+	input := `items:
+- a
+- b
+`
+	node, err := ParseYAML([]byte(input))
+	require.NoError(t, err)
+
+	err = MergeNode(node, "items[*]", "x")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "wildcard")
+}
+
+// --- detectIndent: the recursive walk closure's defensive nil-child guard.
+// yaml.v3's real parser (and every function in this package that builds
+// nodes) never places a nil entry in a Content slice, so this exercises the
+// guard directly with a hand-built tree.
+
+func TestDetectIndent_NilChildNodeInContent(t *testing.T) {
+	node := &yaml.Node{
+		Kind: yaml.DocumentNode,
+		Content: []*yaml.Node{
+			{
+				Kind:    yaml.SequenceNode,
+				Content: []*yaml.Node{nil},
+			},
+		},
+	}
+	got := detectIndent(node)
+	assert.Equal(t, 2, got, "should fall back to the default indent when a nil child is encountered")
+}
+
+// --- detectIndent: the direct "parentCol > 0 && firstKey.Column > parentCol"
+// comparison at the top of walk(), reached via the recursive
+// "walk into children" path rather than the sibling nested-mapping check.
+// A sequence sits between the document root and the mapping so that the
+// mapping is only ever visited through the recursive walk (with a non-zero
+// parentCol carried from the sequence node's own Column), never via the
+// sibling nested-mapping-value check.
+
+func TestDetectIndent_DirectParentColumnBranch(t *testing.T) {
+	node := &yaml.Node{
+		Kind: yaml.DocumentNode,
+		Content: []*yaml.Node{
+			{
+				Kind:   yaml.SequenceNode,
+				Column: 3,
+				Content: []*yaml.Node{
+					{
+						Kind: yaml.MappingNode,
+						Content: []*yaml.Node{
+							{Kind: yaml.ScalarNode, Value: "key", Column: 5},
+							{Kind: yaml.ScalarNode, Value: "val", Column: 10},
+						},
+					},
+				},
+			},
+		},
+	}
+	got := detectIndent(node)
+	assert.Equal(t, 2, got, "5 (firstKey.Column) - 3 (parentCol) == 2")
+}
+
+// --- valueToNode: the fallback marshal/unmarshal path's yaml.Marshal error
+// branch. A type implementing yaml.Marshaler that returns an error triggers
+// this cleanly and safely (unlike chan/func values, which yaml.v3's encoder
+// handles with a raw, unrecoverable panic rather than a returned error — see
+// investigation notes in the accompanying task report).
+
+type failingMarshaler struct{}
+
+func (failingMarshaler) MarshalYAML() (interface{}, error) {
+	return nil, fmt.Errorf("intentional marshal failure")
+}
+
+func TestValueToNode_FallbackMarshalError(t *testing.T) {
+	value := failingMarshaler{}
+	result := valueToNode(value)
+	require.NotNil(t, result)
+	assert.Equal(t, yaml.ScalarNode, result.Kind)
+	assert.Equal(t, "!!str", result.Tag)
+	assert.Equal(t, fmt.Sprintf("%v", value), result.Value)
 }

@@ -1,6 +1,7 @@
 package fix
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,15 @@ import (
 
 	"github.com/stribog-cloud/kubevigil/internal/checker"
 )
+
+// unmarshalableValue implements yaml.Marshaler and always returns an error,
+// used to force yaml.Marshal failures inside buildPatch without triggering
+// yaml.v3's panic-on-unsupported-kind behavior (e.g., for func/chan values).
+type unmarshalableValue struct{}
+
+func (unmarshalableValue) MarshalYAML() (interface{}, error) {
+	return nil, fmt.Errorf("simulated marshal failure")
+}
 
 // kustomizeTestPlan returns a test Plan with a single Deployment resource.
 func kustomizeTestPlan() *Plan {
@@ -949,6 +959,180 @@ func TestGenerateKustomizeOverlay_EmptyAppliedResults(t *testing.T) {
 	// Output dir should not exist since no fixes were applied.
 	_, err = os.Stat(outDir)
 	assert.True(t, os.IsNotExist(err), "output dir should not be created when no fixes applied")
+}
+
+func TestGenerateKustomizeOverlay_NoMatchingPlannedFix(t *testing.T) {
+	// The applied result references a file that has no corresponding entry in
+	// plan.Files, so findPlannedFix returns nil for every applied result and
+	// the resource-grouping map ends up empty. GenerateKustomizeOverlay must
+	// return nil without creating the output directory.
+	outDir := filepath.Join(t.TempDir(), "overlay")
+	plan := &Plan{
+		Files: map[string]*FilePlan{},
+		Summary: Summary{
+			Applied: 1,
+			Results: []Result{
+				{
+					FilePath: "/app/deploy.yaml",
+					Resource: "web-app",
+					Kind:     "Deployment",
+					CheckID:  "privileged",
+					Applied:  true,
+				},
+			},
+		},
+	}
+
+	err := GenerateKustomizeOverlay(plan, outDir)
+	require.NoError(t, err)
+
+	_, statErr := os.Stat(outDir)
+	assert.True(t, os.IsNotExist(statErr), "output dir should not be created when no planned fixes match applied results")
+}
+
+func TestGenerateKustomizeOverlay_MkdirFails(t *testing.T) {
+	// outputDir is nested under a regular file, so os.MkdirAll cannot create it.
+	parent := t.TempDir()
+	blockingFile := filepath.Join(parent, "blocking")
+	require.NoError(t, os.WriteFile(blockingFile, []byte("not a dir"), 0o644))
+
+	outDir := filepath.Join(blockingFile, "overlay")
+	plan := kustomizeTestPlan()
+
+	err := GenerateKustomizeOverlay(plan, outDir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "creating output directory")
+}
+
+func TestGenerateKustomizeOverlay_PatchBuildErrorSkipsResource(t *testing.T) {
+	// The only resource's fix has an unmarshalable DesiredValue, so buildPatch
+	// fails for it. GenerateKustomizeOverlay should log a warning, skip that
+	// resource, and still succeed overall (writing an empty patches list).
+	outDir := filepath.Join(t.TempDir(), "overlay")
+	plan := &Plan{
+		Files: map[string]*FilePlan{
+			"/app/broken.yaml": {
+				Path: "/app/broken.yaml",
+				Fixes: []PlannedFix{
+					{
+						Finding: checker.Finding{
+							Checker:  "broken-check",
+							Resource: "broken-pod",
+							Kind:     "Pod",
+						},
+						Strategy: Strategy{
+							CheckID:      "broken-check",
+							Safety:       checker.FixSafe,
+							Operation:    checker.FixOpSet,
+							FieldPath:    "spec.someField",
+							DesiredValue: unmarshalableValue{},
+						},
+						Applied: true,
+					},
+				},
+			},
+		},
+		Summary: Summary{
+			Applied: 1,
+			Results: []Result{
+				{
+					FilePath: "/app/broken.yaml",
+					Resource: "broken-pod",
+					Kind:     "Pod",
+					CheckID:  "broken-check",
+					Safety:   checker.FixSafe,
+					Applied:  true,
+				},
+			},
+		},
+	}
+
+	err := GenerateKustomizeOverlay(plan, outDir)
+	require.NoError(t, err, "overlay generation should not fail even if one patch fails to build")
+
+	kustContent, readErr := os.ReadFile(filepath.Join(outDir, "kustomization.yaml"))
+	require.NoError(t, readErr)
+	assert.NotContains(t, string(kustContent), "- path:", "no patch entries expected since the only patch failed to build")
+
+	_, statErr := os.Stat(filepath.Join(outDir, "pod-broken-pod.yaml"))
+	assert.True(t, os.IsNotExist(statErr), "patch file should not exist for a resource whose patch failed to build")
+}
+
+func TestGenerateKustomizeOverlay_PatchWriteFails(t *testing.T) {
+	// outDir already exists (from t.TempDir()) so MkdirAll succeeds without
+	// needing write permission, but the subsequent os.WriteFile for the patch
+	// file fails because the directory is read-only.
+	outDir := t.TempDir()
+	require.NoError(t, os.Chmod(outDir, 0o555))
+	t.Cleanup(func() { _ = os.Chmod(outDir, 0o755) })
+
+	plan := kustomizeTestPlan()
+
+	err := GenerateKustomizeOverlay(plan, outDir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "writing patch file")
+}
+
+func TestGenerateKustomizeOverlay_KustomizationWriteFails(t *testing.T) {
+	// Pre-create "kustomization.yaml" as a directory so patch files can still
+	// be written (different filenames), but the final os.WriteFile for
+	// kustomization.yaml itself fails because the path is a directory.
+	outDir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(outDir, "kustomization.yaml"), 0o755))
+
+	plan := kustomizeTestPlan()
+
+	err := GenerateKustomizeOverlay(plan, outDir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "writing kustomization.yaml")
+}
+
+func TestBuildPatch_MarshalError(t *testing.T) {
+	id := ResourceID{Kind: "Pod", Name: "bad-pod", Namespace: "default"}
+	fixes := []PlannedFix{
+		{
+			Finding: checker.Finding{
+				Checker:  "broken",
+				Resource: "bad-pod",
+				Kind:     "Pod",
+			},
+			Strategy: Strategy{
+				CheckID:      "broken",
+				Safety:       checker.FixSafe,
+				Operation:    checker.FixOpSet,
+				FieldPath:    "spec.someField",
+				DesiredValue: unmarshalableValue{},
+			},
+			Applied: true,
+		},
+	}
+
+	_, err := buildPatch(id, fixes)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "marshaling patch")
+}
+
+func TestBuildContainerPatches_MissingClosingBracketSkipsField(t *testing.T) {
+	// A malformed FieldPath containing "containers[" but no closing "]" makes
+	// extractContainerSubPath return "", so the field must be skipped while
+	// the container entry itself is still created.
+	containerFixes := map[string][]PlannedFix{
+		"web": {
+			{
+				Finding: checker.Finding{Container: "web"},
+				Strategy: Strategy{
+					FieldPath:    "spec.containers[0.securityContext.privileged",
+					DesiredValue: false,
+				},
+				Applied: true,
+			},
+		},
+	}
+
+	containers := buildContainerPatches(containerFixes)
+	require.Len(t, containers, 1)
+	assert.Equal(t, "web", containers[0]["name"])
+	assert.Len(t, containers[0], 1, "only 'name' key should be present when subPath extraction fails")
 }
 
 func TestHighestRiskLevel(t *testing.T) {

@@ -5,6 +5,8 @@ COMMIT   ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE     ?= $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 COVER_PKGS := $(shell go list ./internal/... ./cmd/...)
 COVERAGE_FLOOR := 96
+CRITICAL_PKGS := internal/fix internal/mcp internal/checker/secrets
+CRITICAL_PKG_FLOOR := 96
 GOPATH_BIN := $(shell go env GOPATH)/bin
 GOVULNCHECK := $(GOPATH_BIN)/govulncheck
 
@@ -12,7 +14,7 @@ LDFLAGS  := -X $(MODULE)/internal/version.Version=$(VERSION) \
             -X $(MODULE)/internal/version.Commit=$(COMMIT) \
             -X $(MODULE)/internal/version.Date=$(DATE)
 
-.PHONY: build test test-cover lint vet format fmt cover coverage secrets vuln clean check all \
+.PHONY: build test test-cover lint vet format fmt cover coverage coverage-pkg secrets vuln clean check all \
         hooks-install setup-hooks graph-install graph graph-serve \
         doc-gate doc-drift-gate doc-samples-test doc-a11y smoke
 
@@ -38,12 +40,18 @@ fmt:
 	goimports -w -local $(MODULE) .
 
 cover: coverage
-coverage:
+coverage: coverage-pkg
 	go test -race -count=1 -coverprofile=coverage.out $(COVER_PKGS)
 	@pct=$$(./scripts/coverage-percent.sh coverage.out); \
 	echo "Coverage: $${pct}% (floor: $(COVERAGE_FLOOR)%)"; \
 	awk -v p="$$pct" -v f="$(COVERAGE_FLOOR)" 'BEGIN {exit !(p+0 >= f+0)}' || \
 	(echo "ERROR: coverage $${pct}% below floor $(COVERAGE_FLOOR)%" && exit 1)
+
+# Per-package coverage gate for critical-path packages (Charter §5.4). Stricter
+# than the blended `coverage` target above: a package can't hide low coverage
+# behind strong coverage elsewhere in the module.
+coverage-pkg:
+	./scripts/coverage-pkg.sh $(CRITICAL_PKG_FLOOR) $(CRITICAL_PKGS)
 
 secrets:
 	gitleaks detect --source . --config .gitleaks.toml --redact -v

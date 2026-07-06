@@ -256,6 +256,23 @@ func TestGenerateDiff_ContextLines(t *testing.T) {
 	}
 }
 
+func TestGenerateDiff_TrailingNewlineOnlyDifference(t *testing.T) {
+	// The raw bytes differ (one has a trailing newline, the other doesn't),
+	// so the initial bytes.Equal short-circuit in GenerateDiff does NOT fire.
+	// But splitLines trims exactly one trailing newline before splitting, so
+	// both inputs normalize to the same line slice. That means buildEdits
+	// produces only context (unchanged) operations, groupHunks finds zero
+	// change indices and returns nil, and GenerateDiff's "no hunks" branch
+	// returns "" despite the byte-level difference.
+	original := "line1\nline2"  // no trailing newline
+	patched := "line1\nline2\n" // trailing newline added
+
+	got := GenerateDiff("file.yaml", []byte(original), []byte(patched))
+	if got != "" {
+		t.Errorf("expected empty diff for trailing-newline-only difference, got:\n%s", got)
+	}
+}
+
 func TestColorDiff(t *testing.T) {
 	diff := "--- a/deploy.yaml\n+++ b/deploy.yaml\n@@ -1,3 +1,3 @@\n context line\n-old line\n+new line\n"
 

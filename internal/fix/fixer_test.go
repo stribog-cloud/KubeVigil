@@ -26,6 +26,7 @@ import (
 	_ "github.com/stribog-cloud/kubevigil/internal/checker/supply_chain"
 	_ "github.com/stribog-cloud/kubevigil/internal/checker/workload"
 	"github.com/stribog-cloud/kubevigil/internal/config"
+	"github.com/stribog-cloud/kubevigil/internal/engine"
 )
 
 // fixtureDir returns the absolute path to test/fixtures/fix/ relative to this test file.
@@ -1786,4 +1787,345 @@ func TestCollectFiles_IncludesRealFiles(t *testing.T) {
 	files, err := collectFiles([]string{realFile})
 	require.NoError(t, err)
 	assert.Len(t, files, 1, "real file should be collected")
+}
+
+// --- Additional coverage: error and edge branches ---
+
+func TestFixer_Plan_CollectFilesError(t *testing.T) {
+	fixer := newTestFixer(t, Config{RiskLevel: RiskLevelSafe})
+	_, err := fixer.Plan(context.Background(), []string{"/nonexistent/path/to/nowhere"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "collecting files")
+}
+
+func TestFixer_Fix_PlanErrorPropagates(t *testing.T) {
+	fixer := newTestFixer(t, Config{RiskLevel: RiskLevelSafe, Apply: true})
+	_, _, err := fixer.Fix(context.Background(), []string{"/nonexistent/path/to/nowhere"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "collecting files")
+}
+
+func TestFixer_Plan_ZeroFindingsResource(t *testing.T) {
+	// A plain ConfigMap with innocuous data triggers zero findings across all
+	// checkers, exercising planFile's "no findings" early return and Plan's
+	// corresponding nil-FilePlan skip.
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "configmap.yaml")
+	content := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: app-config\n  namespace: production\ndata:\n  environment: production\n  log_level: info\n"
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
+
+	fixer := newTestFixer(t, Config{RiskLevel: RiskLevelAggressive})
+	plan, err := fixer.Plan(context.Background(), []string{path})
+	require.NoError(t, err)
+	assert.Equal(t, 1, plan.Summary.FilesScanned)
+	assert.Equal(t, 0, plan.Summary.TotalFindings, "a plain ConfigMap should produce zero findings")
+	assert.Empty(t, plan.Files, "no FilePlan should be recorded when there are no findings")
+}
+
+func TestFixer_PlanFile_NoFixStrategyForAnyFinding(t *testing.T) {
+	// With an empty fix registry, real findings exist but none map to a fix
+	// strategy, exercising planFile's len(planned) == 0 branch.
+	path := copyFixture(t, "simple-deployment.yaml")
+	scanCfg := config.Default()
+	scanCfg.Settings.IncludeSystemNamespaces = true
+	fixer := NewFixer(NewRegistry(), checker.DefaultRegistry(), scanCfg, &Config{RiskLevel: RiskLevelAggressive})
+
+	plan, err := fixer.Plan(context.Background(), []string{path})
+	require.NoError(t, err)
+	assert.Equal(t, 0, plan.Summary.Applied)
+	assert.Empty(t, plan.Files)
+}
+
+func TestFixer_PlanFile_LstatError(t *testing.T) {
+	fixer := newTestFixer(t, Config{RiskLevel: RiskLevelSafe})
+	scanner := engine.NewScanner(fixer.checkerRegistry, fixer.scanConfig)
+
+	_, err := fixer.planFile(context.Background(), scanner, "/nonexistent/path/xyz.yaml")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "reading file")
+}
+
+func TestFixer_PlanFile_SymlinkRejected(t *testing.T) {
+	realPath := copyFixture(t, "simple-deployment.yaml")
+	tmpDir := filepath.Dir(realPath)
+	linkPath := filepath.Join(tmpDir, "link-plain.yaml")
+	require.NoError(t, os.Symlink(realPath, linkPath))
+
+	fixer := newTestFixer(t, Config{RiskLevel: RiskLevelSafe})
+	scanner := engine.NewScanner(fixer.checkerRegistry, fixer.scanConfig)
+
+	_, err := fixer.planFile(context.Background(), scanner, linkPath)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "symlink")
+}
+
+func TestFixer_PlanFile_ReadFileErrorOnDirectory(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	fixer := newTestFixer(t, Config{RiskLevel: RiskLevelSafe})
+	scanner := engine.NewScanner(fixer.checkerRegistry, fixer.scanConfig)
+
+	// Passing a directory path directly bypasses the IsDir() check that
+	// collectFiles would normally apply, forcing os.ReadFile to fail.
+	_, err := fixer.planFile(context.Background(), scanner, tmpDir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "reading file")
+}
+
+func TestFixer_Apply_DefaultBackupDir(t *testing.T) {
+	path := copyFixture(t, "simple-deployment.yaml")
+
+	fixer := newTestFixer(t, Config{
+		RiskLevel: RiskLevelSafe,
+		Apply:     true,
+		// BackupDir intentionally left empty to exercise DefaultBackupDir().
+	})
+
+	plan, err := fixer.Plan(context.Background(), []string{path})
+	require.NoError(t, err)
+	require.Greater(t, plan.Summary.Applied, 0)
+
+	summary, err := fixer.Apply(context.Background(), plan)
+	require.NoError(t, err)
+	assert.NotEmpty(t, summary.BackupDir, "BackupDir should be auto-generated when not configured")
+	assert.Contains(t, summary.BackupDir, ".kubevigil-backup-")
+}
+
+func TestFixer_Apply_CreateBackupError(t *testing.T) {
+	path := copyFixture(t, "simple-deployment.yaml")
+
+	tmpDir := t.TempDir()
+	blockerFile := filepath.Join(tmpDir, "blocker")
+	require.NoError(t, os.WriteFile(blockerFile, []byte("not a directory"), 0o644))
+
+	fixer := newTestFixer(t, Config{
+		RiskLevel: RiskLevelSafe,
+		Apply:     true,
+		// backupDir's parent component is a regular file, so MkdirAll must fail.
+		BackupDir: filepath.Join(blockerFile, "backup"),
+	})
+
+	plan, err := fixer.Plan(context.Background(), []string{path})
+	require.NoError(t, err)
+	require.Greater(t, plan.Summary.Applied, 0)
+
+	_, err = fixer.Apply(context.Background(), plan)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "creating backup")
+}
+
+func TestFixer_Apply_GenerateRestoreInstructionsError(t *testing.T) {
+	path := copyFixture(t, "simple-deployment.yaml")
+
+	backupDir := filepath.Join(t.TempDir(), "backup")
+	// Pre-create RESTORE.md as a directory so the later os.WriteFile for the
+	// real restore instructions document fails with "is a directory".
+	require.NoError(t, os.MkdirAll(filepath.Join(backupDir, "RESTORE.md"), 0o755))
+
+	fixer := newTestFixer(t, Config{
+		RiskLevel: RiskLevelSafe,
+		Apply:     true,
+		BackupDir: backupDir,
+	})
+
+	plan, err := fixer.Plan(context.Background(), []string{path})
+	require.NoError(t, err)
+	require.Greater(t, plan.Summary.Applied, 0)
+
+	// GenerateRestoreInstructions failures are logged, not returned, so Apply
+	// still succeeds overall.
+	summary, err := fixer.Apply(context.Background(), plan)
+	require.NoError(t, err)
+	assert.Greater(t, summary.Applied, 0)
+}
+
+func TestFixer_Apply_SkipsSymlinkTarget(t *testing.T) {
+	realPath := copyFixture(t, "simple-deployment.yaml")
+	tmpDir := filepath.Dir(realPath)
+	linkPath := filepath.Join(tmpDir, "apply-link.yaml")
+	require.NoError(t, os.Symlink(realPath, linkPath))
+
+	content, err := os.ReadFile(realPath)
+	require.NoError(t, err)
+
+	fixer := newTestFixer(t, Config{
+		RiskLevel: RiskLevelSafe,
+		Apply:     true,
+		BackupDir: filepath.Join(t.TempDir(), "backup"),
+	})
+
+	// Construct the plan manually so the symlink path is handed straight to
+	// Apply(), exercising Apply's own symlink guard rather than Plan's
+	// collection-time filtering (already covered by TestFixer_Plan_SkipsSymlink).
+	plan := &Plan{
+		Files: map[string]*FilePlan{
+			linkPath: {Path: linkPath, OriginalContent: content, PatchedContent: content},
+		},
+		Diffs: map[string]string{},
+		Summary: Summary{
+			ByRisk:      make(map[checker.FixSafety]int),
+			SkipReasons: make(map[string]int),
+		},
+	}
+
+	summary, err := fixer.Apply(context.Background(), plan)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to write")
+	require.Len(t, summary.Errors, 1)
+	assert.Contains(t, summary.Errors[0].Err, "symlink")
+}
+
+func TestFixer_Apply_WithInlineVerify_ScanErrorIsNonFatal(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	goodPath := filepath.Join(tmpDir, "good.yaml")
+	goodContent := []byte("apiVersion: v1\nkind: Pod\nmetadata:\n  name: good\nspec:\n  containers:\n  - name: web\n    image: nginx\n")
+	require.NoError(t, os.WriteFile(goodPath, goodContent, 0o644))
+
+	badPath := filepath.Join(tmpDir, "bad.yaml")
+	require.NoError(t, os.WriteFile(badPath, []byte("apiVersion: v1\nkind: Pod\n"), 0o644))
+
+	fixer := newTestFixer(t, Config{
+		RiskLevel: RiskLevelSafe,
+		Apply:     true,
+		Verify:    true,
+		BackupDir: filepath.Join(t.TempDir(), "backup"),
+	})
+
+	plan := &Plan{
+		Files: map[string]*FilePlan{
+			goodPath: {Path: goodPath, OriginalContent: goodContent, PatchedContent: goodContent},
+			// PatchedContent is intentionally malformed so that the inline
+			// verify re-scan (after a successful write) fails to parse it.
+			badPath: {Path: badPath, OriginalContent: []byte("apiVersion: v1\nkind: Pod\n"), PatchedContent: []byte("{{{ not valid yaml [[[")},
+		},
+		Diffs: map[string]string{},
+		Summary: Summary{
+			ByRisk:      make(map[checker.FixSafety]int),
+			SkipReasons: make(map[string]int),
+		},
+	}
+
+	summary, err := fixer.Apply(context.Background(), plan)
+	require.NoError(t, err, "a verify scan error on one file must not fail Apply overall")
+	assert.NotNil(t, summary)
+
+	badAfter, err := os.ReadFile(badPath)
+	require.NoError(t, err)
+	assert.Equal(t, "{{{ not valid yaml [[[", string(badAfter))
+}
+
+func TestFixer_Verify_ScanErrorIsSkippedNotFatal(t *testing.T) {
+	fixer := newTestFixer(t, Config{RiskLevel: RiskLevelSafe})
+
+	plan := &Plan{
+		Files: map[string]*FilePlan{
+			"/nonexistent/path/to/file.yaml": {Path: "/nonexistent/path/to/file.yaml"},
+		},
+		Diffs: map[string]string{},
+		Summary: Summary{
+			Applied:     0,
+			ByRisk:      make(map[checker.FixSafety]int),
+			SkipReasons: make(map[string]int),
+		},
+	}
+
+	result, err := fixer.Verify(context.Background(), plan)
+	require.NoError(t, err)
+	assert.Equal(t, 0, result.TotalAfter)
+	assert.True(t, result.Clean)
+}
+
+func TestFixer_ClassifyFinding_SeverityMatchAllowsFix(t *testing.T) {
+	path := copyFixture(t, "simple-deployment.yaml")
+	fixer := newTestFixer(t, Config{
+		RiskLevel:  RiskLevelSafe,
+		Severities: []string{"critical"},
+	})
+
+	plan, err := fixer.Plan(context.Background(), []string{path})
+	require.NoError(t, err)
+	assert.Greater(t, plan.Summary.Applied, 0, "matching severity filter should still allow the fix")
+}
+
+func TestFixer_ClassifyFinding_NamespaceMatchAllowsFix(t *testing.T) {
+	path := copyFixture(t, "simple-deployment.yaml")
+	fixer := newTestFixer(t, Config{
+		RiskLevel:  RiskLevelSafe,
+		Namespaces: []string{"production"},
+	})
+
+	plan, err := fixer.Plan(context.Background(), []string{path})
+	require.NoError(t, err)
+	assert.Greater(t, plan.Summary.Applied, 0, "matching namespace filter should still allow the fix")
+}
+
+func TestApplyFixToDocs_SetNodeGenericErrorIsWrapped(t *testing.T) {
+	yamlContent := `apiVersion: v1
+kind: Pod
+metadata:
+  name: web-app
+  namespace: production
+spec:
+  containers:
+  - name: web
+    image: nginx
+`
+	docs, err := ParseDocuments([]byte(yamlContent))
+	require.NoError(t, err)
+
+	pf := &PlannedFix{
+		Finding: checker.Finding{
+			Checker:   "privileged",
+			Resource:  "web-app",
+			Namespace: "production",
+			Kind:      "Pod",
+			FieldPath: ".spec.containers[0].securityContext.privileged",
+		},
+		Strategy: Strategy{
+			CheckID:   "privileged",
+			Safety:    checker.FixSafe,
+			Operation: checker.FixOpSet,
+			// Index 5 doesn't exist (only one container), forcing a genuine
+			// SetNode error distinct from "already exists" / "not found".
+			FieldPath:    "spec.containers[5].securityContext.privileged",
+			DesiredValue: false,
+		},
+		Applied: true,
+	}
+
+	err = applyFixToDocs(docs, pf)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "applying")
+	assert.Contains(t, err.Error(), "out of bounds")
+}
+
+func TestResolveYAMLPath_EmptyStrategyFieldPathFallsBackToFinding(t *testing.T) {
+	finding := checker.Finding{FieldPath: ".spec.hostPID"}
+	strategy := Strategy{FieldPath: ""}
+
+	got := resolveYAMLPath(&finding, &strategy, "Deployment")
+	assert.Equal(t, "spec.template.spec.hostPID", got)
+}
+
+func TestCollectFiles_WalkPermissionErrorIsSkippedNotFatal(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root: directory permission checks don't apply")
+	}
+
+	tmpDir := t.TempDir()
+	blockedDir := filepath.Join(tmpDir, "blocked")
+	require.NoError(t, os.MkdirAll(blockedDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(blockedDir, "secret.yaml"), []byte("---"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "ok.yaml"), []byte("---"), 0o644))
+
+	require.NoError(t, os.Chmod(blockedDir, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(blockedDir, 0o755) })
+
+	files, err := collectFiles([]string{tmpDir})
+	require.NoError(t, err, "a walk error on one subdirectory must not fail collection overall")
+	assert.Contains(t, files, filepath.Join(tmpDir, "ok.yaml"))
+	for _, f := range files {
+		assert.NotContains(t, f, "blocked", "files inside an unreadable directory must be skipped")
+	}
 }
