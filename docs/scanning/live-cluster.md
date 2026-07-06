@@ -1,6 +1,6 @@
 # Live Cluster Scanning
 
-KubeVigil connects to a running Kubernetes cluster through the Kubernetes API to perform a comprehensive security posture assessment. Live scanning discovers all workloads and cluster-level resources, then runs 110 security checks against them.
+KubeVigil connects to a running Kubernetes cluster through the Kubernetes API to perform a comprehensive security posture assessment. Live scanning discovers all workloads and cluster-level resources, then runs 150 security checks against them.
 
 ## Prerequisites
 

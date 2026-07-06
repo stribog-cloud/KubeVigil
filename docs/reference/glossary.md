@@ -4,11 +4,11 @@ Key terms used throughout KubeVigil documentation and output.
 
 ## Auto-fix
 
-The ability of KubeVigil to automatically patch Kubernetes manifest files to resolve security findings. Performed by the `kubevigil fix` command. Only a subset of checks (20 of 110) support auto-fixing. See also: FixHint, Safety Classification.
+The ability of KubeVigil to automatically patch Kubernetes manifest files to resolve security findings. Performed by the `kubevigil fix` command. Only a subset of checks (20 of 150) support auto-fixing. See also: FixHint, Safety Classification.
 
 ## Category
 
-A grouping of related security checks. KubeVigil organizes its 110 checks into 12 categories: workload, image, RBAC, secrets, network, PSA (Pod Security Admission), scheduling, storage, cluster configuration, supply chain, cloud provider, and CRD security.
+A grouping of related security checks. KubeVigil organizes its 150 checks into 12 categories: workload, image, RBAC, secrets, network, PSA (Pod Security Admission), scheduling, storage, cluster configuration, supply chain, cloud provider, and CRD security.
 
 ## Check
 
@@ -36,7 +36,7 @@ Structured metadata attached to a Finding that tells the fix engine how to auto-
 
 ## Framework Mapping
 
-The association between a KubeVigil check and one or more compliance framework controls. KubeVigil maps all 110 checks to three frameworks: CIS Kubernetes Benchmark v1.8, MITRE ATT&CK for Containers v14, and NSA/CISA Kubernetes Hardening Guide v1.2. Framework references appear in JSON/YAML output under `findings[].frameworks`.
+The association between a KubeVigil check and one or more compliance framework controls. KubeVigil maps 137 of its 150 checks to three frameworks: CIS Kubernetes Benchmark v1.8, MITRE ATT&CK for Containers v14, and NSA/CISA Kubernetes Hardening Guide v1.2. The remaining 13 checks cover surfaces newer than the current published framework revisions (e.g. the Gateway API and ValidatingAdmissionPolicy) and carry no framework reference rather than a fabricated control ID. Framework references appear in JSON/YAML output under `findings[].frameworks`.
 
 ## Posture Score
 

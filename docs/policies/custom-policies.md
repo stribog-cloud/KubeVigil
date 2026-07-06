@@ -1,6 +1,6 @@
 # Custom Policies
 
-KubeVigil's 110 built-in checks cover common security misconfigurations, but every organization has rules that are specific to it -- a required label, an approved image registry, a minimum replica count. Custom policies let you express those rules as [CEL](https://cel.dev) (Common Expression Language) expressions, without writing Go code or forking KubeVigil.
+KubeVigil's 150 built-in checks cover common security misconfigurations, but every organization has rules that are specific to it -- a required label, an approved image registry, a minimum replica count. Custom policies let you express those rules as [CEL](https://cel.dev) (Common Expression Language) expressions, without writing Go code or forking KubeVigil.
 
 A custom policy compiles into the same `checker.Checker` interface as a built-in check. Once compiled, it is indistinguishable from a built-in check to the rest of the pipeline: it runs alongside built-in checks, its findings respect severity overrides and exemptions, and its output appears in every report format.
 
@@ -8,7 +8,7 @@ A custom policy compiles into the same `checker.Checker` interface as a built-in
 
 1. You author one or more policies in YAML -- either inline in `.kubevigil.yaml` under `customPolicies:`, or in a standalone file/directory passed to `--policy-file`.
 2. At scan startup, KubeVigil loads, structurally validates, and CEL-compiles every policy into an executable program.
-3. Each compiled policy is registered into the same checker registry as the 110 built-in checks, under its `id`.
+3. Each compiled policy is registered into the same checker registry as the 150 built-in checks, under its `id`.
 4. During the scan, the policy's expression is evaluated once per matching resource, with `object` bound to that resource. A `true` result means the resource **violates** the policy, and a finding is emitted.
 
 If any policy fails to load or compile, the scan does not run -- KubeVigil prints a `Policy error:` message and exits with code `3` (configuration error), the same as a malformed `.kubevigil.yaml`.

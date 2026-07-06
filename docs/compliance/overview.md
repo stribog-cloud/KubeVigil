@@ -1,6 +1,6 @@
 # Compliance Framework Mappings
 
-KubeVigil maps all 150 security checks to three industry-standard compliance frameworks. This allows you to filter scan results by framework, generate framework-specific reports, and demonstrate compliance coverage during audits.
+KubeVigil maps 137 of its 150 security checks to three industry-standard compliance frameworks. This allows you to filter scan results by framework, generate framework-specific reports, and demonstrate compliance coverage during audits. The 13 unmapped checks cover surfaces newer than the current published framework revisions (for example the Gateway API and ValidatingAdmissionPolicy); rather than cite a fabricated control ID, those checks carry no framework reference until the frameworks catch up.
 
 ## Supported Frameworks
 

@@ -325,6 +325,6 @@ The re-scan should report zero findings for the check you fixed. Note that "zero
 ## See Also
 
 - [Architecture Overview](../architecture/overview.md) -- internal design and data flow
-- [Checks Overview](../checks/overview.md) -- all 110 checks at a glance
+- [Checks Overview](../checks/overview.md) -- all 150 checks at a glance
 - [Fix Overview](../auto-fix/overview.md) -- how auto-fix works
 - [Configuration File](../configuration/config-file.md) -- `.kubevigil.yaml` reference

@@ -6,7 +6,7 @@ KubeVigil can scan Kubernetes YAML manifests without connecting to a cluster. Th
 
 Manifest scanning reads YAML files from disk, parses each Kubernetes resource definition, and runs all applicable security checks against them. No cluster connection or kubeconfig is required.
 
-94 of KubeVigil's 110 checks work in manifest mode. The remaining 15 are live-only checks that require cluster runtime state (see [Live Cluster Scanning](live-cluster.md) for details). One check -- `secrets-hardcoded-manifests` -- runs exclusively in manifest mode, detecting hardcoded secrets in YAML files.
+134 of KubeVigil's 150 checks work in manifest mode. The remaining 15 are live-only checks that require cluster runtime state (see [Live Cluster Scanning](live-cluster.md) for details). One check -- `secrets-hardcoded-manifests` -- runs exclusively in manifest mode, detecting hardcoded secrets in YAML files.
 
 ## Scanning a Single File
 

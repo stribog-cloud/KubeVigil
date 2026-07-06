@@ -12,7 +12,7 @@ A **check** is a single security rule that KubeVigil evaluates against Kubernete
 - **Supported scan modes** -- whether it works in live mode, manifest mode, or both
 - **Remediation** -- a description of the issue and a ready-to-use YAML fix
 
-KubeVigil ships with **110 security checks**. List them all with:
+KubeVigil ships with **150 security checks**. List them all with:
 
 ```bash
 kubevigil list checks
@@ -24,18 +24,18 @@ Checks are organized into 12 categories:
 
 | Category | Checks | What it covers |
 |----------|--------|----------------|
-| Workload | 25 | Container and pod security context, privilege escalation, capabilities |
+| Workload | 31 | Container and pod security context, privilege escalation, capabilities |
 | Image | 9 | Tag pinning, allowed/blocked registries, pull policies |
-| RBAC | 15 | Roles, ClusterRoles, wildcards, privilege escalation bindings |
-| Secrets | 7 | Secrets management, environment variable exposure, entropy detection |
-| Network | 12 | NetworkPolicy coverage, host networking, exposed services |
+| RBAC | 22 | Roles, ClusterRoles, wildcards, privilege escalation bindings |
+| Secrets | 12 | Secrets management, environment variable exposure, entropy detection |
+| Network | 18 | NetworkPolicy coverage, host networking, exposed services, Gateway API |
 | Pod Security Standards | 6 | PSA baseline and restricted profile violations |
-| Scheduling | 8 | Tolerations, node affinity, priority classes, spread constraints |
-| Storage | 5 | HostPath mounts, persistent volume access modes, ephemeral storage |
-| Cluster Configuration | 10 | API server settings, admission controllers, audit logging |
-| Supply Chain | 5 | Container runtime sockets, health probes, image age, lifecycle hooks |
+| Scheduling | 11 | Tolerations, node affinity, priority classes, spread constraints |
+| Storage | 9 | HostPath mounts, persistent volume access modes, ephemeral storage |
+| Cluster Configuration | 15 | API server settings, admission controllers, audit logging, admission webhooks |
+| Supply Chain | 6 | Container runtime sockets, health probes, image age, lifecycle hooks |
 | Cloud Provider | 4 | AWS, GCP, Azure-specific misconfigurations |
-| CRD | 4 | Custom resource validation, conversion webhooks |
+| CRD | 7 | Custom resource validation, conversion webhooks |
 
 ## Severity Levels
 
@@ -72,7 +72,7 @@ kubevigil scan
 kubevigil scan -f ./manifests/
 ```
 
-Of the 110 checks, 94 work in both modes, 15 are live-only (they inspect runtime cluster state that does not exist in static YAML), and 1 is manifest-only.
+Of the 150 checks, 134 work in both modes, 15 are live-only (they inspect runtime cluster state that does not exist in static YAML), and 1 is manifest-only.
 
 ## Findings
 
