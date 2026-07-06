@@ -40,6 +40,7 @@ owners: [maintainers (@msambare)]
 | Project profile (Charter §0.4) | public library / package (CLI binary + MCP server) |
 | Public release profile | See §8.1 below |
 | Project applicability matrix | `docs/governance/Project-Applicability-Matrix.md` |
+| Release evidence (v1.1.0) | `docs/governance/Release-Evidence-v1.1.0.md` |
 | Release evidence (v1.0.0) | `docs/governance/Release-Evidence-v1.0.0.md` |
 | Release evidence (v0.5.0) | `docs/governance/Release-Evidence-v0.5.0.md` |
 
@@ -125,7 +126,7 @@ Exposes: `format`, `lint`, `vet`, `test`, `coverage`, `secrets`, `vuln`, `build`
 | Waiver register | `docs/governance/WAIVER-REGISTER.md` |
 | Charter Compliance Annex | `docs/governance/Charter-Compliance-Annex.md` |
 | Project applicability matrix | `docs/governance/Project-Applicability-Matrix.md` |
-| Release evidence | `docs/governance/Release-Evidence-v1.0.0.md`, `docs/governance/Release-Evidence-v0.5.0.md` |
+| Release evidence | `docs/governance/Release-Evidence-v1.1.0.md`, `docs/governance/Release-Evidence-v1.0.0.md`, `docs/governance/Release-Evidence-v0.5.0.md` |
 
 Internal engineering specs (`docs/internal/`) are **excluded** from the public release profile. Public governing documents must not depend on paths under `docs/internal/`.
 
