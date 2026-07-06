@@ -44,9 +44,11 @@ hardening, and secret hygiene. No new subsystem — every check is a standard
 exemptions, frameworks, and all 8 report formats.
 
 - [x] 40 new checks across 9 categories (RBAC 15→22, Network 12→18, Cluster
-      10→15, CRD 4→7, Workload 25→31, Storage 5→9, Scheduling 8→11, Secrets
-      7→12, Supply chain 5→6), each with a 15+-case table-driven test and
-      passing/failing fixtures; `list checks` reports `Total: 150 checks`.
+      10→15, CRD 4→7, Workload 24→30, Storage 5→9, Scheduling 8→11, Secrets
+      7→12, Supply Chain & Lifecycle 6→7), each with a 15+-case table-driven test
+      and passing/failing fixtures; `list checks` reports `Total: 150 checks`.
+      (Pre-v1.3 workload/supply-chain counts corrected against the binary — the
+      earlier docs mis-split the Lifecycle sub-category.)
 - [x] Severity map + MCP catalogue completeness invariants restored (40 entries);
       framework mappings added where a real published control exists (+22 MITRE,
       +5 CIS, +13 NSA) — one fabricated CIS id rejected rather than shipped, and

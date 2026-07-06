@@ -36,7 +36,7 @@ hygiene.
     aggregation-layer weaknesses that silently disable enforcement.
   - **CRD (4 → 7):** `crd-preserve-unknown-fields`,
     `crd-status-subresource-missing`, `crd-multiversion-no-conversion`.
-  - **Workload (25 → 31):** `host-users-not-isolated`, `windows-hostprocess`,
+  - **Workload (24 → 30):** `host-users-not-isolated`, `windows-hostprocess`,
     `termination-grace-period-zero`, `hostaliases-injection`,
     `ephemeral-storage-requests-missing`,
     `serviceaccount-token-manual-volume-mount`.
@@ -47,7 +47,7 @@ hygiene.
   - **Secrets (7 → 12):** `secrets-immutable-missing`, `secrets-envfrom-bulk`,
     `serviceaccount-token-secret-legacy`, `secrets-tls-weak-key`,
     `secrets-in-annotations`.
-  - **Supply chain (5 → 6):** `poststart-hook-network-call`.
+  - **Supply Chain & Lifecycle (6 → 7):** `poststart-hook-network-call`.
 - MITRE ATT&CK mapped-control count rises 29 → 34 (new techniques: T1195,
   T1485, T1528, T1562, T1584.001).
 

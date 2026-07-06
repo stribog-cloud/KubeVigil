@@ -147,7 +147,7 @@ Full documentation lives in [`docs/`](docs/index.md):
 
 | Category | Checks | Examples |
 |----------|--------|---------|
-| [Workload](docs/checks/workload.md) | 31 | `privileged`, `host-pid`, `run-as-root`, `windows-hostprocess`, `host-users-not-isolated` |
+| [Workload](docs/checks/workload.md) | 30 | `privileged`, `host-pid`, `run-as-root`, `windows-hostprocess`, `host-users-not-isolated` |
 | [Image](docs/checks/image.md) | 9 | `image-tag-latest`, `image-registry-blocklist` |
 | [RBAC](docs/checks/rbac.md) | 22 | `rbac-wildcard-verbs`, `rbac-cluster-admin`, `rbac-node-proxy-access`, `rbac-csr-approval` |
 | [Secrets](docs/checks/secrets.md) | 12 | `secrets-in-env`, `secrets-unencrypted`, `secrets-envfrom-bulk`, `secrets-tls-weak-key` |
@@ -156,7 +156,7 @@ Full documentation lives in [`docs/`](docs/index.md):
 | [Scheduling](docs/checks/scheduling.md) | 11 | `toleration-control-plane`, `pod-disruption-budget`, `job-active-deadline-missing` |
 | [Storage](docs/checks/storage.md) | 9 | `pvc-no-encryption`, `emptydir-size-limit`, `csi-inline-ephemeral-volume` |
 | [Cluster](docs/checks/cluster.md) | 15 | `etcd-encryption`, `api-server-anonymous`, `validatingwebhook-failure-policy-ignore` |
-| [Supply Chain](docs/checks/supply-chain.md) | 6 | `container-runtime-socket`, `liveness-readiness-probes`, `poststart-hook-network-call` |
+| [Supply Chain](docs/checks/supply-chain.md) | 7 | `container-runtime-socket`, `liveness-readiness-probes`, `poststart-hook-network-call` |
 | [Cloud](docs/checks/cloud.md) | 4 | `eks-imds-access`, `gke-metadata-concealment` |
 | [CRD](docs/checks/crd.md) | 7 | `crd-validation-missing`, `cert-manager-expiry`, `crd-preserve-unknown-fields` |
 
