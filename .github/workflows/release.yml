@@ -19,8 +19,18 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '1.25.11'
+      - name: Run go vet
+        run: go vet ./...
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@9fae48acfc02a90574d7c304a1758ef9895495fa # v7
+        with:
+          version: v2.10.1
       - name: Run tests
         run: go test -race -count=1 ./...
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: Run govulncheck
+        run: govulncheck ./...
 
   release:
     name: Release
@@ -62,10 +72,34 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
-      - name: Attest build provenance (SLSA)
+      - name: Attest build provenance (SLSA) — archives
         uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
         with:
           subject-path: |
             dist/*.tar.gz
             dist/*.zip
             dist/*_checksums.txt
+      - name: Extract pushed image manifest digest
+        id: image-digest
+        run: |
+          # GoReleaser writes one "Docker Manifest" artifact per docker_manifests
+          # entry. Exclude the mutable ":latest" tag (skipped on prerelease tags
+          # anyway) and take the version-tag manifest — the digest a consumer
+          # gets from `docker pull ghcr.io/.../kubevigil:<version>`.
+          digest=$(jq -r '
+            [ .[] | select(.type == "Docker Manifest")
+                  | select(.name | endswith(":latest") | not)
+                  | .extra.Digest ]
+            | unique | .[0] // empty
+          ' dist/artifacts.json)
+          if [ -z "$digest" ]; then
+            echo "::error::could not extract the pushed image manifest digest from dist/artifacts.json"
+            exit 1
+          fi
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+      - name: Attest build provenance (SLSA) — container image
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
+        with:
+          subject-name: ghcr.io/stribog-cloud/kubevigil
+          subject-digest: ${{ steps.image-digest.outputs.digest }}
+          push-to-registry: true
