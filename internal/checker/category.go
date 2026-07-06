@@ -34,6 +34,8 @@ const (
 	CategoryCRD
 	// CategoryCloudProvider covers cloud provider integration checks.
 	CategoryCloudProvider
+	// CategoryCustom covers user-defined CEL policy checks.
+	CategoryCustom
 )
 
 var categoryNames = map[Category]string{
@@ -50,6 +52,7 @@ var categoryNames = map[Category]string{
 	CategorySupplyChain:   "SupplyChain",
 	CategoryCRD:           "CRD",
 	CategoryCloudProvider: "CloudProvider",
+	CategoryCustom:        "Custom",
 }
 
 // String returns the short identifier of the category (e.g., "ClusterConfig").
@@ -74,6 +77,7 @@ var categoryDisplayNames = map[string]string{
 	"SupplyChain":          "Supply Chain",
 	"CRD":                  "CRD",
 	"CloudProvider":        "Cloud Provider",
+	"Custom":               "Custom Policies",
 }
 
 // CategoryDisplayName returns the human-readable display name for a category

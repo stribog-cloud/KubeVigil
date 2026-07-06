@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-06
+
+Two platform features that extend KubeVigil beyond built-in checks, without a
+database or a fork.
+
+### Added
+
+- **Custom policy engine (CEL).** Define your own security checks as
+  [CEL](https://cel.dev) expressions in `.kubevigil.yaml` (`customPolicies:`) or
+  a `--policy-file` (file or directory). Each policy compiles to a checker and
+  runs through the identical pipeline as built-in checks — severity overrides,
+  exemptions, framework mapping, and all 8 output formats apply with no
+  special-casing. New `kubevigil policy validate` and `kubevigil policy list`
+  commands. Expressions evaluate over `object` (the resource) and are
+  cost-limited; policies match by kind/apiGroup/namespace. See
+  `docs/policies/custom-policies.md`.
+- **Baseline + drift detection.** `kubevigil scan --save-baseline <file>` writes
+  a portable JSON fingerprint set; `--baseline <file>` annotates each finding as
+  new or existing and reports resolved findings; `--fail-on-new` gates CI
+  strictly on findings that are new relative to the baseline. Findings carry an
+  optional `status` field. See `docs/policies/baseline-drift.md`.
+- `CategoryCustom` for user-defined policy findings; `configs/example-policies.yaml`.
+
+### Changed
+
+- Per-package coverage floor (96%) now also enforced for `internal/policy` and
+  `internal/baseline`.
+- New dependency `github.com/google/cel-go` (CNCF CEL — the same language used by
+  Kubernetes ValidatingAdmissionPolicy), govulncheck clean.
+
 ## [1.0.0] - 2026-07-06
 
 First stable release. The public surface — CLI commands and flags, exit codes,
@@ -169,6 +199,7 @@ covered by semantic-versioning stability guarantees (`docs/dev/public-surface.md
 - Table-driven unit tests with 15+ cases per checker, contract tests for all checkers
 - E2E test suite via Bats framework with Kind cluster validation
 
+[1.1.0]: https://github.com/stribog-cloud/KubeVigil/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/stribog-cloud/KubeVigil/compare/v0.5.0...v1.0.0
 [0.5.0]: https://github.com/stribog-cloud/KubeVigil/compare/v0.4.5...v0.5.0
 [0.4.5]: https://github.com/stribog-cloud/KubeVigil/compare/v0.4.0...v0.4.5

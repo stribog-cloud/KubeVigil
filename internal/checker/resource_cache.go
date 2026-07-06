@@ -262,6 +262,42 @@ var knownGVRs = map[string]schema.GroupVersionResource{
 	"policy/v1beta1/PodSecurityPolicy": {Group: "policy", Version: "v1beta1", Resource: "podsecuritypolicies"},
 }
 
+// AllKnownGVRs returns every GroupVersionResource KubeVigil recognizes,
+// deduplicated. It is the broad default resource set for custom policies that
+// do not restrict themselves to specific kinds.
+func AllKnownGVRs() []schema.GroupVersionResource {
+	seen := make(map[schema.GroupVersionResource]struct{}, len(knownGVRs))
+	out := make([]schema.GroupVersionResource, 0, len(knownGVRs))
+	for _, gvr := range knownGVRs {
+		if _, ok := seen[gvr]; ok {
+			continue
+		}
+		seen[gvr] = struct{}{}
+		out = append(out, gvr)
+	}
+	return out
+}
+
+// GVRsForKind returns the known GVRs whose kind matches the given kind name
+// (e.g. "Deployment"), across all API groups KubeVigil knows. Returns an empty
+// slice if the kind is unrecognized. Used by the custom-policy engine to
+// resolve a policy's `match.kinds` into the resources it must scan.
+func GVRsForKind(kind string) []schema.GroupVersionResource {
+	suffix := "/" + kind
+	var out []schema.GroupVersionResource
+	seen := make(map[schema.GroupVersionResource]struct{})
+	for key, gvr := range knownGVRs {
+		if strings.HasSuffix(key, suffix) {
+			if _, ok := seen[gvr]; ok {
+				continue
+			}
+			seen[gvr] = struct{}{}
+			out = append(out, gvr)
+		}
+	}
+	return out
+}
+
 // GVRForKind maps an apiVersion and kind from a manifest to its GroupVersionResource.
 // Returns an error if the combination is not recognized.
 func GVRForKind(apiVersion, kind string) (schema.GroupVersionResource, error) {

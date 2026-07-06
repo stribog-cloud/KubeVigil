@@ -6,8 +6,8 @@ updated: 2026-07-06
 type: project/user-releases
 status: review-draft
 tags: [kubevigil, user, releases, changelog]
-version: "1.1.0"
-revision: 3
+version: "1.2.0"
+revision: 4
 project: kubevigil
 parent_moc: "[[MOC - KubeVigil User Documentation]]"
 owners: [maintainers (@msambare)]
@@ -16,6 +16,23 @@ owners: [maintainers (@msambare)]
 # User Release Notes
 
 User-facing changes by version. Producer changelog: `CHANGELOG.md` at repository root.
+
+## v1.1.0 (2026-07-06)
+
+**Custom policies (CEL).** Write your own checks as CEL expressions in
+`.kubevigil.yaml` or a `--policy-file`, and they run alongside the built-in
+checks with the same severity, exemptions, compliance mapping, and output
+formats. Validate them with `kubevigil policy validate`. See the
+[Custom Policies guide](../../policies/custom-policies.md).
+
+**Baseline & drift.** Accept the current findings as a baseline
+(`kubevigil scan --save-baseline baseline.json`), then in CI fail only on
+findings that are *new* relative to it (`--baseline baseline.json --fail-on-new`).
+Findings are annotated new/existing and resolved findings are reported. See the
+[Baseline & Drift guide](../../policies/baseline-drift.md).
+
+**Upgrade:** `brew upgrade kubevigil` or pull the new release. No configuration
+migration required — both features are opt-in.
 
 ## v1.0.0 (2026-07-06)
 

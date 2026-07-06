@@ -23,11 +23,12 @@ Stable contracts for integrators and contributors. Breaking changes require ADR 
 
 | Command | Stability | Notes |
 |---------|-----------|-------|
-| `scan` | stable | Live and manifest modes |
+| `scan` | stable | Live and manifest modes; `--policy-file`, `--baseline`, `--save-baseline`, `--fail-on-new` (v1.1.0) |
 | `fix` | stable | Dry-run default |
 | `list` | stable | Subcommand `checks` |
 | `version` | stable | |
 | `mcp-server` | stable | stdio MCP transport |
+| `policy` | stable | Subcommands `validate`, `list` — custom CEL policies (v1.1.0) |
 
 ## MCP tools
 

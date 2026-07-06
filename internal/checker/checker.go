@@ -235,6 +235,11 @@ type Finding struct {
 	DesiredValue any `json:"desired_value,omitempty" yaml:"desired_value,omitempty"`
 	// FixHint provides structured metadata for auto-remediation.
 	FixHint *FixHint `json:"fix_hint,omitempty" yaml:"fix_hint,omitempty"`
+	// Status is the baseline-comparison result for this finding: "new" (not in
+	// the baseline), "existing" (present in the baseline), or "" when no
+	// baseline was applied. Set by the baseline package during a scan; omitted
+	// from output when empty so the field is backward-compatible.
+	Status string `json:"status,omitempty" yaml:"status,omitempty"`
 }
 
 // ClusterInfo holds metadata about the scanned cluster.

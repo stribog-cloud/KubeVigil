@@ -60,6 +60,10 @@ func saveAndRestoreScanFlags(t *testing.T) {
 		flagConfig = origConfig
 		flagNoColor = origNoColor
 		flagVerbose = origVerbose
+		flagPolicyFile = ""
+		flagBaseline = ""
+		flagSaveBaseline = ""
+		flagFailOnNew = false
 	})
 
 	// Reset all flags to defaults.
@@ -81,6 +85,10 @@ func saveAndRestoreScanFlags(t *testing.T) {
 	flagConfig = ""
 	flagNoColor = true
 	flagVerbose = false
+	flagPolicyFile = ""
+	flagBaseline = ""
+	flagSaveBaseline = ""
+	flagFailOnNew = false
 }
 
 // ---- Inline fixture YAML ----
