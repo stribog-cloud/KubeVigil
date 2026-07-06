@@ -150,6 +150,48 @@ func TestNewHTTPOSVClient_Defaults(t *testing.T) {
 	}
 }
 
+func TestHTTPOSVClient_PerPackageFixedVersion(t *testing.T) {
+	// One advisory affecting two packages with DIFFERENT fixed versions. Each
+	// package must get ITS OWN fixed version, not whichever appears first.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/querybatch" {
+			// Both packages map to the same advisory.
+			_, _ = w.Write([]byte(`{"results":[{"vulns":[{"id":"OSV-multi"}]},{"vulns":[{"id":"OSV-multi"}]}]}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{
+		  "id":"OSV-multi","summary":"shared advisory",
+		  "database_specific":{"severity":"HIGH"},
+		  "affected":[
+		    {"package":{"name":"pkg-a"},"ranges":[{"events":[{"introduced":"0"},{"fixed":"1.1.0"}]}]},
+		    {"package":{"name":"pkg-b"},"ranges":[{"events":[{"introduced":"0"},{"fixed":"2.2.0"}]}]}
+		  ]
+		}`))
+	}))
+	defer srv.Close()
+
+	got, err := newTestClient(srv).Resolve(context.Background(), []Package{
+		{Purl: "pkg:generic/pkg-a@1.0", Name: "pkg-a"},
+		{Purl: "pkg:generic/pkg-b@2.0", Name: "pkg-b"},
+	})
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if got["pkg:generic/pkg-a@1.0"][0].FixedVersion != "1.1.0" {
+		t.Errorf("pkg-a fixed=%q, want 1.1.0", got["pkg:generic/pkg-a@1.0"][0].FixedVersion)
+	}
+	if got["pkg:generic/pkg-b@2.0"][0].FixedVersion != "2.2.0" {
+		t.Errorf("pkg-b fixed=%q, want 2.2.0", got["pkg:generic/pkg-b@2.0"][0].FixedVersion)
+	}
+}
+
+func TestFixedVersionFor_NoAffected(t *testing.T) {
+	// A record with no affected entries yields no fixed version.
+	if got := fixedVersionFor(&osvRecord{}, "anything"); got != "" {
+		t.Errorf("empty record fixed=%q, want empty", got)
+	}
+}
+
 func TestRecordToVuln_NoSeverity(t *testing.T) {
 	// A record with neither a vector nor a text severity defaults to Medium so a
 	// vulnerability never silently drops below a High threshold.

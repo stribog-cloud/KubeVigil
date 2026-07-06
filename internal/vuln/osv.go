@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/stribog-cloud/kubevigil/internal/checker"
@@ -19,6 +20,10 @@ const defaultOSVBaseURL = "https://api.osv.dev"
 // osvBatchLimit is the maximum number of queries OSV.dev accepts in a single
 // querybatch request.
 const osvBatchLimit = 1000
+
+// maxOSVResponseBytes caps a single OSV.dev response body so a compromised or
+// MITM'd endpoint cannot exhaust memory. Far above any legitimate response.
+const maxOSVResponseBytes = 64 << 20
 
 // Vulnerability is a resolved vulnerability record: an OSV advisory with its
 // severity already mapped to a KubeVigil severity.
@@ -102,6 +107,9 @@ type osvRecord struct {
 		Severity string `json:"severity"`
 	} `json:"database_specific"`
 	Affected []struct {
+		Package struct {
+			Name string `json:"name"`
+		} `json:"package"`
 		Ranges []struct {
 			Events []struct {
 				Fixed string `json:"fixed"`
@@ -120,27 +128,39 @@ func (c *HTTPOSVClient) Resolve(ctx context.Context, packages []Package) (map[st
 		return nil, err
 	}
 
-	// Fetch each unique advisory once.
-	cache := map[string]*Vulnerability{}
+	// Fetch each unique advisory record once. The advisory-level fields
+	// (severity, summary, aliases) are shared, but the fixed version is
+	// package-specific — a single advisory can affect several packages with
+	// different fixes — so it is resolved per package below, not cached.
+	cache := map[string]*osvRecord{}
 	for _, ids := range purlToIDs {
 		for _, id := range ids {
 			if _, done := cache[id]; done {
 				continue
 			}
-			v, ferr := c.fetch(ctx, id)
+			rec, ferr := c.fetchRecord(ctx, id)
 			if ferr != nil {
 				return nil, ferr
 			}
-			cache[id] = v
+			cache[id] = rec
 		}
+	}
+
+	purlToName := map[string]string{}
+	for _, p := range packages {
+		purlToName[p.Purl] = p.Name
 	}
 
 	out := map[string][]Vulnerability{}
 	for purl, ids := range purlToIDs {
 		for _, id := range ids {
-			if v := cache[id]; v != nil {
-				out[purl] = append(out[purl], *v)
+			rec := cache[id]
+			if rec == nil {
+				continue
 			}
+			v := recordToVuln(rec)
+			v.FixedVersion = fixedVersionFor(rec, purlToName[purl])
+			out[purl] = append(out[purl], *v)
 		}
 		sort.Slice(out[purl], func(i, j int) bool { return out[purl][i].ID < out[purl][j].ID })
 	}
@@ -178,17 +198,19 @@ func (c *HTTPOSVClient) queryBatches(ctx context.Context, packages []Package) (m
 	return purlToIDs, nil
 }
 
-// fetch resolves a single advisory to a Vulnerability, mapping its severity.
-func (c *HTTPOSVClient) fetch(ctx context.Context, id string) (*Vulnerability, error) {
+// fetchRecord retrieves a single advisory record.
+func (c *HTTPOSVClient) fetchRecord(ctx context.Context, id string) (*osvRecord, error) {
 	var rec osvRecord
 	if err := c.getJSON(ctx, "/v1/vulns/"+id, &rec); err != nil {
 		return nil, err
 	}
-	return recordToVuln(&rec), nil
+	return &rec, nil
 }
 
-// recordToVuln maps an OSV record to a Vulnerability, preferring a scorable CVSS
-// vector and falling back to the database's text severity.
+// recordToVuln maps the advisory-level fields of an OSV record to a
+// Vulnerability, preferring a scorable CVSS vector and falling back to the
+// database's text severity. FixedVersion is package-specific and set separately
+// by the caller via fixedVersionFor.
 func recordToVuln(rec *osvRecord) *Vulnerability {
 	v := &Vulnerability{
 		ID:       rec.ID,
@@ -211,19 +233,41 @@ func recordToVuln(rec *osvRecord) *Vulnerability {
 	if !scored {
 		v.Severity = SeverityFromText(rec.DatabaseSpecific.Severity)
 	}
-	v.FixedVersion = firstFixedVersion(rec)
 	return v
 }
 
-// firstFixedVersion returns the first "fixed" event found in the advisory's
-// affected ranges (best-effort; an advisory may cover several packages).
-func firstFixedVersion(rec *osvRecord) string {
-	for _, aff := range rec.Affected {
-		for _, rng := range aff.Ranges {
-			for _, ev := range rng.Events {
-				if ev.Fixed != "" {
-					return ev.Fixed
+// fixedVersionFor returns the fixed version for a specific package. Because a
+// single advisory can affect several packages with different fixes, it prefers
+// the "fixed" event on the affected entry whose package name matches pkgName,
+// and only falls back to the first fixed event of any affected entry when no
+// name match exists (or the package name is unknown).
+func fixedVersionFor(rec *osvRecord, pkgName string) string {
+	// First pass: the affected entry whose package name matches.
+	if pkgName != "" {
+		for i := range rec.Affected {
+			if strings.EqualFold(rec.Affected[i].Package.Name, pkgName) {
+				if fixed := firstFixed(rec, i); fixed != "" {
+					return fixed
 				}
+			}
+		}
+	}
+	// Fallback: first fixed event across any affected entry (best-effort).
+	for i := range rec.Affected {
+		if fixed := firstFixed(rec, i); fixed != "" {
+			return fixed
+		}
+	}
+	return ""
+}
+
+// firstFixed returns the first non-empty "fixed" event of the i-th affected
+// entry.
+func firstFixed(rec *osvRecord, i int) string {
+	for _, rng := range rec.Affected[i].Ranges {
+		for _, ev := range rng.Events {
+			if ev.Fixed != "" {
+				return ev.Fixed
 			}
 		}
 	}
@@ -262,7 +306,10 @@ func (c *HTTPOSVClient) do(req *http.Request, out any) error {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		return fmt.Errorf("OSV.dev returned %s: %s", resp.Status, bytes.TrimSpace(body))
 	}
-	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+	// Cap the response body: OSV.dev is a trusted TLS endpoint, but a
+	// compromised or MITM'd server must not be able to exhaust memory with an
+	// unbounded response. 64 MiB is far above any legitimate advisory or batch.
+	if err := json.NewDecoder(io.LimitReader(resp.Body, maxOSVResponseBytes)).Decode(out); err != nil {
 		return fmt.Errorf("decoding OSV response: %w", err)
 	}
 	return nil
