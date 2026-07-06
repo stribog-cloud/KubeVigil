@@ -30,6 +30,7 @@ Stable contracts for integrators and contributors. Breaking changes require ADR 
 | `mcp-server` | stable | stdio MCP transport |
 | `policy` | stable | Subcommands `validate`, `list` — custom CEL policies (v1.1.0) |
 | `webhook` | stable | Validating admission webhook — real-time deny/warn (v1.2.0) |
+| `vuln` | stable | Scan an SBOM (SPDX/CycloneDX) for known CVEs via OSV.dev; fuses into the finding model (v1.4.0) |
 
 ## MCP tools
 

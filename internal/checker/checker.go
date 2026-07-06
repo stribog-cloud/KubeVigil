@@ -240,6 +240,39 @@ type Finding struct {
 	// baseline was applied. Set by the baseline package during a scan; omitted
 	// from output when empty so the field is backward-compatible.
 	Status string `json:"status,omitempty" yaml:"status,omitempty"`
+	// CVE carries vulnerability metadata when this finding represents a known
+	// CVE in a container image's software inventory (checker
+	// "image-vulnerability"). Nil for ordinary posture findings, so the field is
+	// backward-compatible and omitted from output for non-vulnerability findings.
+	CVE *CVEInfo `json:"cve,omitempty" yaml:"cve,omitempty"`
+}
+
+// CVEInfo holds structured metadata for a vulnerability finding sourced from a
+// vulnerability database (OSV.dev). It is attached to a Finding via the CVE
+// field when the finding represents a known vulnerability in an image's
+// software bill of materials rather than a Kubernetes misconfiguration.
+type CVEInfo struct {
+	// ID is the primary advisory identifier (e.g. "GHSA-c3h9-896r-86jm" or a
+	// "CVE-…" id when that is the canonical record).
+	ID string `json:"id" yaml:"id"`
+	// Aliases lists equivalent identifiers for the same vulnerability, including
+	// the CVE id when the primary ID is a non-CVE advisory.
+	Aliases []string `json:"aliases,omitempty" yaml:"aliases,omitempty"`
+	// Package is the affected package name from the SBOM.
+	Package string `json:"package" yaml:"package"`
+	// Version is the installed (vulnerable) package version.
+	Version string `json:"version,omitempty" yaml:"version,omitempty"`
+	// FixedVersion is the earliest version that resolves the vulnerability, or
+	// empty when no fixed version is published.
+	FixedVersion string `json:"fixed_version,omitempty" yaml:"fixed_version,omitempty"`
+	// CVSS is the CVSS base score (0.0–10.0), or 0 when no vector was available.
+	CVSS float64 `json:"cvss,omitempty" yaml:"cvss,omitempty"`
+	// Vector is the raw CVSS vector string the score was derived from.
+	Vector string `json:"vector,omitempty" yaml:"vector,omitempty"`
+	// Purl is the package URL the vulnerability was matched on.
+	Purl string `json:"purl,omitempty" yaml:"purl,omitempty"`
+	// Image is the container image reference the affected package belongs to.
+	Image string `json:"image,omitempty" yaml:"image,omitempty"`
 }
 
 // ClusterInfo holds metadata about the scanned cluster.
