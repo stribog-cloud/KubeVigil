@@ -70,7 +70,7 @@ kubevigil scan -o results.json
   "tool_version": "0.1.0",
   "scan_result": {
     "summary": {
-      "total_checks": 110,
+      "total_checks": 150,
       "total_findings": 42,
       "by_severity": {
         "critical": 2,

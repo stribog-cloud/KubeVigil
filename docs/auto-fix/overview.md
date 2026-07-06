@@ -4,7 +4,7 @@ The `kubevigil fix` command scans Kubernetes manifests, identifies fixable secur
 
 ## What It Does
 
-The fix engine runs the same security checks as `kubevigil scan`, then applies automated patches for findings that have a registered fix strategy. 20 of the 110 checks have auto-fix strategies. The remaining checks either require manual intervention (RBAC restructuring, NetworkPolicy creation) or involve changes too context-dependent to automate safely.
+The fix engine runs the same security checks as `kubevigil scan`, then applies automated patches for findings that have a registered fix strategy. 20 of the 150 checks have auto-fix strategies. The remaining checks either require manual intervention (RBAC restructuring, NetworkPolicy creation) or involve changes too context-dependent to automate safely.
 
 ## YAML Round-Trip Preservation
 

@@ -1,6 +1,6 @@
 # Admission Webhook
 
-`kubevigil webhook` runs KubeVigil as a Kubernetes **ValidatingAdmissionWebhook**. Instead of scanning on a schedule or in CI, it scans every object at the moment the API server admits it -- `CREATE` and `UPDATE` -- and can deny the request outright when what's being admitted is dangerous enough. It runs the same 110 built-in checks (and any custom CEL policies you've configured) that `kubevigil scan` uses, through the identical post-processing pipeline (severity overrides, exemptions, framework attachment), so a webhook verdict is never surprising relative to what a manifest scan of that one object would have reported.
+`kubevigil webhook` runs KubeVigil as a Kubernetes **ValidatingAdmissionWebhook**. Instead of scanning on a schedule or in CI, it scans every object at the moment the API server admits it -- `CREATE` and `UPDATE` -- and can deny the request outright when what's being admitted is dangerous enough. It runs the same 150 built-in checks (and any custom CEL policies you've configured) that `kubevigil scan` uses, through the identical post-processing pipeline (severity overrides, exemptions, framework attachment), so a webhook verdict is never surprising relative to what a manifest scan of that one object would have reported.
 
 ## How it works: deny, warn, or allow
 
@@ -196,7 +196,7 @@ Excluding `kubevigil-system` itself from `namespaceSelector` avoids the awkward 
 
 ## Custom CEL policies at admission
 
-`customPolicies:` entries in `.kubevigil.yaml` are compiled into checkers and registered exactly like the 110 built-in checks, so they run at admission time too -- the same policy that flags a resource in `kubevigil scan` will flag it (and can deny it) in the webhook, with no separate authoring step. The webhook loads config the same way `scan` and `fix` do: an explicit `--config` path if given, otherwise auto-discovery of `.kubevigil.yaml`, falling back to defaults if neither is found.
+`customPolicies:` entries in `.kubevigil.yaml` are compiled into checkers and registered exactly like the 150 built-in checks, so they run at admission time too -- the same policy that flags a resource in `kubevigil scan` will flag it (and can deny it) in the webhook, with no separate authoring step. The webhook loads config the same way `scan` and `fix` do: an explicit `--config` path if given, otherwise auto-discovery of `.kubevigil.yaml`, falling back to defaults if neither is found.
 
 One difference from `scan`: **`kubevigil webhook` has no `--policy-file` flag.** That flag only exists on `kubevigil scan`. To run custom policies at admission, put them in `customPolicies:` inside the config the webhook loads -- there's no equivalent of pointing the webhook at a standalone policy file or directory per invocation. See [Custom Policies](../policies/custom-policies.md) for the policy schema and CEL environment.
 

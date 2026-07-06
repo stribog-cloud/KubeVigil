@@ -111,7 +111,7 @@ kubevigil fix ./manifests/ --apply --verify
 
 ## List Available Checks
 
-See all 110 security checks with their IDs, categories, and supported scan modes:
+See all 150 security checks with their IDs, categories, and supported scan modes:
 
 ```bash
 kubevigil list checks
@@ -130,4 +130,4 @@ kubevigil scan -f ./manifests/ --fail-on high
 - [Key Concepts](concepts.md) -- understand the data model behind checks, findings, and scores
 - [Output Formats](../scanning/output-formats.md) -- details on all 8 formats
 - [Configuration](../configuration/) -- exemptions, severity overrides, and `.kubevigil.yaml`
-- [Checks Overview](../checks/) -- browse all 110 checks by category
+- [Checks Overview](../checks/) -- browse all 150 checks by category

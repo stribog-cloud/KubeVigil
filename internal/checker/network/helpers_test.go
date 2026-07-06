@@ -100,6 +100,49 @@ func makeIngressTLS(hosts []string, secretName string) map[string]interface{} {
 	}
 }
 
+// makeGateway builds an unstructured Gateway API Gateway for testing.
+func makeGateway(name, namespace string, spec map[string]interface{}) unstructured.Unstructured {
+	return unstructured.Unstructured{Object: map[string]interface{}{
+		"apiVersion": "gateway.networking.k8s.io/v1",
+		"kind":       "Gateway",
+		"metadata":   map[string]interface{}{"name": name, "namespace": namespace},
+		"spec":       spec,
+	}}
+}
+
+// makeHTTPRoute builds an unstructured Gateway API HTTPRoute for testing.
+func makeHTTPRoute(name, namespace string, spec map[string]interface{}) unstructured.Unstructured {
+	return unstructured.Unstructured{Object: map[string]interface{}{
+		"apiVersion": "gateway.networking.k8s.io/v1",
+		"kind":       "HTTPRoute",
+		"metadata":   map[string]interface{}{"name": name, "namespace": namespace},
+		"spec":       spec,
+	}}
+}
+
+// makeDeployment builds a minimal unstructured Deployment for testing, with an
+// optional hostNetwork setting on its pod template spec.
+func makeDeployment(name, namespace string, hostNetwork bool) unstructured.Unstructured {
+	return unstructured.Unstructured{Object: map[string]interface{}{
+		"apiVersion": "apps/v1",
+		"kind":       "Deployment",
+		"metadata":   map[string]interface{}{"name": name, "namespace": namespace},
+		"spec": map[string]interface{}{
+			"template": map[string]interface{}{
+				"spec": map[string]interface{}{
+					"hostNetwork": hostNetwork,
+					"containers": []interface{}{
+						map[string]interface{}{
+							"name":  "app",
+							"image": "example.com/app:1.0",
+						},
+					},
+				},
+			},
+		},
+	}}
+}
+
 // --- Tests for helper functions ---
 
 func TestIsSystemNamespace(t *testing.T) {
@@ -154,4 +197,12 @@ func TestGVRConstants(t *testing.T) {
 	assert.Equal(t, "", NamespaceGVR.Group)
 	assert.Equal(t, "v1", NamespaceGVR.Version)
 	assert.Equal(t, "namespaces", NamespaceGVR.Resource)
+
+	assert.Equal(t, "gateway.networking.k8s.io", GatewayGVR.Group)
+	assert.Equal(t, "v1", GatewayGVR.Version)
+	assert.Equal(t, "gateways", GatewayGVR.Resource)
+
+	assert.Equal(t, "gateway.networking.k8s.io", HTTPRouteGVR.Group)
+	assert.Equal(t, "v1", HTTPRouteGVR.Version)
+	assert.Equal(t, "httproutes", HTTPRouteGVR.Resource)
 }

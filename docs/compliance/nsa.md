@@ -32,6 +32,7 @@ kubevigil scan --framework nsa -o report.html
 | `run-as-high-uid` | Detects containers running with high-privilege UIDs |
 | `run-as-group` | Detects containers without a group ID set |
 | `privilege-escalation` | Detects containers with allowPrivilegeEscalation enabled |
+| `windows-hostprocess` | Detects containers running as Windows HostProcess containers |
 
 #### 1.2 Immutable container filesystems
 
@@ -56,6 +57,7 @@ kubevigil scan --framework nsa -o report.html
 | `csi-driver-security` | Detects insecure CSI driver configurations |
 | `container-runtime-socket` | Detects containers with access to the container runtime socket |
 | `lifecycle-hooks` | Detects lifecycle hooks that could be exploited |
+| `csi-inline-ephemeral-volume` | Detects Pods using CSI inline ephemeral volumes from a non-allowlisted driver |
 
 #### 1.4 Trusted container images
 
@@ -115,6 +117,9 @@ kubevigil scan --framework nsa -o report.html
 | `admission-controllers` | Detects missing admission controllers |
 | `crd-validation-missing` | Detects CRDs without validation schemas |
 | `crd-conversion-webhook` | Detects insecure CRD conversion webhooks |
+| `rbac-webhook-tampering` | Detects roles that can modify or delete admission webhook configurations |
+| `validatingwebhook-failure-policy-ignore` | Detects validating webhooks that fail open when unreachable |
+| `mutatingwebhook-wildcard-scope` | Detects mutating webhooks with unscoped, cluster-wide rules |
 
 ### Section 3 -- Authentication and Authorization
 
@@ -138,6 +143,14 @@ kubevigil scan --framework nsa -o report.html
 | `namespace-default-usage` | Detects resources in the default namespace |
 | `api-server-anonymous` | Detects anonymous API server access |
 | `kubelet-config` | Detects insecure kubelet configuration |
+| `rbac-node-proxy-access` | Detects roles granting access to the nodes/proxy subresource |
+| `rbac-csr-approval` | Detects roles granting CertificateSigningRequest approval |
+| `rbac-token-request` | Detects roles granting unrestricted create access to serviceaccounts/token |
+| `rbac-crossnamespace-serviceaccount` | Detects RoleBindings whose ServiceAccount subjects reference a different namespace |
+| `rbac-deletecollection-broad` | Detects roles granting unrestricted deletecollection on broad resources |
+| `rbac-aggregation-label-injection` | Detects ClusterRoles labeled to aggregate into built-in admin/edit/view roles |
+| `serviceaccount-token-manual-volume-mount` | Detects pods manually mounting a legacy service-account-token Secret |
+| `serviceaccount-token-secret-legacy` | Detects legacy service-account-token Secrets still present in the cluster |
 
 #### 3.2 Service account management
 

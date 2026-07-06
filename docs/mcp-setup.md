@@ -271,26 +271,26 @@ Browse available checks without scanning:
 
 > **You:** What security checks does KubeVigil run?
 >
-> **Assistant:** KubeVigil runs 110 checks across 12 categories:
+> **Assistant:** KubeVigil runs 150 checks across 12 categories:
 >
 > | Category | Checks |
 > |----------|--------|
-> | Workload | 25 |
-> | RBAC | 15 |
-> | Network | 12 |
+> | Workload | 30 |
+> | RBAC | 22 |
+> | Network | 18 |
 > | Image | 9 |
-> | Scheduling | 8 |
-> | Secrets | 7 |
+> | Scheduling | 11 |
+> | Secrets | 12 |
 > | PSA | 6 |
-> | Supply Chain | 5 |
-> | Storage | 5 |
-> | Cluster | 10 |
+> | Supply Chain | 7 |
+> | Storage | 9 |
+> | Cluster | 15 |
 > | Cloud | 4 |
-> | CRD | 4 |
+> | CRD | 7 |
 >
 > **You:** Show me the RBAC checks.
 >
-> **Assistant:** 15 RBAC checks:
+> **Assistant:** 22 RBAC checks (showing a sample):
 >
 > - `rbac-wildcard-verbs` (High) — Roles with wildcard verb permissions
 > - `rbac-wildcard-resources` (High) — Roles with wildcard resource access

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: default-grace-period-pod
+  namespace: default
+spec:
+  terminationGracePeriodSeconds: 30
+  containers:
+    - name: app
+      image: nginx:1.25

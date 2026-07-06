@@ -255,6 +255,6 @@ Each checker is self-contained in a single file with a corresponding test file. 
 ## See Also
 
 - [Contributing Guide](../contributing/guide.md) -- how to add checks and fix strategies
-- [Checks Overview](../checks/overview.md) -- all 110 checks at a glance
+- [Checks Overview](../checks/overview.md) -- all 150 checks at a glance
 - [Fix Overview](../auto-fix/overview.md) -- user-facing fix documentation
 - [Configuration File](../configuration/config-file.md) -- `.kubevigil.yaml` reference

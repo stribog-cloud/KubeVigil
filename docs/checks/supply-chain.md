@@ -1,6 +1,6 @@
 # Supply Chain & Lifecycle Checks
 
-KubeVigil includes 5 checks that detect supply chain security risks and container lifecycle concerns, covering container runtime socket access, health probes, lifecycle hooks, and image freshness.
+KubeVigil includes 7 checks that detect supply chain security risks and container lifecycle concerns, covering container runtime socket access, health probes, lifecycle hooks, and image freshness.
 
 ## Checks
 
@@ -95,6 +95,28 @@ lifecycle:
         - -c
         - "kill -SIGTERM 1 && sleep 5"  # Graceful local shutdown
 ```
+
+---
+
+### `poststart-hook-network-call`
+**Severity:** Low · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects containers with a `postStart` lifecycle hook making a network call (`curl`, `wget`, an HTTP request, `nc`/`ncat`). Unlike `lifecycle-hooks` (which only inspects `preStop`), a postStart hook fires on **every** container start -- including every restart, reschedule, or rolling update -- making it a natural place to establish beacon or callback (C2) behavior that blends into normal cluster churn.
+
+**Remediation:**
+```yaml
+lifecycle:
+  postStart:
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - "echo started > /tmp/ready"  # Local-only signal
+```
+
+If external notification is genuinely required, use an init container or sidecar pattern with egress network policies restricting the destination.
+
+**Frameworks:** MITRE T1071
 
 ---
 

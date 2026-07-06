@@ -1,6 +1,6 @@
 # Network Security Checks
 
-KubeVigil includes 12 checks that inspect NetworkPolicies, Ingress resources, Service exposure, DNS configuration, and service mesh settings. These checks examine Namespaces, NetworkPolicies, Ingresses, Services, ConfigMaps (CoreDNS), and Istio PeerAuthentication resources.
+KubeVigil includes 18 checks that inspect NetworkPolicies, Ingress resources, Service exposure, DNS configuration, service mesh settings, and the Gateway API. These checks examine Namespaces, NetworkPolicies, Ingresses, Services, ConfigMaps (CoreDNS), Istio PeerAuthentication resources, and Gateway API `Gateway`/`HTTPRoute` resources.
 
 All network checks support both **Live** and **Manifest** scan modes.
 
@@ -130,6 +130,130 @@ spec:
 Add additional egress rules for specific services your workloads need to reach.
 
 **Frameworks:** CIS 5.3.2, NSA/CISA
+
+---
+
+### `network-policy-empty-namespace-selector`
+**Severity:** Medium · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects NetworkPolicies whose `ingress[].from[]` or `egress[].to[]` contains an empty `namespaceSelector` (`{}`). Authors frequently write this intending to scope traffic to the same namespace, but an empty selector actually matches **every** namespace in the cluster, silently defeating the segmentation the policy was written to enforce. Distinct from `network-policy-overly-permissive` (which flags rules with no restriction fields at all): this flags a specific, subtler misconfigured selector.
+
+**Remediation:**
+```yaml
+spec:
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: my-namespace
+```
+
+If same-namespace traffic is intended, omit `namespaceSelector` entirely and rely on `podSelector`, which implicitly scopes to the policy's own namespace.
+
+**Frameworks:** CIS 5.3.2
+
+---
+
+### `metadata-service-egress-unblocked`
+**Severity:** High · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects namespaces running non-`hostNetwork` workloads that lack an egress NetworkPolicy blocking `169.254.169.254/32`, the cloud instance-metadata IP shared across AWS/GCP/Azure/DigitalOcean. The metadata endpoint serves node-level credentials and identity documents to any process that can reach it -- the exact chain used in the 2019 Capital One breach (SSRF against an application, followed by metadata-service credential theft). Cloud-agnostic and complementary to the cloud-specific `eks-imds-access`/`gke-metadata-concealment` checks, which use node-label heuristics for their specific platforms.
+
+**Remediation:**
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-metadata-egress
+  namespace: my-namespace
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.169.254/32
+```
+
+This complements provider-specific mitigations like requiring IMDSv2 on AWS or GKE Workload Identity/metadata concealment.
+
+**Frameworks:** MITRE T1552.005
+
+---
+
+## Gateway API
+
+### `gateway-listener-no-tls`
+**Severity:** High · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects Gateway API `Gateway` listeners serving traffic unencrypted: listeners using protocol `HTTP`, or `HTTPS`/`TLS` listeners in `Terminate` mode with no `certificateRefs` configured. Attackers on the network path can intercept credentials, session tokens, and other sensitive data via man-in-the-middle attacks -- the same risk `ingress-no-tls` flags for the classic Ingress API, now on the Gateway API surface.
+
+**Remediation:**
+```yaml
+spec:
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: gateway-tls-cert
+```
+
+Use cert-manager's Gateway API support to automate certificate provisioning and renewal.
+
+**Frameworks:** MITRE T1557
+
+---
+
+### `gateway-allowedroutes-all-namespaces`
+**Severity:** Medium · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects Gateway listeners with `allowedRoutes.namespaces.from` set to `All`, letting a route (e.g. HTTPRoute) created in **any** namespace in the cluster attach itself to the Gateway. This crosses a trust boundary the Gateway's owning team likely did not intend: a compromised or careless namespace elsewhere in the cluster can claim hostnames, paths, or backend references on a shared Gateway it does not own.
+
+**Remediation:**
+```yaml
+spec:
+  listeners:
+    - name: https
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              gateway-access: my-team
+```
+
+Label only the namespaces that should be permitted to attach routes to this Gateway.
+
+---
+
+### `httproute-wildcard-hostname`
+**Severity:** Medium · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects `HTTPRoute` resources with a wildcard (`*.example.com`) or empty `hostnames` list, matching overly broad sets of incoming requests -- the Gateway API analog of `ingress-wildcard-host`.
+
+**Remediation:**
+```yaml
+spec:
+  hostnames:
+    - app.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: app
+          port: 80
+```
+
+If multiple domains are needed, list each explicit hostname rather than relying on a wildcard.
 
 ---
 
@@ -295,6 +419,28 @@ spec:
 Enable the `DenyServiceExternalIPs` admission controller to prevent `externalIPs` usage cluster-wide.
 
 **Frameworks:** CVE-2020-8554
+
+---
+
+### `service-externalname-dangling`
+**Severity:** Medium · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects Services of `type: ExternalName` pointing to an external DNS name. An ExternalName Service makes the cluster's internal DNS resolve to a domain you do not control the lifecycle of. If that domain is ever deregistered, expires, or is repointed while cluster DNS still resolves through it, an attacker can register the abandoned domain and have every in-cluster caller silently start talking to attacker-controlled infrastructure -- the mechanism behind real-world subdomain-takeover incidents. This finding is informational and requires manual review; it does not fail on every match.
+
+**Remediation:**
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: vendor-api
+spec:
+  type: ExternalName
+  externalName: legacy-vendor-api.example-vendor.com
+```
+
+Confirm the target domain is still owned and actively maintained by the expected third party. Set up monitoring/alerting on the external domain's registration status, or replace the ExternalName Service with a pinned IP-based Endpoints object if the vendor's DNS posture cannot be trusted long-term.
+
+**Frameworks:** MITRE T1584.001
 
 ---
 

@@ -1,6 +1,6 @@
 # Cluster Configuration Checks
 
-KubeVigil includes 10 checks that detect cluster-level misconfigurations across namespaces, API server settings, admission controllers, etcd encryption, kubelet configuration, version skew, and deprecated API usage.
+KubeVigil includes 15 checks that detect cluster-level misconfigurations across namespaces, API server settings, admission controllers, etcd encryption, kubelet configuration, version skew, deprecated API usage, and admission webhook/policy hardening. The v1.3.0 additions examine `ValidatingWebhookConfiguration`, `MutatingWebhookConfiguration`, `ValidatingAdmissionPolicyBinding`, and `APIService` resources.
 
 ## Checks
 
@@ -245,3 +245,119 @@ metadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted
 ```
+
+---
+
+## Admission Control & Webhooks
+
+### `validatingwebhook-failure-policy-ignore`
+**Severity:** High · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects `ValidatingWebhookConfiguration` webhooks with `failurePolicy: Ignore`. If the webhook backend is down, erroring, or unreachable, the API server admits the request anyway instead of rejecting it. Any security policy the webhook enforces (OPA Gatekeeper, Kyverno, custom admission logic) is silently bypassed the moment the webhook becomes unavailable -- a fail-open design an attacker can exploit by disrupting the webhook service.
+
+**Remediation:**
+```yaml
+webhooks:
+  - name: policy.example.com
+    failurePolicy: Fail
+```
+
+Before flipping to `Fail` in production, ensure the webhook deployment has adequate replicas, a PodDisruptionBudget, and monitoring so a webhook outage does not become a cluster-wide admission outage.
+
+**Frameworks:** MITRE T1562, NSA/CISA 2.1
+
+---
+
+### `mutatingwebhook-wildcard-scope`
+**Severity:** High · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects `MutatingWebhookConfiguration` webhooks whose `rules[]` match `apiGroups: ["*"]`, `apiVersions: ["*"]`, `resources: ["*"]` with no `namespaceSelector`. A mutating webhook this broad can silently alter **any** resource in the cluster on every write. If the webhook backend is ever compromised, misconfigured, or buggy, it becomes a cluster-wide integrity and supply-chain risk -- it can inject malicious sidecars, rewrite image references, or corrupt any object cluster-wide.
+
+**Remediation:**
+```yaml
+webhooks:
+  - name: my-mutator.example.com
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values: ["kube-system", "kube-public"]
+    rules:
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        resources: ["deployments"]
+        operations: ["CREATE", "UPDATE"]
+```
+
+**Frameworks:** MITRE T1195, NSA/CISA 2.1
+
+---
+
+### `validatingadmissionpolicy-audit-only`
+**Severity:** Medium · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects `ValidatingAdmissionPolicyBinding` resources whose `validationActions` contains only `Audit`/`Warn` (no `Deny`). A binding evaluated this way records or displays a warning on every matching request, but never blocks the non-compliant request -- the native VAP equivalent of the `psa-mode-audit-only` gap for Pod Security Admission. Teams often assume the policy is enforced simply because it exists and is evaluated.
+
+**Remediation:**
+```yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: replica-limit-binding
+spec:
+  policyName: replica-limit-policy
+  validationActions: ["Deny"]
+```
+
+Add `Deny` once you have reviewed the audit/warn logs and confirmed the policy does not have false positives.
+
+---
+
+### `webhook-external-url`
+**Severity:** High · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects `ValidatingWebhookConfiguration`/`MutatingWebhookConfiguration` webhooks whose `clientConfig.url` is set (an external endpoint) rather than an in-cluster `clientConfig.service` reference. Sending every admission request over the network to a third party exposes that traffic to DNS hijacking, man-in-the-middle attacks, and outages of the external endpoint -- any of which can silently disable or corrupt cluster-wide admission control. This mirrors the same external-vs-service-reference risk pattern already established by `crd-conversion-webhook`, applied to the broader general admission webhook surface.
+
+**Remediation:**
+```yaml
+webhooks:
+  - name: policy.example.com
+    clientConfig:
+      service:
+        name: policy-webhook
+        namespace: policy-system
+        path: /validate
+      caBundle: <base64-ca-cert>
+```
+
+Use cert-manager to manage the webhook's TLS certificate and CA bundle automatically.
+
+**Frameworks:** MITRE T1557
+
+---
+
+### `apiservice-insecure-skip-verify`
+**Severity:** High · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects `APIService` resources with `spec.insecureSkipTLSVerify: true`. When set, the Kubernetes aggregation layer trusts whatever TLS certificate the extension API server (e.g. `metrics.k8s.io`, a custom aggregated API) presents without validating it against a CA -- a direct man-in-the-middle exposure for every request routed to that aggregated API.
+
+**Remediation:**
+```yaml
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1beta1.metrics.k8s.io
+spec:
+  service:
+    name: metrics-server
+    namespace: kube-system
+  group: metrics.k8s.io
+  version: v1beta1
+  caBundle: <base64-ca-cert>
+  groupPriorityMinimum: 100
+  versionPriority: 100
+```
+
+Use cert-manager or your cluster's PKI to issue and rotate the extension API server's certificate and populate `caBundle` automatically.
+
+**Frameworks:** MITRE T1557

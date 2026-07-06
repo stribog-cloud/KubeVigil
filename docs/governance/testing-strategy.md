@@ -26,7 +26,7 @@ owners: [maintainers (@msambare)]
 | E2E | Bats (`test/e2e/`), optional Kind clusters |
 | CI enforcement | `.github/workflows/ci.yml` mirrors `make all` |
 
-KubeVigil validates 110 security checks, 8 report formats, and a YAML-preserving fix engine. Tests are the primary design tool: checkers are table-driven with 15+ cases; contract tests enforce the `Checker` seam; golden files lock output stability.
+KubeVigil validates 150 security checks, 8 report formats, and a YAML-preserving fix engine. Tests are the primary design tool: checkers are table-driven with 15+ cases; contract tests enforce the `Checker` seam; golden files lock output stability.
 
 ## 1. Guiding Principles
 

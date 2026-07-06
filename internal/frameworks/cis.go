@@ -208,4 +208,10 @@ var cisMappingData = map[string][]checker.FrameworkRef{
 	"crd-conversion-webhook": {cis("5.5.1", "Configure Image Provenance using ImagePolicyWebhook admission controller")},
 	"cert-manager-expiry":    {cis("5.4.1", "Prefer using secrets as files over secrets as environment variables")},
 	"cert-manager-insecure":  {cis("5.4.1", "Prefer using secrets as files over secrets as environment variables")},
+
+	// v1.3.0
+	"network-policy-empty-namespace-selector": {cis("5.3.2", "Ensure that all Namespaces have Network Policies defined")},
+	"secrets-envfrom-bulk":                    {cis("5.4.1", "Prefer using secrets as files over secrets as environment variables")},
+	"secrets-tls-weak-key":                    {cis("5.4.1", "Prefer using secrets as files over secrets as environment variables")},
+	"secrets-in-annotations":                  {cis("5.4.1", "Prefer using secrets as files over secrets as environment variables")},
 }

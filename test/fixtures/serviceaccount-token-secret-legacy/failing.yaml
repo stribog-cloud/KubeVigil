@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: legacy-sa-token
+  namespace: default
+  annotations:
+    kubernetes.io/service-account.name: default
+type: kubernetes.io/service-account-token
+data:
+  ca.crt: dGVzdA==
+  namespace: ZGVmYXVsdA==
+  token: ZXhhbXBsZS1mYWtlLXRva2VuLXZhbHVl

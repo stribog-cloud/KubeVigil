@@ -130,3 +130,70 @@ func makeHPA(t *testing.T, name, ns, targetKind, targetName string) unstructured
 }
 
 func int32Ptr(v int32) *int32 { return &v }
+
+// makeJob creates an unstructured batch/v1 Job for testing.
+func makeJob(name, ns string, activeDeadlineSeconds *int64) unstructured.Unstructured {
+	obj := map[string]any{
+		"apiVersion": "batch/v1",
+		"kind":       "Job",
+		"metadata":   map[string]any{"name": name, "namespace": ns},
+		"spec": map[string]any{
+			"template": map[string]any{
+				"spec": map[string]any{
+					"containers": []any{
+						map[string]any{"name": "app", "image": "batch:v1"},
+					},
+					"restartPolicy": "Never",
+				},
+			},
+		},
+	}
+	if activeDeadlineSeconds != nil {
+		obj["spec"].(map[string]any)["activeDeadlineSeconds"] = *activeDeadlineSeconds
+	}
+	return unstructured.Unstructured{Object: obj}
+}
+
+// makeCronJob creates an unstructured batch/v1 CronJob for testing.
+func makeCronJob(name, ns, concurrencyPolicy string, startingDeadlineSeconds *int64) unstructured.Unstructured {
+	spec := map[string]any{
+		"schedule": "0 2 * * *",
+		"jobTemplate": map[string]any{
+			"spec": map[string]any{
+				"template": map[string]any{
+					"spec": map[string]any{
+						"containers": []any{
+							map[string]any{"name": "app", "image": "report:v1"},
+						},
+						"restartPolicy": "Never",
+					},
+				},
+			},
+		},
+	}
+	if concurrencyPolicy != "" {
+		spec["concurrencyPolicy"] = concurrencyPolicy
+	}
+	if startingDeadlineSeconds != nil {
+		spec["startingDeadlineSeconds"] = *startingDeadlineSeconds
+	}
+	return unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "batch/v1",
+		"kind":       "CronJob",
+		"metadata":   map[string]any{"name": name, "namespace": ns},
+		"spec":       spec,
+	}}
+}
+
+// makePriorityClass creates an unstructured scheduling.k8s.io/v1 PriorityClass for testing.
+func makePriorityClass(name string, value int64) unstructured.Unstructured {
+	return unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "scheduling.k8s.io/v1",
+		"kind":       "PriorityClass",
+		"metadata":   map[string]any{"name": name},
+		"value":      value,
+	}}
+}
+
+// int64Ptr returns a pointer to the given int64.
+func int64Ptr(v int64) *int64 { return &v }

@@ -50,3 +50,70 @@ func makeNode(name, kubeletVersion string) unstructured.Unstructured {
 		},
 	}}
 }
+
+// makeValidatingWebhookConfig creates a ValidatingWebhookConfiguration
+// unstructured object for testing.
+func makeValidatingWebhookConfig(t *testing.T, name string, webhooks []map[string]any) unstructured.Unstructured {
+	t.Helper()
+	return toUnstructured(t, map[string]any{
+		"apiVersion": "admissionregistration.k8s.io/v1",
+		"kind":       "ValidatingWebhookConfiguration",
+		"metadata":   map[string]any{"name": name},
+		"webhooks":   webhooks,
+	})
+}
+
+// makeMutatingWebhookConfig creates a MutatingWebhookConfiguration
+// unstructured object for testing.
+func makeMutatingWebhookConfig(t *testing.T, name string, webhooks []map[string]any) unstructured.Unstructured {
+	t.Helper()
+	return toUnstructured(t, map[string]any{
+		"apiVersion": "admissionregistration.k8s.io/v1",
+		"kind":       "MutatingWebhookConfiguration",
+		"metadata":   map[string]any{"name": name},
+		"webhooks":   webhooks,
+	})
+}
+
+// makeValidatingAdmissionPolicyBinding creates a ValidatingAdmissionPolicyBinding
+// unstructured object for testing.
+func makeValidatingAdmissionPolicyBinding(t *testing.T, name, policyName string, validationActions []string) unstructured.Unstructured {
+	t.Helper()
+	return toUnstructured(t, map[string]any{
+		"apiVersion": "admissionregistration.k8s.io/v1",
+		"kind":       "ValidatingAdmissionPolicyBinding",
+		"metadata":   map[string]any{"name": name},
+		"spec": map[string]any{
+			"policyName":        policyName,
+			"validationActions": validationActions,
+		},
+	})
+}
+
+// makeValidatingAdmissionPolicy creates a ValidatingAdmissionPolicy
+// unstructured object for testing.
+func makeValidatingAdmissionPolicy(t *testing.T, name string) unstructured.Unstructured {
+	t.Helper()
+	return toUnstructured(t, map[string]any{
+		"apiVersion": "admissionregistration.k8s.io/v1",
+		"kind":       "ValidatingAdmissionPolicy",
+		"metadata":   map[string]any{"name": name},
+	})
+}
+
+// makeAPIService creates an APIService unstructured object for testing.
+func makeAPIService(t *testing.T, name string, insecureSkipTLSVerify bool, caBundle string) unstructured.Unstructured {
+	t.Helper()
+	spec := map[string]any{
+		"insecureSkipTLSVerify": insecureSkipTLSVerify,
+	}
+	if caBundle != "" {
+		spec["caBundle"] = caBundle
+	}
+	return toUnstructured(t, map[string]any{
+		"apiVersion": "apiregistration.k8s.io/v1",
+		"kind":       "APIService",
+		"metadata":   map[string]any{"name": name},
+		"spec":       spec,
+	})
+}

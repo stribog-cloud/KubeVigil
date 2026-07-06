@@ -1,6 +1,6 @@
 # Scheduling & Availability Checks
 
-KubeVigil includes 8 checks that detect scheduling misconfigurations that can compromise cluster stability, availability, and isolation boundaries. These checks examine tolerations, PriorityClasses, PodDisruptionBudgets, topology spread constraints, node affinity, and HPA configuration.
+KubeVigil includes 11 checks that detect scheduling misconfigurations that can compromise cluster stability, availability, and isolation boundaries. These checks examine tolerations, PriorityClasses, PodDisruptionBudgets, topology spread constraints, node affinity, HPA configuration, and Job/CronJob resource hygiene.
 
 ## Checks
 
@@ -93,6 +93,28 @@ spec:
 
 ---
 
+### `priority-class-excessive-value`
+**Severity:** Medium · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects custom PriorityClass resources with a `value` approaching the system-reserved range (`>= 1000000000`, within 1B of `system-cluster-critical`'s 2000000000) created by non-system workloads. PriorityClass values this close to the system-reserved range let an ordinary team's PriorityClass effectively guarantee preemption over the entire cluster -- a priority-abuse / scheduling-DoS pattern where one team can starve every other workload. Distinct from `priority-class-system` (which flags workloads *using* the two built-in system priority classes): this flags newly created custom PriorityClass objects whose value itself is excessive.
+
+**Remediation:**
+```yaml
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: my-team-critical
+value: 100000              # Well below the 1,000,000,000 system-reserved threshold
+preemptionPolicy: PreemptLowerPriority
+globalDefault: false
+```
+
+Establish a tiered priority scheme for application workloads (e.g., critical: 500000, medium: 100000, low: 10000) that stays well clear of system-reserved values.
+
+**Frameworks:** MITRE T1499
+
+---
+
 ### `pod-disruption-budget`
 **Severity:** Low · **Modes:** Live, Manifest · **Auto-fix:** No
 
@@ -177,3 +199,48 @@ containers:
         cpu: 500m
         memory: 512Mi
 ```
+
+---
+
+### `job-active-deadline-missing`
+**Severity:** Low · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects `Job` resources without `spec.activeDeadlineSeconds` set. Without it, a Job that hangs (e.g., waiting on an unreachable dependency) or misbehaves (e.g., an infinite retry loop) has no automatic cutoff -- it can occupy node resources and scheduler capacity indefinitely, degrading the cluster for other workloads.
+
+**Remediation:**
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: batch-processor
+spec:
+  activeDeadlineSeconds: 3600   # Kill the Job if it runs longer than 1 hour
+  template:
+    spec:
+      containers:
+        - name: processor
+          image: batch-processor:v1
+```
+
+Choose a deadline generously above the expected p99 runtime to avoid killing legitimate long-running work.
+
+---
+
+### `cronjob-concurrency-unbounded`
+**Severity:** Low · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects `CronJob` resources with `concurrencyPolicy: Allow` (the default, or unset) and no `startingDeadlineSeconds`. A CronJob whose runs take longer than its schedule interval will keep launching new, overlapping Job runs indefinitely under these defaults. Each run consumes scheduler and node capacity, and enough pile-up can starve the cluster's own resources -- an operational denial-of-service against the scheduler.
+
+**Remediation:**
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nightly-report
+spec:
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid       # Or: Allow + startingDeadlineSeconds
+  startingDeadlineSeconds: 300    # Skip a run if it can't start within 5 minutes
+```
+
+Use `Forbid` when overlapping runs would be incorrect (most batch jobs); use `Allow` with a `startingDeadlineSeconds` bound only when overlap is intentional and safe.

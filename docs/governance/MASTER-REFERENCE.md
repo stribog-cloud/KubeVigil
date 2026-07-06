@@ -14,7 +14,7 @@ parent_moc: "[[MOC - KubeVigil Governance]]"
 
 # KubeVigil — Master Reference
 
-> Kubernetes Security Posture Management CLI — 110 checks, 8 report formats, manifest-safe auto-fix, MCP integration.
+> Kubernetes Security Posture Management CLI — 150 checks, 8 report formats, manifest-safe auto-fix, MCP integration.
 
 ## 0. TL;DR
 
@@ -32,7 +32,7 @@ KubeVigil scans live clusters or static YAML manifests, maps findings to CIS/MIT
 
 ## 0.1 Current State
 
-- **110 built-in checks** across 12 categories (stable as of v1.0.0) + unlimited **user-defined CEL policies** (v1.1.0)
+- **150 built-in checks** across 12 categories (stable as of v1.3.0) + unlimited **user-defined CEL policies** (v1.1.0)
 - **8 output formats:** text, json, yaml, markdown, html, sarif, junit, csv
 - **Fix engine:** five-ring safety model, dry-run default, mandatory backup on `--apply`
 - **MCP:** `kubevigil mcp-server` — scan, findings, summary tools
@@ -70,7 +70,7 @@ direction: right
 
 cli: CLI / MCP {shape: rectangle}
 engine: Scan Engine {shape: rectangle}
-checkers: Checker Registry (110) {shape: rectangle}
+checkers: Checker Registry (150) {shape: rectangle}
 fix: Fix Engine {shape: rectangle}
 report: Reporters (8) {shape: rectangle}
 

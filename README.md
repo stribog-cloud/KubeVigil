@@ -11,7 +11,7 @@
 
 KubeVigil is a Kubernetes Security Posture Management (KSPM) CLI tool that
 scans clusters and YAML manifests for security misconfigurations. It runs
-**110 security checks** across **12 categories**, maps every finding to
+**150 security checks** across **12 categories**, maps every finding to
 industry compliance frameworks (CIS Kubernetes Benchmark, MITRE ATT&CK,
 NSA/CISA), and outputs reports in 8 formats — from colored terminal text to
 SARIF for GitHub Security.
@@ -20,9 +20,10 @@ SARIF for GitHub Security.
 
 - **Single binary, zero dependencies.** No agents, no sidecars, no cluster
   components to install.
-- **110 checks, 12 categories.** Workload security, RBAC, network policies,
+- **150 checks, 12 categories.** Workload security, RBAC, network policies,
   secrets, Pod Security Standards, scheduling, storage, cluster config, supply
-  chain, cloud provider, and CRD security.
+  chain, cloud provider, and CRD security — including Gateway API, admission
+  webhook, and RBAC escalation-vector coverage added in v1.3.0.
 - **Dual-mode scanning.** Scan live clusters or static YAML manifests.
 - **Compliance mapping.** CIS v1.8, MITRE ATT&CK v14, NSA/CISA v1.2.
 - **8 output formats.** Text, JSON, Markdown, HTML, SARIF, YAML, JUnit, CSV.
@@ -125,7 +126,7 @@ Full documentation lives in [`docs/`](docs/index.md):
 | Section | Description |
 |---------|-------------|
 | [Getting Started](docs/getting-started/installation.md) | Installation, quickstart, core concepts |
-| [Security Checks](docs/checks/overview.md) | All 110 checks across 12 categories |
+| [Security Checks](docs/checks/overview.md) | All 150 checks across 12 categories |
 | [Scanning](docs/scanning/live-cluster.md) | Live cluster and manifest scanning |
 | [Output Formats](docs/scanning/output-formats.md) | Text, JSON, HTML, SARIF, and 4 more |
 | [Auto-Remediation](docs/auto-fix/overview.md) | Fix engine, safety model, risk levels |
@@ -142,22 +143,22 @@ Full documentation lives in [`docs/`](docs/index.md):
 | [Troubleshooting](docs/troubleshooting/common-issues.md) | Common issues and solutions |
 | [Changelog](CHANGELOG.md) | What shipped in each version |
 
-## Security Checks (110 total)
+## Security Checks (150 total)
 
 | Category | Checks | Examples |
 |----------|--------|---------|
-| [Workload](docs/checks/workload.md) | 25 | `privileged`, `host-pid`, `run-as-root`, `resource-limits-missing` |
+| [Workload](docs/checks/workload.md) | 30 | `privileged`, `host-pid`, `run-as-root`, `windows-hostprocess`, `host-users-not-isolated` |
 | [Image](docs/checks/image.md) | 9 | `image-tag-latest`, `image-registry-blocklist` |
-| [RBAC](docs/checks/rbac.md) | 15 | `rbac-wildcard-verbs`, `rbac-cluster-admin`, `automount-token` |
-| [Secrets](docs/checks/secrets.md) | 7 | `secrets-in-env`, `secrets-unencrypted`, `secrets-in-configmap` |
-| [Network](docs/checks/network.md) | 12 | `network-policy-missing`, `ingress-no-tls`, `external-ips` |
+| [RBAC](docs/checks/rbac.md) | 22 | `rbac-wildcard-verbs`, `rbac-cluster-admin`, `rbac-node-proxy-access`, `rbac-csr-approval` |
+| [Secrets](docs/checks/secrets.md) | 12 | `secrets-in-env`, `secrets-unencrypted`, `secrets-envfrom-bulk`, `secrets-tls-weak-key` |
+| [Network](docs/checks/network.md) | 18 | `network-policy-missing`, `ingress-no-tls`, `gateway-listener-no-tls`, `httproute-wildcard-hostname` |
 | [PSA](docs/checks/psa.md) | 6 | `psa-labels-missing`, `psa-baseline-violations` |
-| [Scheduling](docs/checks/scheduling.md) | 8 | `toleration-control-plane`, `pod-disruption-budget` |
-| [Storage](docs/checks/storage.md) | 5 | `pvc-no-encryption`, `emptydir-size-limit` |
-| [Cluster](docs/checks/cluster.md) | 10 | `etcd-encryption`, `api-server-anonymous`, `deprecated-api-usage` |
-| [Supply Chain](docs/checks/supply-chain.md) | 5 | `container-runtime-socket`, `liveness-readiness-probes` |
+| [Scheduling](docs/checks/scheduling.md) | 11 | `toleration-control-plane`, `pod-disruption-budget`, `job-active-deadline-missing` |
+| [Storage](docs/checks/storage.md) | 9 | `pvc-no-encryption`, `emptydir-size-limit`, `csi-inline-ephemeral-volume` |
+| [Cluster](docs/checks/cluster.md) | 15 | `etcd-encryption`, `api-server-anonymous`, `validatingwebhook-failure-policy-ignore` |
+| [Supply Chain](docs/checks/supply-chain.md) | 7 | `container-runtime-socket`, `liveness-readiness-probes`, `poststart-hook-network-call` |
 | [Cloud](docs/checks/cloud.md) | 4 | `eks-imds-access`, `gke-metadata-concealment` |
-| [CRD](docs/checks/crd.md) | 4 | `crd-validation-missing`, `cert-manager-expiry` |
+| [CRD](docs/checks/crd.md) | 7 | `crd-validation-missing`, `cert-manager-expiry`, `crd-preserve-unknown-fields` |
 
 See [Checks Overview](docs/checks/overview.md) for the full list with severities, modes, and auto-fix status.
 

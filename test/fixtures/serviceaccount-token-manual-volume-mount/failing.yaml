@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: legacy-sa-token-mount-pod
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: nginx:1.25
+      volumeMounts:
+        - name: legacy-token
+          mountPath: /var/run/secrets/legacy
+  volumes:
+    - name: legacy-token
+      secret:
+        secretName: legacy-sa-token
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: legacy-sa-token
+  namespace: default
+type: kubernetes.io/service-account-token
+data:
+  token: ZXhhbXBsZS10b2tlbg==

@@ -155,4 +155,19 @@ var nsaMappingData = map[string][]checker.FrameworkRef{
 	"crd-conversion-webhook": {nsa("2.1", "Pod security enforcement")},
 	"cert-manager-expiry":    {nsa("4.3", "TLS encryption")},
 	"cert-manager-insecure":  {nsa("4.3", "TLS encryption")},
+
+	// v1.3.0
+	"rbac-node-proxy-access":                   {nsa("3.1", "RBAC policies")},
+	"rbac-csr-approval":                        {nsa("3.1", "RBAC policies")},
+	"rbac-webhook-tampering":                   {nsa("2.1", "Pod security enforcement")},
+	"rbac-token-request":                       {nsa("3.1", "RBAC policies")},
+	"rbac-crossnamespace-serviceaccount":       {nsa("3.1", "RBAC policies")},
+	"rbac-deletecollection-broad":              {nsa("3.1", "RBAC policies")},
+	"rbac-aggregation-label-injection":         {nsa("3.1", "RBAC policies")},
+	"validatingwebhook-failure-policy-ignore":  {nsa("2.1", "Pod security enforcement")},
+	"mutatingwebhook-wildcard-scope":           {nsa("2.1", "Pod security enforcement")},
+	"windows-hostprocess":                      {nsa("1.1", "Non-root containers")},
+	"serviceaccount-token-manual-volume-mount": {nsa("3.2", "Service account management")},
+	"csi-inline-ephemeral-volume":              {nsa("1.3", "minimized host resource access")},
+	"serviceaccount-token-secret-legacy":       {nsa("3.2", "Service account management")},
 }

@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-06
+
+Detection breadth: **40 new security checks** raise the built-in catalogue from
+110 to **150** across all 12 categories, closing gaps in RBAC escalation, the
+Gateway API, admission-controller configuration, CRD hardening, and secret
+hygiene.
+
+### Added
+
+- **40 new checks (110 → 150).** Every check ships with a table-driven test
+  (15+ cases) and passing/failing fixtures, and is wired into the severity map,
+  MCP catalogue, and — where a real published control exists — the CIS v1.8,
+  MITRE ATT&CK v14, and NSA/CISA v1.2 framework mappings.
+  - **RBAC (15 → 22):** `rbac-node-proxy-access`, `rbac-csr-approval`,
+    `rbac-webhook-tampering`, `rbac-token-request`,
+    `rbac-crossnamespace-serviceaccount`, `rbac-deletecollection-broad`,
+    `rbac-aggregation-label-injection` — privilege-escalation and
+    credential-minting paths that a wildcard-verb check alone misses.
+  - **Network / Gateway API (12 → 18):** `gateway-listener-no-tls`,
+    `gateway-allowedroutes-all-namespaces`, `httproute-wildcard-hostname`,
+    `network-policy-empty-namespace-selector`, `service-externalname-dangling`,
+    `metadata-service-egress-unblocked` — first-class Gateway API coverage plus
+    cloud-metadata SSRF exposure.
+  - **Cluster config (10 → 15):** `validatingwebhook-failure-policy-ignore`,
+    `mutatingwebhook-wildcard-scope`, `validatingadmissionpolicy-audit-only`,
+    `webhook-external-url`, `apiservice-insecure-skip-verify` — admission and
+    aggregation-layer weaknesses that silently disable enforcement.
+  - **CRD (4 → 7):** `crd-preserve-unknown-fields`,
+    `crd-status-subresource-missing`, `crd-multiversion-no-conversion`.
+  - **Workload (24 → 30):** `host-users-not-isolated`, `windows-hostprocess`,
+    `termination-grace-period-zero`, `hostaliases-injection`,
+    `ephemeral-storage-requests-missing`,
+    `serviceaccount-token-manual-volume-mount`.
+  - **Storage (5 → 9):** `subpath-symlink-risk`, `csi-inline-ephemeral-volume`,
+    `generic-ephemeral-volume-no-limits`, `volumesnapshotclass-no-encryption`.
+  - **Scheduling (8 → 11):** `job-active-deadline-missing`,
+    `priority-class-excessive-value`, `cronjob-concurrency-unbounded`.
+  - **Secrets (7 → 12):** `secrets-immutable-missing`, `secrets-envfrom-bulk`,
+    `serviceaccount-token-secret-legacy`, `secrets-tls-weak-key`,
+    `secrets-in-annotations`.
+  - **Supply Chain & Lifecycle (6 → 7):** `poststart-hook-network-call`.
+- MITRE ATT&CK mapped-control count rises 29 → 34 (new techniques: T1195,
+  T1485, T1528, T1562, T1584.001).
+
+### Changed
+
+- `list checks` now reports `Total: 150 checks`; the public-surface checker
+  anchor and all category counts in the docs are updated accordingly.
+
 ## [1.2.0] - 2026-07-06
 
 Real-time admission control: KubeVigil can now gate deployments, not just audit

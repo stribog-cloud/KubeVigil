@@ -33,11 +33,35 @@ supply-chain-verified artifacts and a semver-stable public surface.
 | 5 | v1.0.0 hardening + release engineering | Complete (v1.0.0 released 2026-07-06) |
 | 6 | v1.1.0 platform features (CEL custom policies, baseline/drift) | Complete (v1.1.0) |
 | 7 | v1.2.0 runtime: validating admission webhook | Complete (v1.2.0) |
+| 8 | v1.3.0 detection breadth: 40 new checks (110 → 150) | Complete (v1.3.0) |
+
+## Phase 8 — v1.3.0 Detection Breadth (40 new checks, 110 → 150)
+
+Widens native coverage into the gaps a scan of a modern cluster leaves open:
+RBAC escalation paths, the Gateway API, admission-controller configuration, CRD
+hardening, and secret hygiene. No new subsystem — every check is a standard
+`checker.Checker` flowing through the existing registry, severity map,
+exemptions, frameworks, and all 8 report formats.
+
+- [x] 40 new checks across 9 categories (RBAC 15→22, Network 12→18, Cluster
+      10→15, CRD 4→7, Workload 24→30, Storage 5→9, Scheduling 8→11, Secrets
+      7→12, Supply Chain & Lifecycle 6→7), each with a 15+-case table-driven test
+      and passing/failing fixtures; `list checks` reports `Total: 150 checks`.
+      (Pre-v1.3 workload/supply-chain counts corrected against the binary — the
+      earlier docs mis-split the Lifecycle sub-category.)
+- [x] Severity map + MCP catalogue completeness invariants restored (40 entries);
+      framework mappings added where a real published control exists (+22 MITRE,
+      +5 CIS, +13 NSA) — one fabricated CIS id rejected rather than shipped, and
+      `TestScanManifest_FrameworksAttached` relaxed to assert the attachment
+      mechanism rather than fabricate control IDs for unmapped checks.
+- [x] MITRE mapped-control count 29 → 34; HTML golden regenerated to match.
+- [x] Roster tests updated (150 count + names); coverage floor held; docs,
+      public-surface anchor, and governance references updated to 150.
 
 ## Phase 7 — v1.2.0 Runtime (validating admission webhook)
 
 Turns KubeVigil from an auditor into an admission gate. `kubevigil webhook`
-serves a ValidatingAdmissionWebhook that runs the same 110 checks + custom CEL
+serves a ValidatingAdmissionWebhook that runs the same 150 checks + custom CEL
 policies against each admitted object, denying findings at or above `--fail-on`
 and warning below.
 
@@ -125,4 +149,6 @@ None blocking — documentation and gate wiring only; code changes limited to co
 |---------|----------|------|--------|
 | 1.0.0 | 1 | 2026-07-02 | Initial build plan; Phase 4 charter compliance in progress. |
 | 1.1.0 | 2 | 2026-07-06 | Phase 4 marked complete; Phase 5 (v1.0.0 hardening + release engineering) recorded. |
-| 1.2.0 | 3 | 2026-07-06 | Phase 6 (v1.1.0 CEL policies + baseline/drift) recorded complete. || 1.3.0 | 4 | 2026-07-06 | Phase 7 (v1.2.0 admission webhook) recorded complete. |
+| 1.2.0 | 3 | 2026-07-06 | Phase 6 (v1.1.0 CEL policies + baseline/drift) recorded complete. |
+| 1.3.0 | 4 | 2026-07-06 | Phase 7 (v1.2.0 admission webhook) recorded complete. |
+| 1.4.0 | 5 | 2026-07-06 | Phase 8 (v1.3.0 detection breadth — 40 new checks, 110 → 150) recorded complete. |

@@ -1,7 +1,9 @@
 // Package secrets implements secret management checks for Kubernetes secrets and configmaps.
 //
-// It covers 7 checks spanning secrets in env vars, configmaps, and manifests,
-// encryption at rest, rotation staleness, and external secret sync.
+// It covers 12 checks spanning secrets in env vars, envFrom, configmaps,
+// manifests, and workload annotations/labels; encryption at rest; rotation
+// staleness; immutability and TLS key strength hardening; legacy
+// ServiceAccount token Secrets; and external secret sync.
 // All checkers implement the [checker.Checker] interface and are registered
 // via [Register].
 package secrets
@@ -16,4 +18,9 @@ func init() {
 	checker.MustRegister(&StaleChecker{})
 	checker.MustRegister(&HardcodedManifestsChecker{})
 	checker.MustRegister(&ExternalSecretsSyncChecker{})
+	checker.MustRegister(&ImmutableMissingChecker{})
+	checker.MustRegister(&EnvFromBulkChecker{})
+	checker.MustRegister(&ServiceAccountTokenSecretLegacyChecker{})
+	checker.MustRegister(&TLSWeakKeyChecker{})
+	checker.MustRegister(&InAnnotationsChecker{})
 }

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: benign-hostaliases-pod
+  namespace: default
+spec:
+  hostAliases:
+    - ip: "203.0.113.10"
+      hostnames: ["legacy-vendor.example.com"]
+  containers:
+    - name: app
+      image: nginx:1.25

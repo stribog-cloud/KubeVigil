@@ -1,0 +1,7 @@
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: my-team-medium
+value: 100000
+globalDefault: false
+description: "Custom medium-priority class for team workloads, well below the system-reserved range."

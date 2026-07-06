@@ -1,6 +1,6 @@
 # CRD Security Checks
 
-KubeVigil includes 4 checks covering CustomResourceDefinition security and cert-manager certificate management, detecting unvalidated CRDs, conversion webhook risks, certificate expiry, and weak cryptographic configurations.
+KubeVigil includes 7 checks covering CustomResourceDefinition security and cert-manager certificate management, detecting unvalidated CRDs, conversion webhook risks, certificate expiry, weak cryptographic configurations, and CRD schema/subresource hardening gaps.
 
 ## Checks
 
@@ -134,3 +134,79 @@ spec:
     size: 4096                  # Minimum 2048, prefer 4096
     rotationPolicy: Always
 ```
+
+---
+
+### `crd-preserve-unknown-fields`
+**Severity:** Medium · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects CustomResourceDefinitions with the deprecated top-level `spec.preserveUnknownFields: true`, which disables structural-schema pruning entirely for the CRD. Any client can write arbitrary, unvalidated fields into every version of the custom resource, defeating the guarantees a structural OpenAPI schema is supposed to provide and enabling injection into fields controllers may not expect or sanitize.
+
+**Remediation:**
+```yaml
+spec:
+  preserveUnknownFields: false
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+```
+
+Test existing custom resources against the new schema before rolling out -- previously-valid resources relying on unknown fields may be rejected once pruning is enabled.
+
+---
+
+### `crd-status-subresource-missing`
+**Severity:** Medium · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects CRD versions whose schema defines a `status` object but do not enable `subresources.status`. Without the status subresource, there is only one write endpoint for the custom resource -- any client with permission to update the resource's `spec` can also arbitrarily overwrite its `status`. Controllers frequently treat `status` as authoritative state they alone should write; without the subresource split, application clients can corrupt that state, breaking the spec/status separation Kubernetes controllers rely on for correctness.
+
+**Remediation:**
+```yaml
+spec:
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+            status:
+              type: object
+```
+
+Update controller RBAC to grant `update`/`patch` on the `<resource>/status` subresource separately from the main resource.
+
+---
+
+### `crd-multiversion-no-conversion`
+**Severity:** Medium · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects CRDs serving 2+ versions (`served: true` on multiple entries) with no conversion webhook configured (`spec.conversion.strategy` absent or `None`). Without a real conversion webhook, Kubernetes falls back to the trivial `None` conversion strategy, which copies fields byte-for-byte between versions with no actual transformation -- any field that differs in shape or name between versions silently round-trips as data loss or a zeroed value. Distinct from `crd-conversion-webhook`, which only inspects webhooks that already exist; this flags CRDs that need one but don't have it.
+
+**Remediation:**
+```yaml
+spec:
+  conversion:
+    strategy: Webhook
+    webhook:
+      clientConfig:
+        service:
+          name: my-crd-converter
+          namespace: my-system
+          path: /convert
+        caBundle: <base64-ca-cert>
+```
+
+If only one version needs to remain served long-term, consider deprecating and removing the older served version instead of maintaining lossy multi-version support.

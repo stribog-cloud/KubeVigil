@@ -1,0 +1,19 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: policy-webhook
+webhooks:
+  - name: policy.example.com
+    failurePolicy: Fail
+    clientConfig:
+      service:
+        name: policy-svc
+        namespace: policy-system
+        path: /validate
+    rules:
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        resources: ["deployments"]
+        operations: ["CREATE", "UPDATE"]
+    sideEffects: None
+    admissionReviewVersions: ["v1"]

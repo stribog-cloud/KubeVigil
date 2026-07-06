@@ -1,0 +1,16 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: external-validator
+webhooks:
+  - name: validate.example.com
+    failurePolicy: Fail
+    clientConfig:
+      url: "https://webhook.external-vendor.com/validate"
+    rules:
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        resources: ["deployments"]
+        operations: ["CREATE", "UPDATE"]
+    sideEffects: None
+    admissionReviewVersions: ["v1"]
