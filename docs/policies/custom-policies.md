@@ -64,7 +64,7 @@ Kubernetes resources are optional-field-heavy: a Deployment may or may not have 
 !has(object.metadata.labels) || !('team' in object.metadata.labels)
 ```
 
-`has()` short-circuits before the second half of the `||` is evaluated when the field is genuinely absent, so this pattern is safe for resources with no labels at all.
+CEL's `||` and `&&` are *commutative* error-absorbing operators: if either side determines the result, any error from the other side is absorbed. When `has(...)` is false, the `||` is already determined, so a would-be error in the other operand never surfaces — which is what makes this pattern safe for resources with no labels at all.
 
 ### What happens on an evaluation error
 
@@ -97,6 +97,17 @@ has(object.spec.replicas) && object.spec.replicas < 2
 ```
 
 Note that the container and volume examples assume a `Deployment`-shaped `spec.template.spec` -- restrict `match.kinds` accordingly (see below), since a `Pod`'s containers live at `spec.containers` directly, not `spec.template.spec.containers`.
+
+### Evaluation cost limit
+
+Every evaluation runs under a fixed CEL **cost limit** (1,000,000 cost units per
+resource) so a pathological expression — deeply nested comprehensions over
+large objects, for example — cannot stall a scan. Typical field checks cost a
+few dozen units; you will only ever hit the limit with unusually heavy
+`.exists()` / `.all()` chains over big lists. If an evaluation exceeds the
+limit it is treated like any other per-resource evaluation error: the resource
+is skipped for that policy (never reported as a violation) and the scan
+continues.
 
 ## Match Semantics
 

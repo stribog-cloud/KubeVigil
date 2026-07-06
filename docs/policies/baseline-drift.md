@@ -43,6 +43,8 @@ A baseline is a small, portable JSON file -- no database, no server -- containin
 
    ```console
    $ kubevigil scan -f manifests/ --fail-on-new
+   ... (full report prints to stdout first) ...
+   Config error: --fail-on-new requires --baseline
    (exit code 3)
    ```
 
