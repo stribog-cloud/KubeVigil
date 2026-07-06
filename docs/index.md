@@ -40,6 +40,7 @@ Governance and contributor docs: `docs/governance/`, `docs/dev/`, [Contributing]
 - [Live Cluster Scanning](scanning/live-cluster.md) — Scan a running cluster
 - [Manifest Scanning](scanning/manifest-scanning.md) — Scan YAML files and directories
 - [Output Formats](scanning/output-formats.md) — Text, JSON, YAML, Markdown, HTML, SARIF, JUnit, CSV
+- [Vulnerability Scanning](scanning/vulnerability-scanning.md) — Scan an image SBOM for known CVEs via OSV.dev
 - [Explanation: Why Manifest Scanning?](user/explanation-why-manifest-scan.md) — Why manifest mode exists and when to prefer it over live scanning
 
 ### Auto-Remediation

@@ -34,6 +34,30 @@ supply-chain-verified artifacts and a semver-stable public surface.
 | 6 | v1.1.0 platform features (CEL custom policies, baseline/drift) | Complete (v1.1.0) |
 | 7 | v1.2.0 runtime: validating admission webhook | Complete (v1.2.0) |
 | 8 | v1.3.0 detection breadth: 40 new checks (110 → 150) | Complete (v1.3.0) |
+| 9 | v1.4.0 image vulnerability layer (OSV.dev CVE fusion) | Complete (v1.4.0) |
+
+## Phase 9 — v1.4.0 Image Vulnerability Layer (OSV.dev CVE fusion)
+
+Extends KubeVigil beyond posture into vulnerability: an image can be perfectly
+configured and still ship known-vulnerable software. `kubevigil vuln` reads a
+container image's SBOM (SPDX or CycloneDX), queries the OSV.dev database, and
+reports known CVEs as findings fused into the same model and report formats as a
+posture scan. No image pulling — the SBOM is produced out-of-band.
+
+- [x] `internal/vuln`: injectable `OSVClient` (HTTP impl — querybatch → advisory
+      detail, 1000/batch, graceful failure), SPDX/CycloneDX purl extraction, a
+      from-scratch CVSS v3.0/v3.1 base-score parser with text-severity fallback,
+      and a scanner producing fused `image-vulnerability` findings. 97% covered;
+      added to the 96% per-package `CRITICAL_PKGS` gate.
+- [x] `checker.Finding` gains an optional backward-compatible `CVE *CVEInfo`
+      (nil for posture findings; omitempty in JSON/YAML). `image-vulnerability`
+      is a synthetic finding source, not a registered check — the catalogue
+      stays 150 and the drift-gate is unaffected.
+- [x] `kubevigil vuln --sbom <file|dir>` command (`--image`, `--fail-on`,
+      `--min-severity`, `--timeout`, `-o`); exit codes 0/1/2/3.
+- [x] Threat model rev 9 (OSV.dev network-egress trust boundary, SBOM inventory
+      asset, egress/data-trust/DoS STRIDE rows); public-surface, user docs, and
+      CHANGELOG updated; e2e coverage.
 
 ## Phase 8 — v1.3.0 Detection Breadth (40 new checks, 110 → 150)
 
@@ -152,3 +176,4 @@ None blocking — documentation and gate wiring only; code changes limited to co
 | 1.2.0 | 3 | 2026-07-06 | Phase 6 (v1.1.0 CEL policies + baseline/drift) recorded complete. |
 | 1.3.0 | 4 | 2026-07-06 | Phase 7 (v1.2.0 admission webhook) recorded complete. |
 | 1.4.0 | 5 | 2026-07-06 | Phase 8 (v1.3.0 detection breadth — 40 new checks, 110 → 150) recorded complete. |
+| 1.5.0 | 6 | 2026-07-06 | Phase 9 (v1.4.0 image vulnerability layer — OSV.dev CVE fusion) recorded complete. |
