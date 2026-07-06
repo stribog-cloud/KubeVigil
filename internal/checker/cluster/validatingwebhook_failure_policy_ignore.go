@@ -96,7 +96,6 @@ func (c *ValidatingWebhookFailurePolicyIgnoreChecker) Run(ctx context.Context, r
 					Operation:   checker.FixOpSet,
 				},
 			})
-			break // one finding per webhook configuration
 		}
 	}
 

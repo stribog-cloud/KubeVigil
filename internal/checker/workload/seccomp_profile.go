@@ -75,7 +75,7 @@ func (c *SeccompProfileChecker) Run(ctx context.Context, resources *checker.Reso
 					"behavior. For stricter controls, use a custom Localhost profile tailored to your application's needs. " +
 					"Set the profile at the pod level to apply it to all containers.\n\n" +
 					"## Learn More\n\n" +
-					"Seccomp profiles are required by the Pod Security Standards \"Restricted\" profile and CIS Benchmark 5.7.2. " +
+					"Seccomp profiles are required by the Pod Security Standards \"Restricted\" profile and CIS Benchmark 5.6.2. " +
 					"Use tools like `strace` or the Security Profiles Operator to generate custom profiles for your workloads.",
 				FieldPath:    fieldPath,
 				CurrentValue: nil,

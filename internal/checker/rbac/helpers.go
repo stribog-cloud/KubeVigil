@@ -228,3 +228,21 @@ func containsAny(slice []string, vals ...string) bool {
 	}
 	return false
 }
+
+// grantsSubresource reports whether an RBAC rule's resource list grants access
+// to resource/subresource under real Kubernetes wildcard semantics. The API
+// server's RBAC authorizer recognises exactly three matching forms for a
+// subresource: the literal "resource/subresource", the full wildcard "*", and
+// the subresource wildcard "*/subresource". Notably "resource/*" is NOT valid
+// Kubernetes RBAC syntax and matches nothing — a checker that keys on it both
+// false-positives on an inert rule and misses the real "*/subresource" grant.
+func grantsSubresource(ruleResources []string, resource, subresource string) bool {
+	full := resource + "/" + subresource
+	subWildcard := "*/" + subresource
+	for _, r := range ruleResources {
+		if r == full || r == "*" || r == subWildcard {
+			return true
+		}
+	}
+	return false
+}

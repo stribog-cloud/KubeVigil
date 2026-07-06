@@ -63,7 +63,7 @@ func (c *NamespaceDefaultUsageChecker) Run(ctx context.Context, resources *check
 					"```yaml\napiVersion: v1\nkind: Namespace\nmetadata:\n  name: my-app\n  labels:\n    pod-security.kubernetes.io/enforce: restricted\n---\n# Then update your workload:\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  namespace: my-app    # Move out of default\n```\n\n" +
 					"Apply NetworkPolicies and ResourceQuotas to the new namespace for full isolation.\n\n" +
 					"## Learn More\n\n" +
-					"The CIS Kubernetes Benchmark (5.7.4) recommends against using the default namespace. " +
+					"The CIS Kubernetes Benchmark (5.6.4) recommends against using the default namespace. " +
 					"See https://kubernetes.io/docs/concepts/security/multi-tenancy/ for namespace isolation patterns.",
 				FieldPath: ".metadata.namespace",
 			})

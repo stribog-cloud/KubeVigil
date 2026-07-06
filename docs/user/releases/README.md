@@ -6,8 +6,8 @@ updated: 2026-07-06
 type: project/user-releases
 status: review-draft
 tags: [kubevigil, user, releases, changelog]
-version: "1.4.0"
-revision: 6
+version: "1.5.0"
+revision: 7
 project: kubevigil
 parent_moc: "[[MOC - KubeVigil User Documentation]]"
 owners: [maintainers (@msambare)]
@@ -16,6 +16,28 @@ owners: [maintainers (@msambare)]
 # User Release Notes
 
 User-facing changes by version. Producer changelog: `CHANGELOG.md` at repository root.
+
+## v1.5.0 (2026-07-06)
+
+**Correctness & security release.** An adversarial red-team pass (testing the
+actual binary, not just reading code) found a security bug and a set of checks
+that were silently *under-reporting* — flagging fewer issues than they should.
+This release fixes all of them; no check was removed and the total stays at 150.
+
+The headline fix is a **CSV formula-injection** bug (present in every prior
+version): a Kubernetes resource named like `=cmd|...` would land in an exported
+CSV as a live spreadsheet formula. Cells are now neutralized. If you open
+KubeVigil CSV exports in Excel/Sheets, upgrade.
+
+Several checks now detect cases they previously missed — RBAC subresource
+wildcards (`*/proxy`), multi-webhook configs (all entries, not just the first),
+modern CRD `x-kubernetes-preserve-unknown-fields`, cloud-metadata egress in
+manifest scans, `{matchLabels: {}}` NetworkPolicy selectors, `encrypted: "false"`
+storage, string-typed PriorityClass values, cloud-metadata hostAliases, and TLS
+secrets in `stringData`. **Expect more findings on an unchanged cluster** — use
+`--min-severity` or exemptions to tune.
+
+**Upgrade:** `brew upgrade kubevigil` or pull the new release. No flags change.
 
 ## v1.4.0 (2026-07-06)
 

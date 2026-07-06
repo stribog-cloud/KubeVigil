@@ -87,7 +87,7 @@ func (c *SELinuxOptionsChecker) Run(ctx context.Context, resources *checker.Reso
 					"entirely. Test in a non-production environment first.\n\n" +
 					"## Learn More\n\n" +
 					"SELinux enforcement is a key defense layer on RHEL-family nodes. The `spc_t` type is equivalent to disabling " +
-					"SELinux for that container. Refer to CIS Benchmark 5.7.3 and the OpenShift SELinux documentation.",
+					"SELinux for that container. Refer to the Kubernetes and OpenShift SELinux documentation.",
 				FieldPath: fieldPath,
 			})
 		})

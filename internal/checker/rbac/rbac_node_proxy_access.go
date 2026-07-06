@@ -9,10 +9,6 @@ import (
 	"github.com/stribog-cloud/kubevigil/internal/checker"
 )
 
-// nodeProxyResources are resource strings that grant access to the kubelet's proxy subresource.
-// "nodes/*" is included because a wildcard subresource entry implicitly matches nodes/proxy too.
-var nodeProxyResources = []string{"nodes/proxy", "nodes/*"}
-
 // nodeProxyVerbs are verbs that allow reaching the kubelet API through the nodes/proxy subresource.
 var nodeProxyVerbs = []string{"get", "create", "*"}
 
@@ -55,7 +51,7 @@ func (c *NodeProxyAccessChecker) Run(ctx context.Context, resources *checker.Res
 	for i := range roles {
 		role := &roles[i]
 		for ruleIdx, rule := range role.Rules {
-			if containsAny(rule.Resources, nodeProxyResources...) && containsAny(rule.Verbs, nodeProxyVerbs...) {
+			if grantsSubresource(rule.Resources, "nodes", "proxy") && containsAny(rule.Verbs, nodeProxyVerbs...) {
 				findings = append(findings, checker.Finding{
 					Checker:   "rbac-node-proxy-access",
 					Severity:  checker.SeverityCritical,

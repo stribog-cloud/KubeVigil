@@ -3,6 +3,8 @@ package scheduling
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -61,8 +63,8 @@ func (c *PriorityClassExcessiveValueChecker) Run(ctx context.Context, resources 
 			continue
 		}
 
-		value := priorityClassValue(pc)
-		if value < excessivePriorityThreshold {
+		value, ok := priorityClassValue(pc)
+		if !ok || value < excessivePriorityThreshold {
 			continue
 		}
 
@@ -84,7 +86,7 @@ func (c *PriorityClassExcessiveValueChecker) Run(ctx context.Context, resources 
 				"Establish a tiered priority scheme for application workloads (e.g., critical: 500000, medium: 100000, low: " +
 				"10000) that stays well clear of system-reserved values.\n\n" +
 				"## Learn More\n\n" +
-				"See the Kubernetes Pod Priority and Preemption documentation. MITRE ATT&CK T1499 (Endpoint DoS) covers the " +
+				"See the Kubernetes Pod Priority and Preemption documentation. MITRE ATT&CK T1489 (Service Stop) covers the " +
 				"resource-starvation framing this check defends against.",
 			FieldPath:    ".value",
 			CurrentValue: value,
@@ -94,14 +96,23 @@ func (c *PriorityClassExcessiveValueChecker) Run(ctx context.Context, resources 
 	return findings, nil
 }
 
-// priorityClassValue extracts the top-level value field from a PriorityClass,
-// trying int64 first (live cluster data) then float64 (JSON-decoded manifests).
-func priorityClassValue(obj *unstructured.Unstructured) int64 {
+// priorityClassValue extracts the top-level value field from a PriorityClass.
+// It tries int64 (live cluster data), then float64 (JSON-decoded manifests),
+// then a quoted string (`value: "2000000000"` — an ordinary authoring mistake
+// that a silent int-only extraction would default to 0, defeating detection at
+// exactly the system-critical threshold). ok is false only when no numeric
+// value could be resolved.
+func priorityClassValue(obj *unstructured.Unstructured) (int64, bool) {
 	if v, ok, err := unstructured.NestedInt64(obj.Object, "value"); err == nil && ok {
-		return v
+		return v, true
 	}
 	if v, ok, err := unstructured.NestedFloat64(obj.Object, "value"); err == nil && ok {
-		return int64(v)
+		return int64(v), true
 	}
-	return 0
+	if s, ok, err := unstructured.NestedString(obj.Object, "value"); err == nil && ok {
+		if v, perr := strconv.ParseInt(strings.TrimSpace(s), 10, 64); perr == nil {
+			return v, true
+		}
+	}
+	return 0, false
 }

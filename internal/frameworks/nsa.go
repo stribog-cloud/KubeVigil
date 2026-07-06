@@ -166,7 +166,7 @@ var nsaMappingData = map[string][]checker.FrameworkRef{
 	"rbac-aggregation-label-injection":         {nsa("3.1", "RBAC policies")},
 	"validatingwebhook-failure-policy-ignore":  {nsa("2.1", "Pod security enforcement")},
 	"mutatingwebhook-wildcard-scope":           {nsa("2.1", "Pod security enforcement")},
-	"windows-hostprocess":                      {nsa("1.1", "Non-root containers")},
+	"windows-hostprocess":                      {nsa("1.3", "Minimized host resource access")},
 	"serviceaccount-token-manual-volume-mount": {nsa("3.2", "Service account management")},
 	"csi-inline-ephemeral-volume":              {nsa("1.3", "minimized host resource access")},
 	"serviceaccount-token-secret-legacy":       {nsa("3.2", "Service account management")},

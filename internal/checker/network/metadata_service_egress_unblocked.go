@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sort"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -53,19 +54,22 @@ func (c *MetadataServiceEgressChecker) Run(ctx context.Context, resources *check
 		return nil, fmt.Errorf("metadata-service-egress-unblocked check: %w", err)
 	}
 
-	namespaces := resources.List(NamespaceGVR)
-	if len(namespaces) == 0 {
-		return nil, nil
-	}
-
+	// Iterate the namespaces that actually run non-host-network workloads,
+	// derived from Pod specs — NOT the set of explicit Namespace objects. A
+	// manifest scan of an application directory (`scan -f ./app`) commonly has
+	// no checked-in `kind: Namespace` doc, and gating on one there caused this
+	// High-severity IMDS/SSRF check to silently produce zero findings.
 	workloadNamespaces := namespacesWithNonHostNetworkWorkloads(resources)
+	names := make([]string, 0, len(workloadNamespaces))
+	for name := range workloadNamespaces {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
 	var findings []checker.Finding
 
-	for i := range namespaces {
-		ns := &namespaces[i]
-		name := ns.GetName()
-
-		if isSystemNamespace(name) || !workloadNamespaces[name] {
+	for _, name := range names {
+		if isSystemNamespace(name) {
 			continue
 		}
 

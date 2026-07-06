@@ -18,6 +18,24 @@ type CSVReporter struct {
 	Config *config.Config
 }
 
+// csvSafe neutralizes CSV formula injection (CWE-1236). A cell whose first
+// character is one of = + - @ (or a leading tab/carriage-return) is interpreted
+// as a formula by Excel, Google Sheets, and LibreOffice, so a hostile
+// Kubernetes resource name like `=cmd|'/c calc'!A0` would execute when a
+// reviewer opens the exported CSV. Prefixing such a cell with a single quote
+// forces the spreadsheet to treat it as literal text while remaining
+// human-readable. Empty cells are left untouched.
+func csvSafe(s string) string {
+	if s == "" {
+		return s
+	}
+	switch s[0] {
+	case '=', '+', '-', '@', '\t', '\r':
+		return "'" + s
+	}
+	return s
+}
+
 // Name returns "csv".
 func (r *CSVReporter) Name() string { return "csv" }
 
@@ -75,18 +93,18 @@ func (r *CSVReporter) Generate(ctx context.Context, result *checker.ScanResult, 
 		if err := cw.Write([]string{
 			sorted[i].Severity.String(),
 			sorted[i].Checker,
-			sorted[i].Namespace,
+			csvSafe(sorted[i].Namespace),
 			config.ClassifyNamespace(cfg, sorted[i].Namespace).String(),
-			sorted[i].Kind,
-			sorted[i].Resource,
-			sorted[i].Container,
-			sorted[i].Message,
-			sorted[i].Remediation,
-			sorted[i].FieldPath,
+			csvSafe(sorted[i].Kind),
+			csvSafe(sorted[i].Resource),
+			csvSafe(sorted[i].Container),
+			csvSafe(sorted[i].Message),
+			csvSafe(sorted[i].Remediation),
+			csvSafe(sorted[i].FieldPath),
 			formatFrameworks(sorted[i].Frameworks),
 			autoFixable,
-			currentVal,
-			desiredVal,
+			csvSafe(currentVal),
+			csvSafe(desiredVal),
 		}); err != nil {
 			return err
 		}

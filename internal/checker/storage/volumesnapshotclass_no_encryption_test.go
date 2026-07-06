@@ -122,10 +122,10 @@ func TestVolumeSnapshotClassNoEncryptionChecker_Run(t *testing.T) {
 			wantFindings: 2,
 		},
 		{
-			name: "encrypted parameter set to false still triggers finding under existing matching logic",
+			name: "encrypted parameter explicitly false triggers finding",
 			setup: func() *checker.ResourceCache {
 				cache := checker.NewResourceCache()
-				cache.Add(VolumeSnapshotClassGVR, makeVolumeSnapshotClass("odd-snaps", map[string]string{"other": "value"}))
+				cache.Add(VolumeSnapshotClassGVR, makeVolumeSnapshotClass("odd-snaps", map[string]string{"encrypted": "false"}))
 				return cache
 			},
 			wantFindings: 1,

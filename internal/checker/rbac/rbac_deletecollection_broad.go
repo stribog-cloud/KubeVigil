@@ -10,7 +10,14 @@ import (
 )
 
 // deleteCollectionBroadResources are resources considered high-blast-radius for deletecollection.
-var deleteCollectionBroadResources = []string{"pods", "secrets", "persistentvolumeclaims", "namespaces"}
+var deleteCollectionBroadResources = []string{
+	// Core high-blast-radius resources.
+	"pods", "secrets", "persistentvolumeclaims", "namespaces", "configmaps", "serviceaccounts",
+	// Workload controllers — mass-deleting these tears down running applications.
+	"deployments", "statefulsets", "daemonsets", "replicasets", "jobs", "cronjobs",
+	// RBAC objects — mass-deleting the cluster's own authorization state.
+	"roles", "rolebindings", "clusterroles", "clusterrolebindings",
+}
 
 // DeleteCollectionBroadChecker detects Roles and ClusterRoles that grant the deletecollection
 // verb on broad resources (pods, secrets, *, or no resourceNames restriction), allowing a single

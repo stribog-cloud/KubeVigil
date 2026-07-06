@@ -132,11 +132,23 @@ func hasEmptyNamespaceSelectorPeer(pol *unstructured.Unstructured, ruleKey, peer
 				continue
 			}
 			selectorMap, ok := nsSelector.(map[string]interface{})
-			if ok && len(selectorMap) == 0 {
+			if ok && isSemanticallyEmptySelector(selectorMap) {
 				return true
 			}
 		}
 	}
 
 	return false
+}
+
+// isSemanticallyEmptySelector reports whether a LabelSelector matches every
+// namespace. Per Kubernetes LabelSelector semantics an empty selector matches
+// everything, and the three common spellings are equivalent: `{}`,
+// `{matchLabels: {}}`, and `{matchExpressions: []}`. Keying only on the bare
+// `{}` form (zero top-level keys) missed the latter two — which Helm and
+// templating tools are actually more likely to emit — as false negatives.
+func isSemanticallyEmptySelector(sel map[string]interface{}) bool {
+	labels, _ := sel["matchLabels"].(map[string]interface{})
+	exprs, _ := sel["matchExpressions"].([]interface{})
+	return len(labels) == 0 && len(exprs) == 0
 }

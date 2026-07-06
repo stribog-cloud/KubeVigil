@@ -201,3 +201,22 @@ func TestCSVReporter_ColumnOrder(t *testing.T) {
 	expected := "Severity,Checker,Namespace,Namespace_Type,Kind,Resource,Container,Message,Remediation,FieldPath,Frameworks,Auto_Fixable,CurrentValue,DesiredValue"
 	assert.Equal(t, expected, strings.TrimSpace(data[0]))
 }
+
+func TestCSVSafe_FormulaInjection(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"=cmd|'/c calc'!A0", "'=cmd|'/c calc'!A0"},
+		{"+2+5+cmd", "'+2+5+cmd"},
+		{"-1+1", "'-1+1"},
+		{"@SUM(A1:A9)", "'@SUM(A1:A9)"},
+		{"\tinjected", "'\tinjected"},
+		{"\rinjected", "'\rinjected"},
+		{"default", "default"}, // normal value untouched
+		{"nginx:latest", "nginx:latest"},
+		{"", ""}, // empty untouched
+	}
+	for _, tc := range cases {
+		if got := csvSafe(tc.in); got != tc.want {
+			t.Errorf("csvSafe(%q)=%q, want %q", tc.in, got, tc.want)
+		}
+	}
+}

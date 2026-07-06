@@ -49,6 +49,46 @@ func (c *PreserveUnknownFieldsChecker) Run(ctx context.Context, resources *check
 	for _, crd := range crds {
 		name := crd.GetName()
 
+		// Modern per-version mechanism: x-kubernetes-preserve-unknown-fields: true
+		// at the root of a version's openAPIV3Schema disables pruning for that
+		// version. This is what a real apiextensions.k8s.io/v1 CRD uses — the
+		// deprecated top-level spec.preserveUnknownFields below is rejected as
+		// `true` on v1 CRDs, so the version-level check is the one that fires on
+		// real-world CRDs.
+		versions, _, _ := unstructured.NestedSlice(crd.Object, "spec", "versions")
+		for vIdx, v := range versions {
+			vm, ok := v.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			vPreserve, vFound, _ := unstructured.NestedBool(vm, "schema", "openAPIV3Schema", "x-kubernetes-preserve-unknown-fields")
+			if !vFound || !vPreserve {
+				continue
+			}
+			vName, _, _ := unstructured.NestedString(vm, "name")
+			findings = append(findings, checker.Finding{
+				Checker:  "crd-preserve-unknown-fields",
+				Severity: checker.SeverityMedium,
+				Resource: name,
+				Kind:     "CustomResourceDefinition",
+				Message:  fmt.Sprintf("CRD %q version %q sets x-kubernetes-preserve-unknown-fields: true at the schema root, disabling OpenAPI pruning for that version.", name, vName),
+				Remediation: "## Why This Matters\n\n" +
+					"`x-kubernetes-preserve-unknown-fields: true` at the root of a version's `openAPIV3Schema` disables structural " +
+					"pruning for the whole object: any client can write arbitrary, unvalidated fields into the custom resource, " +
+					"defeating schema validation and enabling injection into fields controllers may not expect or sanitize.\n\n" +
+					"## How to Fix\n\n" +
+					"Remove the root `x-kubernetes-preserve-unknown-fields` and define the fields you actually accept under " +
+					"`properties`, scoping any preserved sub-tree to the narrowest node that genuinely needs it:\n\n" +
+					"```yaml\nschema:\n  openAPIV3Schema:\n    type: object\n    properties:\n      spec:\n        type: object\n        properties:\n          config:\n            type: object\n            x-kubernetes-preserve-unknown-fields: true  # only this sub-tree, if truly needed\n```\n\n" +
+					"## Learn More\n\n" +
+					"See https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#field-pruning " +
+					"for structural schema requirements and field pruning behavior.",
+				FieldPath:    fmt.Sprintf(".spec.versions[%d].schema.openAPIV3Schema.x-kubernetes-preserve-unknown-fields", vIdx),
+				CurrentValue: true,
+				DesiredValue: false,
+			})
+		}
+
 		preserve, found, _ := unstructured.NestedBool(crd.Object, "spec", "preserveUnknownFields")
 		if !found || !preserve {
 			continue

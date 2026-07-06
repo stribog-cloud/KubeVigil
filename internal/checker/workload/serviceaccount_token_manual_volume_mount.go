@@ -3,6 +3,7 @@ package workload
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -19,6 +20,13 @@ const serviceAccountTokenSecretType = "kubernetes.io/service-account-token" //no
 // ServiceAccountTokenManualVolumeMountChecker to resolve the type of a
 // Secret referenced by a pod's volumes.
 var secretGVR = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "secrets"}
+
+// legacyTokenSecretNamePattern matches the name Kubernetes gave auto-generated
+// service-account-token Secrets before v1.24: `<serviceaccount>-token-<suffix>`
+// with a short random suffix. It backs a lower-confidence fallback used only
+// when the Secret object itself is not in the scanned set (so its type cannot
+// be confirmed).
+var legacyTokenSecretNamePattern = regexp.MustCompile(`-token-[a-z0-9]{5}$`)
 
 // ServiceAccountTokenManualVolumeMountChecker detects pods that manually mount
 // a Secret volume whose referenced Secret is of type
@@ -72,7 +80,27 @@ func (c *ServiceAccountTokenManualVolumeMountChecker) Run(ctx context.Context, r
 			}
 
 			key := info.Namespace + "/" + vol.Secret.SecretName
-			if secretTypes[key] != serviceAccountTokenSecretType {
+			resolvedType, secretInScope := secretTypes[key]
+
+			var message string
+			switch {
+			case secretInScope && resolvedType == serviceAccountTokenSecretType:
+				// High confidence: the Secret is in scope and typed as a
+				// service-account-token.
+				message = fmt.Sprintf(
+					"%s %q manually mounts Secret %q, a legacy service-account-token Secret, via volume %q.",
+					info.Kind, info.ResourceName, vol.Secret.SecretName, vol.Name,
+				)
+			case !secretInScope && legacyTokenSecretNamePattern.MatchString(vol.Secret.SecretName):
+				// Lower confidence: the Secret is not in the scanned set (managed
+				// out-of-band via Vault/External Secrets/kubectl — a common CI
+				// pattern), but its name matches the pre-1.24 auto-generated
+				// token-secret pattern `<sa>-token-<suffix>`.
+				message = fmt.Sprintf(
+					"%s %q manually mounts Secret %q via volume %q; its name matches the legacy service-account-token Secret pattern, though the Secret itself was not in scan scope to confirm its type.",
+					info.Kind, info.ResourceName, vol.Secret.SecretName, vol.Name,
+				)
+			default:
 				continue
 			}
 
@@ -82,10 +110,7 @@ func (c *ServiceAccountTokenManualVolumeMountChecker) Run(ctx context.Context, r
 				Resource:  info.ResourceName,
 				Namespace: info.Namespace,
 				Kind:      info.Kind,
-				Message: fmt.Sprintf(
-					"%s %q manually mounts Secret %q, a legacy service-account-token Secret, via volume %q.",
-					info.Kind, info.ResourceName, vol.Secret.SecretName, vol.Name,
-				),
+				Message:   message,
 				Remediation: "## Why This Matters\n\n" +
 					"Secrets of type kubernetes.io/service-account-token hold long-lived, non-expiring tokens — the legacy " +
 					"pre-1.24 pattern for ServiceAccount credentials. Manually mounting one via a volume bypasses the modern " +
@@ -100,7 +125,7 @@ func (c *ServiceAccountTokenManualVolumeMountChecker) Run(ctx context.Context, r
 					"  volumes:\n    - name: kube-api-access\n      projected:\n        sources:\n          - serviceAccountToken:\n" +
 					"              expirationSeconds: 3600\n              path: token\n```\n\n" +
 					"## Learn More\n\n" +
-					"This check aligns with NSA/CISA Kubernetes Hardening Guidance 3.1 (RBAC policies) and MITRE ATT&CK T1528 " +
+					"This check aligns with NSA/CISA Kubernetes Hardening Guidance 3.2 (Service account management) and MITRE ATT&CK T1528 " +
 					"(Steal Application Access Token). See the Kubernetes documentation on service account token volume " +
 					"projection.",
 				FieldPath: fmt.Sprintf(".spec.volumes[%d].secret", volIdx),

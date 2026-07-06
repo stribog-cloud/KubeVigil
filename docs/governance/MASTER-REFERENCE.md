@@ -25,7 +25,7 @@ parent_moc: "[[MOC - KubeVigil Governance]]"
 | Source of truth | This document + `docs/governance/`; code implements contracts |
 | Language | Go 1.25+ |
 | Delivery | Tagged releases (GoReleaser), Homebrew, Krew, container |
-| Current phase | Phase 9 complete — v1.4.0 (image vulnerability layer via OSV.dev) |
+| Current phase | Phase 10 complete — v1.5.0 (correctness & security fixes) |
 | Pinned charter | See `docs/governance/Charter-Compliance-Annex.md` |
 
 KubeVigil scans live clusters or static YAML manifests, maps findings to CIS/MITRE/NSA frameworks, and optionally patches manifests with comment-preserving YAML edits. It never mutates live cluster state.

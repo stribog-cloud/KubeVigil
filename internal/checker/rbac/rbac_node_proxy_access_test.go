@@ -96,7 +96,10 @@ func TestNodeProxyAccessChecker_Run(t *testing.T) {
 			wantKind:     "ClusterRole",
 		},
 		{
-			name: "Role with wildcard subresource nodes/* triggers finding",
+			// "nodes/*" is NOT valid Kubernetes RBAC syntax — the authorizer only
+			// recognises "*" and "*/subresource", so this rule is inert and must
+			// NOT trigger a finding.
+			name: "Role with non-syntactic nodes/* produces no findings",
 			setup: func() *checker.ResourceCache {
 				cache := checker.NewResourceCache()
 				role := makeRole("node-wildcard-subresource", "default", []map[string]interface{}{
@@ -105,7 +108,37 @@ func TestNodeProxyAccessChecker_Run(t *testing.T) {
 				cache.Add(RoleGVR, role)
 				return cache
 			},
+			wantFindings: 0,
+		},
+		{
+			// The real subresource wildcard "*/proxy" grants nodes/proxy (and
+			// services/proxy, pods/proxy) — must trigger.
+			name: "Role with real subresource wildcard */proxy triggers finding",
+			setup: func() *checker.ResourceCache {
+				cache := checker.NewResourceCache()
+				role := makeRole("proxy-wildcard", "default", []map[string]interface{}{
+					makeRule([]string{""}, []string{"*/proxy"}, []string{"get"}),
+				})
+				cache.Add(RoleGVR, role)
+				return cache
+			},
 			wantFindings: 1,
+			wantResource: "proxy-wildcard",
+			wantKind:     "Role",
+		},
+		{
+			name: "Role with full wildcard resource triggers finding",
+			setup: func() *checker.ResourceCache {
+				cache := checker.NewResourceCache()
+				role := makeRole("full-wildcard", "default", []map[string]interface{}{
+					makeRule([]string{""}, []string{"*"}, []string{"get"}),
+				})
+				cache.Add(RoleGVR, role)
+				return cache
+			},
+			wantFindings: 1,
+			wantResource: "full-wildcard",
+			wantKind:     "Role",
 		},
 		{
 			name: "Role with plain nodes resource produces no findings",

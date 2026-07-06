@@ -144,16 +144,40 @@ func TestDeleteCollectionBroadChecker_Run(t *testing.T) {
 			wantFindings: 0,
 		},
 		{
-			name: "Role with deletecollection on non-denylisted resource produces no findings",
+			name: "Role with deletecollection on a narrow resource produces no findings",
 			setup: func() *checker.ResourceCache {
 				cache := checker.NewResourceCache()
-				role := makeRole("configmap-deleter", "default", []map[string]interface{}{
-					makeRule([]string{""}, []string{"configmaps"}, []string{"deletecollection"}),
+				role := makeRole("event-deleter", "default", []map[string]interface{}{
+					makeRule([]string{""}, []string{"events"}, []string{"deletecollection"}),
 				})
 				cache.Add(RoleGVR, role)
 				return cache
 			},
 			wantFindings: 0,
+		},
+		{
+			name: "Role with deletecollection on deployments triggers finding",
+			setup: func() *checker.ResourceCache {
+				cache := checker.NewResourceCache()
+				role := makeRole("deploy-wiper", "default", []map[string]interface{}{
+					makeRule([]string{"apps"}, []string{"deployments"}, []string{"deletecollection"}),
+				})
+				cache.Add(RoleGVR, role)
+				return cache
+			},
+			wantFindings: 1,
+		},
+		{
+			name: "ClusterRole with deletecollection on RBAC objects triggers finding",
+			setup: func() *checker.ResourceCache {
+				cache := checker.NewResourceCache()
+				cr := makeClusterRole("rbac-wiper", []map[string]interface{}{
+					makeRule([]string{"rbac.authorization.k8s.io"}, []string{"clusterrolebindings"}, []string{"deletecollection"}),
+				})
+				cache.Add(ClusterRoleGVR, cr)
+				return cache
+			},
+			wantFindings: 1,
 		},
 		{
 			name: "Role with get/list only produces no findings",

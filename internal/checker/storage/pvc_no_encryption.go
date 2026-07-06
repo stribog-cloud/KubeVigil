@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -43,6 +44,57 @@ var encryptionParameters = []string{
 	"encryption",
 	"csi.storage.k8s.io/encrypt",
 	"disk-encryption-kms-key",
+}
+
+// encryptionValueEnabled reports whether a parameter value indicates encryption
+// is enabled. It is case-insensitive and accepts the common truthy spellings.
+// Critically it does NOT treat any non-empty value as enabled — an earlier
+// `val != ""` clause made `encrypted: "false"` register as encrypted, inverting
+// the check.
+func encryptionValueEnabled(val string) bool {
+	switch strings.ToLower(strings.TrimSpace(val)) {
+	case "true", "1", "yes", "enabled", "on":
+		return true
+	}
+	// A KMS key reference is itself proof that encryption is configured, even
+	// though its value is an arbitrary ARN/URI rather than a boolean.
+	return false
+}
+
+// booleanEncryptionParams are the encryption parameters whose value is a boolean
+// toggle — so `false`/`0`/`no` genuinely means "not encrypted". The remaining
+// encryptionParameters are value-bearing (a cipher name or KMS key reference),
+// where the mere presence of a non-empty value means encryption is configured.
+var booleanEncryptionParams = map[string]bool{
+	"encrypted":                  true,
+	"csi.storage.k8s.io/encrypt": true,
+}
+
+// paramsEncrypted reports whether any recognized encryption parameter indicates
+// encryption is enabled. Parameters are read as a generic map — not
+// NestedStringMap, which silently drops the entire map if any value is a YAML
+// bool — so an unquoted `encrypted: true` is evaluated instead of being missed.
+// Boolean parameters honour their value (so `encrypted: "false"` is correctly
+// treated as unencrypted, fixing an earlier `val != ""` inversion); value-bearing
+// parameters (a cipher name or KMS key) count as encrypted when non-empty.
+func paramsEncrypted(params map[string]interface{}) bool {
+	for _, key := range encryptionParameters {
+		v, ok := params[key]
+		if !ok {
+			continue
+		}
+		val := strings.TrimSpace(fmt.Sprintf("%v", v))
+		if booleanEncryptionParams[key] {
+			if encryptionValueEnabled(val) {
+				return true
+			}
+			continue
+		}
+		if val != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // Run executes the pvc-no-encryption check.
@@ -102,18 +154,8 @@ func buildStorageClassEncryptionMap(resources *checker.ResourceCache) map[string
 	for i := range scs {
 		sc := &scs[i]
 		name := sc.GetName()
-		params, _, _ := unstructured.NestedStringMap(sc.Object, "parameters")
-
-		encrypted := false
-		for _, key := range encryptionParameters {
-			if val, ok := params[key]; ok {
-				if val == "true" || val == "1" || val == "yes" || val != "" {
-					encrypted = true
-					break
-				}
-			}
-		}
-		result[name] = encrypted
+		params, _, _ := unstructured.NestedMap(sc.Object, "parameters")
+		result[name] = paramsEncrypted(params)
 	}
 	return result
 }

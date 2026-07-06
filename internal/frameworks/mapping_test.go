@@ -326,3 +326,56 @@ func allCheckNames() []string {
 		"cert-manager-expiry", "cert-manager-insecure",
 	}
 }
+
+// TestMITRETechniqueIDsValid guards against a fabricated or mistyped MITRE
+// ATT&CK technique ID slipping into the mappings — the MITRE analogue of
+// TestCISControlIDsValid, which the framework lacked. The allowlist is the set
+// of real ATT&CK for Containers v14 techniques the project maps to; adding a new
+// mapping requires adding its (real) technique ID here deliberately.
+func TestMITRETechniqueIDsValid(t *testing.T) {
+	validTechniques := map[string]bool{
+		"T1006": true, "T1040": true, "T1046": true, "T1048": true,
+		"T1057": true, "T1059": true, "T1068": true, "T1071": true,
+		"T1071.004": true, "T1078": true, "T1078.001": true, "T1078.004": true,
+		"T1190": true, "T1195": true, "T1195.002": true, "T1203": true,
+		"T1485": true, "T1489": true, "T1499": true, "T1525": true,
+		"T1528": true, "T1530": true, "T1552": true, "T1552.001": true,
+		"T1552.005": true, "T1552.007": true, "T1557": true, "T1562": true,
+		"T1562.008": true, "T1565.001": true, "T1567": true, "T1580": true,
+		"T1584.001": true, "T1609": true, "T1610": true, "T1611": true,
+	}
+	for checkName, refs := range mitreMappings() {
+		for _, ref := range refs {
+			if !validTechniques[ref.ControlID] {
+				t.Errorf("check %q uses unrecognized MITRE technique ID %q (title: %q) — add it to the allowlist only if it is a real ATT&CK technique", checkName, ref.ControlID, ref.Title)
+			}
+			assert.Equal(t, "mitre", ref.Framework, "check %q: framework should be mitre", checkName)
+			assert.NotEmpty(t, ref.Title, "check %q: MITRE title should not be empty", checkName)
+			assert.NotEqual(t, ref.ControlID, ref.Title, "check %q: MITRE title must be the technique name, not the ID repeated", checkName)
+		}
+	}
+}
+
+// TestNSASectionIDsValid guards against a fabricated NSA/CISA Kubernetes
+// Hardening Guide v1.2 section ID.
+func TestNSASectionIDsValid(t *testing.T) {
+	validSections := map[string]bool{
+		"1.1": true, "1.2": true, "1.3": true, "1.4": true, "1.5": true,
+		"2.1": true,
+		"3.1": true, "3.2": true,
+		"4.1": true, "4.2": true, "4.3": true,
+		"5.1": true, "5.2": true,
+		"6.1": true,
+		"7.1": true,
+	}
+	for checkName, refs := range nsaMappings() {
+		for _, ref := range refs {
+			if !validSections[ref.ControlID] {
+				t.Errorf("check %q uses unrecognized NSA/CISA v1.2 section %q (title: %q)", checkName, ref.ControlID, ref.Title)
+			}
+			assert.Equal(t, "nsa", ref.Framework, "check %q: framework should be nsa", checkName)
+			assert.NotEmpty(t, ref.Title, "check %q: NSA title should not be empty", checkName)
+			assert.NotEqual(t, ref.ControlID, ref.Title, "check %q: NSA title must be the section name, not the ID repeated", checkName)
+		}
+	}
+}

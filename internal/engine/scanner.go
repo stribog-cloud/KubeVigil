@@ -235,7 +235,20 @@ func (s *Scanner) runChecks(ctx context.Context, checks []checker.Checker, cache
 	g.SetLimit(limit)
 
 	for _, c := range checks {
-		g.Go(func() error {
+		g.Go(func() (runErr error) {
+			// Defense-in-depth: a panic in any single checker would otherwise
+			// crash the whole scan process — taking down every other checker's
+			// results, live or manifest mode. Recover it, count it as a checker
+			// error, and let the rest of the scan complete.
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Warn("checker panicked", "checker", c.Name(), "panic", r)
+					mu.Lock()
+					errCount++
+					mu.Unlock()
+					runErr = nil
+				}
+			}()
 			result, err := c.Run(gctx, cache)
 			mu.Lock()
 			defer mu.Unlock()

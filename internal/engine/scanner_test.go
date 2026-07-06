@@ -245,6 +245,33 @@ func TestRunChecks_ConcurrentNoRace(t *testing.T) {
 	assert.Equal(t, 0, errCount)
 }
 
+// TestRunChecks_PanicIsContained verifies that a panicking checker does not
+// crash the whole scan: the panic is recovered and counted as an error, and
+// every other checker's findings still come through.
+func TestRunChecks_PanicIsContained(t *testing.T) {
+	reg := checker.NewRegistry()
+	reg.MustRegister(&fakeChecker{
+		name:     "panicker",
+		modes:    []checker.ScanMode{checker.ScanModeManifest},
+		panicMsg: "boom: nil map access",
+	})
+	reg.MustRegister(&fakeChecker{
+		name:     "healthy",
+		modes:    []checker.ScanMode{checker.ScanModeManifest},
+		findings: []checker.Finding{{Checker: "healthy", Message: "ok"}},
+	})
+
+	scanner := NewScanner(reg, config.Default())
+	checks := scanner.enabledChecks(checker.ScanModeManifest)
+
+	// Must not panic.
+	findings, errCount := scanner.runChecks(context.Background(), checks, checker.NewResourceCache())
+
+	assert.Equal(t, 1, errCount, "the panicking checker should be counted as one error")
+	require.Len(t, findings, 1, "the healthy checker's findings must survive the panic")
+	assert.Equal(t, "healthy", findings[0].Checker)
+}
+
 // TestRunChecks_ZeroConcurrencyDoesNotDeadlock guards the errgroup limit floor:
 // a directly-constructed config with Concurrency == 0 must not deadlock
 // runChecks (errgroup.SetLimit(0) makes an unbuffered semaphore). Config
@@ -388,6 +415,7 @@ type fakeChecker struct {
 	gvrs     []schema.GroupVersionResource
 	findings []checker.Finding
 	runErr   error
+	panicMsg string
 }
 
 func (f *fakeChecker) Name() string        { return f.name }
@@ -401,6 +429,9 @@ func (f *fakeChecker) RequiredResources() []schema.GroupVersionResource { return
 func (f *fakeChecker) Run(ctx context.Context, _ *checker.ResourceCache) ([]checker.Finding, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
+	}
+	if f.panicMsg != "" {
+		panic(f.panicMsg)
 	}
 	if f.runErr != nil {
 		return nil, f.runErr
