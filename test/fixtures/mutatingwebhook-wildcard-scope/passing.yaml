@@ -1,0 +1,21 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: narrow-mutator
+webhooks:
+  - name: narrow.example.com
+    namespaceSelector:
+      matchLabels:
+        team: checkout
+    clientConfig:
+      service:
+        name: narrow-mutator-svc
+        namespace: mutator-system
+        path: /mutate
+    rules:
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        resources: ["deployments"]
+        operations: ["CREATE", "UPDATE"]
+    sideEffects: None
+    admissionReviewVersions: ["v1"]
