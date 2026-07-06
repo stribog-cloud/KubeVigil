@@ -54,7 +54,7 @@ supply-chain-verified artifacts and a semver-stable public surface.
 - [x] Homebrew tap serves `1.0.0` (stale duplicate formula removed); krew manifest regenerated with v1.0.0 checksums
 - [x] Artifacts verified: Cosign checksums signature "Verified OK", checksum match, 5 SBOMs present, smoke tests pass against the shipped binary
 - [x] `Release-Evidence-v1.0.0.md` filed against the real published artifacts
-- [ ] GHCR package visibility → **public**: one remaining maintainer one-click (Settings → Packages → `kubevigil`). The image, its Cosign signature, and SLSA provenance are already published; only registry visibility is pending. Tracked in the release evidence checklist.
+- [x] GHCR package visibility → **public** (after enabling public packages in the org policy); anonymous pull/run + Cosign + SLSA provenance all verify.
 
 ## Phase 4 — Charter Compliance
 
