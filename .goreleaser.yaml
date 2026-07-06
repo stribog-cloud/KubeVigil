@@ -114,6 +114,21 @@ docker_manifests:
       - "ghcr.io/stribog-cloud/kubevigil:{{ .Version }}-amd64"
       - "ghcr.io/stribog-cloud/kubevigil:{{ .Version }}-arm64"
 
+# Keyless Cosign signature over the pushed image manifests (Sigstore OIDC in CI).
+# Runs in the publish phase, after push, so it only ever signs manifests that
+# were actually pushed — the :latest manifest above is skipped on prerelease
+# tags (skip_push: auto), so it is simply absent from what gets signed too.
+# Signs by resolved digest (${digest}), never by mutable tag.
+docker_signs:
+  - id: image-signature
+    cmd: cosign
+    artifacts: manifests
+    output: true
+    args:
+      - "sign"
+      - "${artifact}@${digest}"
+      - "--yes"
+
 changelog:
   use: github-native
 
