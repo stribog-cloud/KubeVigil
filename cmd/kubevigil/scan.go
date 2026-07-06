@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd"
 
+	"github.com/stribog-cloud/kubevigil/internal/baseline"
 	"github.com/stribog-cloud/kubevigil/internal/checker"
 	_ "github.com/stribog-cloud/kubevigil/internal/checker/cloud"
 	_ "github.com/stribog-cloud/kubevigil/internal/checker/cluster"
@@ -26,7 +27,9 @@ import (
 	"github.com/stribog-cloud/kubevigil/internal/engine"
 	"github.com/stribog-cloud/kubevigil/internal/frameworks"
 	"github.com/stribog-cloud/kubevigil/internal/k8s"
+	"github.com/stribog-cloud/kubevigil/internal/policy"
 	"github.com/stribog-cloud/kubevigil/internal/report"
+	"github.com/stribog-cloud/kubevigil/internal/version"
 )
 
 var (
@@ -44,6 +47,10 @@ var (
 	flagExcludeInfra            bool
 	flagNoAggregate             bool
 	flagSummaryOnly             bool
+	flagPolicyFile              string
+	flagBaseline                string
+	flagSaveBaseline            string
+	flagFailOnNew               bool
 )
 
 var scanCmd = &cobra.Command{
@@ -68,6 +75,10 @@ func init() {
 	scanCmd.Flags().BoolVar(&flagExcludeInfra, "exclude-infra", false, "exclude infrastructure namespaces (monitoring, rook-ceph, calico, etc.)")
 	scanCmd.Flags().BoolVar(&flagNoAggregate, "no-aggregate", false, "show every finding individually instead of grouping by check")
 	scanCmd.Flags().BoolVar(&flagSummaryOnly, "summary-only", false, "show only the summary table (text output only)")
+	scanCmd.Flags().StringVar(&flagPolicyFile, "policy-file", "", "path to a custom CEL policy file or directory (evaluated alongside built-in checks)")
+	scanCmd.Flags().StringVar(&flagBaseline, "baseline", "", "path to a baseline file; findings are annotated new/existing against it")
+	scanCmd.Flags().StringVar(&flagSaveBaseline, "save-baseline", "", "write a baseline file from this scan's findings and exit 0")
+	scanCmd.Flags().BoolVar(&flagFailOnNew, "fail-on-new", false, "exit 1 only when findings are NEW relative to --baseline (ignores severity threshold)")
 	rootCmd.AddCommand(scanCmd)
 }
 
@@ -107,8 +118,17 @@ func runScan(cmd *cobra.Command, _ []string) error {
 		cfg.Settings.NoAggregate = true
 	}
 
+	// Build the checker registry, adding any user-defined CEL policies from the
+	// config's customPolicies block and/or the --policy-file so they run through
+	// the same pipeline as built-in checks.
+	registry := checker.DefaultRegistry()
+	if regErr := registerCustomPolicies(registry, cfg); regErr != nil {
+		fmt.Fprintf(os.Stderr, "Policy error: %v\n", regErr)
+		return &exitError{code: 3, err: regErr}
+	}
+
 	// Create scanner.
-	scanner := engine.NewScanner(checker.DefaultRegistry(), cfg)
+	scanner := engine.NewScanner(registry, cfg)
 
 	// Create context with timeout.
 	timeout := config.GetTimeout(cfg)
@@ -189,6 +209,30 @@ func runScan(cmd *cobra.Command, _ []string) error {
 		result.Findings = frameworks.FilterByFramework(result.Findings, flagFramework)
 	}
 
+	// Save a baseline from this scan's (filtered) findings and exit, if asked.
+	if flagSaveBaseline != "" {
+		base := baseline.FromFindings(result.Findings)
+		base.ToolVersion = version.Version
+		if saveErr := base.Save(flagSaveBaseline); saveErr != nil {
+			return &exitError{code: 3, err: saveErr}
+		}
+		fmt.Fprintf(os.Stderr, "Baseline written to %s (%d findings)\n", flagSaveBaseline, len(base.Fingerprints))
+		return nil
+	}
+
+	// Annotate findings against a baseline (new/existing) if provided.
+	var drift baseline.DiffResult
+	baselineApplied := false
+	if flagBaseline != "" {
+		base, loadErr := baseline.Load(flagBaseline)
+		if loadErr != nil {
+			fmt.Fprintf(os.Stderr, "Baseline error: %v\n", loadErr)
+			return &exitError{code: 3, err: loadErr}
+		}
+		drift = baseline.Annotate(base, result.Findings)
+		baselineApplied = true
+	}
+
 	// Resolve output target: file path (by extension) or format name to stdout.
 	out, outErr := resolveOutput(flagOutput)
 	if outErr != nil {
@@ -215,9 +259,69 @@ func runScan(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("generating report: %w", genErr)
 	}
 
+	// Report drift when a baseline was applied.
+	if baselineApplied {
+		fmt.Fprintf(os.Stderr, "Baseline drift: %d new, %d existing, %d resolved\n",
+			drift.New, drift.Existing, drift.Resolved)
+	}
+
+	// --fail-on-new gates strictly on NEW findings relative to the baseline,
+	// independent of the severity threshold. It requires --baseline.
+	if flagFailOnNew {
+		if !baselineApplied {
+			return &exitError{code: 3, err: fmt.Errorf("--fail-on-new requires --baseline")}
+		}
+		if drift.New > 0 {
+			return &exitError{code: 1, err: fmt.Errorf("%d new findings relative to baseline", drift.New)}
+		}
+		return nil
+	}
+
 	// Check exit code based on fail-on severity.
 	if hasFailures(result.Findings, config.FailOnSeverity(cfg)) {
 		return &exitError{code: 1, err: fmt.Errorf("findings above threshold")}
+	}
+	return nil
+}
+
+// registerCustomPolicies compiles user-defined CEL policies from the config and
+// the --policy-file (file or directory) and registers them into the registry.
+// A duplicate ID (colliding with a built-in check or another policy) or a CEL
+// compile error is returned so the caller can exit with a config error.
+func registerCustomPolicies(registry *checker.Registry, cfg *config.Config) error {
+	specs := append([]policy.Spec(nil), cfg.CustomPolicies...)
+	if flagPolicyFile != "" {
+		info, statErr := os.Stat(flagPolicyFile)
+		if statErr != nil {
+			return fmt.Errorf("reading policy path: %w", statErr)
+		}
+		var ps *policy.Set
+		var loadErr error
+		if info.IsDir() {
+			ps, loadErr = policy.LoadDir(flagPolicyFile)
+		} else {
+			ps, loadErr = policy.LoadFile(flagPolicyFile)
+		}
+		if loadErr != nil {
+			return loadErr
+		}
+		specs = append(specs, ps.Policies...)
+	}
+	if len(specs) == 0 {
+		return nil
+	}
+	set := &policy.Set{Version: policy.SpecVersion, Policies: specs}
+	if valErr := set.Validate(); valErr != nil {
+		return valErr
+	}
+	celCheckers, err := policy.Checkers(set)
+	if err != nil {
+		return err
+	}
+	for _, c := range celCheckers {
+		if regErr := registry.Register(c); regErr != nil {
+			return fmt.Errorf("registering custom policy %q: %w", c.Name(), regErr)
+		}
 	}
 	return nil
 }

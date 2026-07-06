@@ -12,6 +12,7 @@ import (
 
 	"github.com/stribog-cloud/kubevigil/internal/checker"
 	"github.com/stribog-cloud/kubevigil/internal/k8s"
+	"github.com/stribog-cloud/kubevigil/internal/policy"
 )
 
 // validSeverities is the set of accepted severity strings.
@@ -35,6 +36,9 @@ type Config struct {
 	Exemptions []Exemption `yaml:"exemptions"`
 	// Policies holds policy configuration for policy-based checks (e.g., image registry allowlists).
 	Policies checker.Policies `yaml:"policies"`
+	// CustomPolicies holds user-defined CEL policy checks that are compiled and
+	// run alongside the built-in checkers. See internal/policy.
+	CustomPolicies []policy.Spec `yaml:"customPolicies"`
 	// Fix contains fix-specific configuration.
 	Fix FixConfig `yaml:"fix"`
 }
