@@ -39,10 +39,20 @@ func (c *LifecycleHooksChecker) RequiredResources() []schema.GroupVersionResourc
 	return GVRs()
 }
 
-// networkIndicators are strings that suggest a network call in a hook command.
+// networkIndicators are substrings that suggest a network call in a hook
+// command. This is a best-effort heuristic, NOT a security boundary: substring
+// matching cannot catch every exfiltration technique (a determined author can
+// quote-split `c'u'rl`, use a different tool, or open a raw socket), and it is
+// meant to surface the common, honest cases — a postStart hook phoning home —
+// for review, not to prove their absence. The list is deliberately broad.
 var networkIndicators = []string{
-	"curl", "wget", "http://", "https://",
+	// Common HTTP clients and URL schemes.
+	"curl", "wget", "http://", "https://", "ftp://",
+	// Netcat and friends.
 	"nc ", "ncat", "netcat",
+	// Other network-capable tools and shell primitives.
+	"socat", "openssl s_client", "/dev/tcp/", "/dev/udp/",
+	"telnet", "ssh ", "scp ", "python -m http", "wget2",
 }
 
 // Run executes the lifecycle hooks check.
