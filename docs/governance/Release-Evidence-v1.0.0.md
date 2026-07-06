@@ -141,7 +141,7 @@ Uncompressed binaries measure 36–40 MB per platform (≤ 50 MB). **Within budg
 - [x] Source/artifact boundary matches Annex §1.3 / §8.1
 - [x] Release commit tagged, signed, and pushed (`v1.0.0` → `c7cde1a`)
 - [x] GitHub Release published; Homebrew tap serves `1.0.0`; krew manifest regenerated
-- [ ] GHCR package visibility set to **public** — pending a maintainer one-click (Settings → Packages → `kubevigil` → Change visibility / Inherit from repository). The image, its Cosign signature, and its SLSA provenance are already published by the release pipeline; only registry visibility remains. Until then, `docker pull` requires authentication.
+- [x] GHCR package visibility set to **public** (required first enabling public packages in the `stribog-cloud` org policy, which had disabled them). Verified anonymously: `docker run --rm ghcr.io/stribog-cloud/kubevigil:1.0.0 version` → `KubeVigil 1.0.0`; `cosign verify` → "cosign claims were validated"; `gh attestation verify` → provenance verified (exit 0).
 - [x] This evidence record filed to the project's audit trail
 
 *Filed by maintainers (@msambare) on 2026-07-06. Append-only after filing.*
