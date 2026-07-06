@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: opaque-secret-mount-pod
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: nginx:1.25
+      volumeMounts:
+        - name: app-config
+          mountPath: /etc/app-config
+  volumes:
+    - name: app-config
+      secret:
+        secretName: app-config-secret
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-config-secret
+  namespace: default
+type: Opaque
+data:
+  config.yaml: Zm9vOiBiYXI=

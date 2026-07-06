@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: windows-container-pod
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: mcr.microsoft.com/windows/nanoserver:ltsc2022
+      securityContext:
+        windowsOptions:
+          hostProcess: false
