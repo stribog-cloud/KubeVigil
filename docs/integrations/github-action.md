@@ -118,6 +118,10 @@ queries `releases/latest` when `version: latest`), downloads the matching
 extracting and running the binary. A checksum mismatch or missing entry fails
 the step with exit code `3`.
 
+macOS runners are also supported: `detect_os()` in `action.yml` resolves
+`Darwin` to `darwin`, so the same flow downloads a
+`kubevigil_<version>_darwin_<arch>.tar.gz` archive on `macos-*` runners.
+
 ## See Also
 
 - [SARIF Integration](sarif.md) -- SARIF structure and other CI platforms

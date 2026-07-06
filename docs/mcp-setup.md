@@ -443,10 +443,15 @@ kubevigil mcp-server [flags]
 Flags:
   -h, --help                    help for mcp-server
       --transport string        transport type (stdio) (default "stdio")
-      --workspace-root string   confine manifest reads to this directory (default: cwd or KUBEVIGIL_WORKSPACE_ROOT)
+      --workspace-root string   root directory for manifest scans (default: KUBEVIGIL_WORKSPACE_ROOT or cwd)
 
 Global Flags:
       --config string   config file path (default: auto-discover)
       --no-color        disable colored output
+  -o, --output string   output format or file path (text, json, markdown, yaml, html, sarif, junit, csv; or report.html, report.json, etc.) (default "text")
   -v, --verbose         enable verbose logging
 ```
+
+Note: `-o/--output` is a persistent flag registered on the root command, so it
+applies to `mcp-server` (and every other subcommand) even though it is more
+commonly used with `scan`.

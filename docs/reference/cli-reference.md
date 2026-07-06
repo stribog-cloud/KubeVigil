@@ -240,9 +240,9 @@ kubevigil version
 Example output:
 
 ```
-KubeVigil v0.5.0
+KubeVigil v1.0.0
   Commit: abc1234
-  Built:  2026-02-20T12:00:00Z
+  Built:  2026-07-06T12:00:00Z
 ```
 
 ---

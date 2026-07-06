@@ -110,6 +110,7 @@ kubevigil scan --framework nsa -o report.html
 | `psa-version-pinning` | Detects PSA labels without version pinning |
 | `psp-still-present` | Detects deprecated PodSecurityPolicy resources |
 | `privileged` | Detects containers running in privileged mode |
+| `capabilities-added` | Detects containers with dangerous added capabilities |
 | `privilege-escalation` | Detects containers with allowPrivilegeEscalation enabled |
 | `admission-controllers` | Detects missing admission controllers |
 | `crd-validation-missing` | Detects CRDs without validation schemas |

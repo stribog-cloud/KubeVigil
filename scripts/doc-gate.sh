@@ -22,7 +22,7 @@ grep -q "${TAG_VER}" docs/user/releases/README.md || \
 
 # Frontmatter status must use Stribog vocabulary (Documentation Standard §10.1)
 VALID_STATUSES='draft-scaffold|review-draft|design-reference|governing-reference|frozen-reference|superseded|archived'
-for f in docs/dev/*.md docs/user/*.md docs/governance/*.md docs/governance/adr/*.md; do
+for f in docs/dev/*.md docs/user/*.md docs/user/releases/*.md docs/governance/*.md docs/governance/adr/*.md; do
   [[ -f "$f" ]] || continue
   status=$(sed -n '/^---$/,/^---$/p' "$f" | sed -n 's/^status:[[:space:]]*\(.*\)/\1/p' | head -1)
   if [[ -n "$status" ]] && ! echo "$status" | grep -qE "^(${VALID_STATUSES})$"; then
