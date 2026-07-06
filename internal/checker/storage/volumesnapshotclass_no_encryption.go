@@ -54,8 +54,8 @@ func (c *VolumeSnapshotClassNoEncryptionChecker) Run(ctx context.Context, resour
 		vsc := &vscs[i]
 		name := vsc.GetName()
 
-		params, _, _ := unstructured.NestedStringMap(vsc.Object, "parameters")
-		if volumeSnapshotClassEncrypted(params) {
+		params, _, _ := unstructured.NestedMap(vsc.Object, "parameters")
+		if paramsEncrypted(params) {
 			continue
 		}
 
@@ -85,15 +85,3 @@ func (c *VolumeSnapshotClassNoEncryptionChecker) Run(ctx context.Context, resour
 }
 
 // volumeSnapshotClassEncrypted returns true if the VolumeSnapshotClass parameters
-// contain any recognized encryption indicator, reusing the same heuristic
-// parameter-name list and matching logic as pvc-no-encryption.
-func volumeSnapshotClassEncrypted(params map[string]string) bool {
-	for _, key := range encryptionParameters {
-		if val, ok := params[key]; ok {
-			if val == "true" || val == "1" || val == "yes" || val != "" {
-				return true
-			}
-		}
-	}
-	return false
-}
