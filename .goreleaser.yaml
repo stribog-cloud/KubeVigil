@@ -46,6 +46,74 @@ checksum:
   name_template: "{{ .ProjectName }}_checksums.txt"
   algorithm: sha256
 
+# SBOM per release archive (SPDX JSON via syft; syft installed in release workflow).
+sboms:
+  - id: archive-sboms
+    artifacts: archive
+    documents:
+      - "{{ .ArtifactName }}.sbom.spdx.json"
+
+# Keyless Cosign signature over the checksums file (Sigstore OIDC in CI).
+# Verifies every artifact transitively: sha256 in the signed checksums file.
+signs:
+  - id: checksum-signature
+    cmd: cosign
+    artifacts: checksum
+    certificate: "${artifact}.pem"
+    signature: "${artifact}.sig"
+    output: true
+    args:
+      - "sign-blob"
+      - "--yes"
+      - "--output-certificate=${certificate}"
+      - "--output-signature=${signature}"
+      - "${artifact}"
+
+# Multi-arch container images published to GHCR.
+dockers:
+  - id: linux-amd64
+    use: buildx
+    goos: linux
+    goarch: amd64
+    dockerfile: Dockerfile.goreleaser
+    image_templates:
+      - "ghcr.io/stribog-cloud/kubevigil:{{ .Version }}-amd64"
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.title=kubevigil"
+      - "--label=org.opencontainers.image.description=Kubernetes Security Posture Management CLI"
+      - "--label=org.opencontainers.image.source=https://github.com/stribog-cloud/KubeVigil"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.licenses=Apache-2.0"
+  - id: linux-arm64
+    use: buildx
+    goos: linux
+    goarch: arm64
+    dockerfile: Dockerfile.goreleaser
+    image_templates:
+      - "ghcr.io/stribog-cloud/kubevigil:{{ .Version }}-arm64"
+    build_flag_templates:
+      - "--platform=linux/arm64"
+      - "--label=org.opencontainers.image.title=kubevigil"
+      - "--label=org.opencontainers.image.description=Kubernetes Security Posture Management CLI"
+      - "--label=org.opencontainers.image.source=https://github.com/stribog-cloud/KubeVigil"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.licenses=Apache-2.0"
+
+docker_manifests:
+  - name_template: "ghcr.io/stribog-cloud/kubevigil:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/stribog-cloud/kubevigil:{{ .Version }}-amd64"
+      - "ghcr.io/stribog-cloud/kubevigil:{{ .Version }}-arm64"
+  - name_template: "ghcr.io/stribog-cloud/kubevigil:latest"
+    # auto: never move :latest on prerelease tags (rc dry-runs).
+    skip_push: auto
+    image_templates:
+      - "ghcr.io/stribog-cloud/kubevigil:{{ .Version }}-amd64"
+      - "ghcr.io/stribog-cloud/kubevigil:{{ .Version }}-arm64"
+
 changelog:
   use: github-native
 
@@ -62,6 +130,9 @@ brews:
   - repository:
       owner: stribog-cloud
       name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    # auto: don't publish the formula for prerelease tags (rc dry-runs).
+    skip_upload: auto
     name: kubevigil
     homepage: "https://github.com/stribog-cloud/KubeVigil"
     description: "Kubernetes Security Posture Management CLI — know your clusters before attackers do."

@@ -77,6 +77,17 @@ jobs:
           go-version: '1.25.11'
       - name: Build and smoke test
         run: make smoke
+      - name: Cross-compile all release targets
+        run: |
+          for target in "linux amd64" "linux arm64" "darwin amd64" "darwin arm64" "windows amd64"; do
+            read -r os arch <<<"$target"
+            echo "=== GOOS=$os GOARCH=$arch ==="
+            GOOS="$os" GOARCH="$arch" go build ./...
+          done
+      - name: Vet platform-tagged code (compiles test files too)
+        run: |
+          GOOS=windows go vet ./...
+          GOOS=darwin go vet ./...
 
   doc-gates:
     name: Documentation Gates
@@ -123,9 +134,14 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
-      - name: Install gitleaks
+      - name: Install gitleaks (pinned)
+        env:
+          GITLEAKS_VERSION: "8.30.1"
+          GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
         run: |
-          GITLEAKS_VERSION=$(curl -s https://api.github.com/repos/gitleaks/gitleaks/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | sed 's/^v//')
-          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar xz -C /usr/local/bin gitleaks
+          curl -sSfL -o gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum -c -
+          tar xz -f gitleaks.tar.gz -C /usr/local/bin gitleaks
+          rm gitleaks.tar.gz
       - name: Run gitleaks
         run: gitleaks detect --source . --config .gitleaks.toml -v
