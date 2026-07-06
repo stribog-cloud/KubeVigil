@@ -21,6 +21,6 @@ owners: [maintainers (@msambare)]
 |---------|-----------|---------|-----------|
 | — | — | — | — |
 
-No deprecations as of v0.5.0.
+No deprecations as of v1.0.0.
 
 Announce removals in `CHANGELOG.md`, `docs/user/releases/`, and this register at least one minor version before removal.

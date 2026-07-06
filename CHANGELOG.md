@@ -7,21 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-07-06
+
+First stable release. The public surface — CLI commands and flags, exit codes,
+the 8 output formats, the configuration schema, and the 6 MCP tools — is now
+covered by semantic-versioning stability guarantees (`docs/dev/public-surface.md`,
+`docs/dev/deprecations.md`).
+
 ### Added
 
+- **Supply-chain release integrity**: SPDX SBOM per release archive (syft);
+  keyless Cosign signature over the checksums file (Sigstore); SLSA build
+  provenance attestations; multi-arch (amd64/arm64) distroless container
+  images published to `ghcr.io/stribog-cloud/kubevigil`
+- **First-party GitHub Action** (`action.yml`) for manifest scanning in CI:
+  downloads and checksum-verifies a release binary, scans, and writes a report
+  (SARIF by default); see `docs/integrations/github-action.md`
+- **E2E suite in CI**: the 93-test kind + Bats end-to-end suite runs nightly
+  and on demand (`workflow_dispatch`)
+- **Cross-compile gate**: CI builds all 5 release targets and vets
+  platform-tagged code (`GOOS=windows`/`darwin`) on every PR
+- `scripts/update-krew-manifest.sh` regenerates the krew manifest from release
+  checksums instead of hand-maintained values
 - Stribog Charter compliance program: Charter Compliance Annex, master reference, testing strategy, threat model, ADRs, waiver register, and public release profile (`docs/governance/`)
 - `AGENTS.md` and root `CONTRIBUTING.md` for agent and contributor onboarding
 - Documentation gates: `make doc-gate`, `make doc-drift-gate`, `make doc-samples-test`, `make doc-a11y`
 - User support escalation map (`docs/user/support.md`) and user-facing release notes index
-- First-party GitHub Action (`action.yml`) for manifest scanning in CI: downloads and checksum-verifies a release binary, scans, and writes a report (SARIF by default); see `docs/integrations/github-action.md`
+
+### Fixed
+
+- **Windows build restored**: the MCP workspace-jail path walk
+  (`internal/pathguard`) did not compile on `windows/amd64` since its
+  introduction; Windows now has a dedicated best-effort confined-open
+  implementation (component-wise `Lstat` walk with `SameFile` re-verification)
+- Stale compliance control counts in `docs/compliance/overview.md`
+  (CIS 35, MITRE ATT&CK 29, NSA/CISA 15)
+- `kubevigil mcp-server` documented in the CLI reference; four orphaned user
+  docs linked from the docs index
 
 ### Changed
 
 - CI and Makefile enforce **96%** coverage floor on `internal/` + `cmd/` (Stribog Engineering Charter §5.4); supersedes the prior **94%** project floor documented in v0.5.0 release notes
+- Release workflow actions pinned to commit SHAs; gitleaks pinned (8.30.1,
+  checksum-verified); GoReleaser pinned to 2.16.0
+- Homebrew tap publishing uses a dedicated token; prerelease tags never update
+  the tap or move the `:latest` image
+- Branch protection additionally requires the Documentation Gates and Secrets
+  Scan checks
+- Golden workflow wording clarified: scan → fix → re-scan yields zero
+  *fixable* findings
 - `//nolint:gosec` on manifest reads documents G304 justification (path confinement or operator trust), not security hardening by annotation alone
 - Governing documentation standardized on **96%** floor across Annex, `AGENTS.md`, `CONTRIBUTING.md`, and `testing-strategy.md`
 - `make all` is the canonical quality gate entrypoint; install script URLs use `main` branch
 - Bumped `github.com/modelcontextprotocol/go-sdk` to v1.4.1 and `golang.org/x/net` to v0.55.0 (govulncheck clean)
+
+### Security
+
+- Declared artifact size budget: ≤ 50 MB per uncompressed binary, ≤ 20 MB per
+  compressed archive (checked in release evidence)
+- Threat model updated with the Windows pathguard guarantee tier
+- Historic release tags (v0.3.0–v0.5.0) retargeted to the current repository
+  lineage; stale draft releases removed
 
 ## [0.5.0] - 2026-02-20
 
@@ -123,6 +169,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Table-driven unit tests with 15+ cases per checker, contract tests for all checkers
 - E2E test suite via Bats framework with Kind cluster validation
 
+[1.0.0]: https://github.com/stribog-cloud/KubeVigil/compare/v0.5.0...v1.0.0
 [0.5.0]: https://github.com/stribog-cloud/KubeVigil/compare/v0.4.5...v0.5.0
 [0.4.5]: https://github.com/stribog-cloud/KubeVigil/compare/v0.4.0...v0.4.5
 [0.4.0]: https://github.com/stribog-cloud/KubeVigil/compare/v0.3.0...v0.4.0

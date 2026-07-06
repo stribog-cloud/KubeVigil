@@ -1,14 +1,14 @@
 ---
 title: "KubeVigil Charter Compliance Annex"
 created: 2026-07-02
-updated: 2026-07-02
+updated: 2026-07-06
 type: project/charter-compliance-annex
 status: governing-reference
 tags: [charter, governance, kubevigil, k8s, stribog]
 project: kubevigil
-version: "1.0.0"
-revision: 3
-last_updated: 2026-07-02
+version: "1.1.0"
+revision: 4
+last_updated: 2026-07-06
 parent_moc: "[[MOC - KubeVigil Governance]]"
 owners: [maintainers (@msambare)]
 ---
@@ -259,6 +259,20 @@ Reviewed at charter MAJOR bumps, phase boundaries, quarterly minimum, and toolch
 - [x] No included artifact references an excluded artifact (Charter Governance §3.6, rule 1).
 - [x] All gates bind to the included set (Charter Governance §3.6, rule 2).
 
+## 8.2 Release Artifact Size Budget
+
+Declared from v1.0.0 (Engineering Charter §7.4 — checked in each release
+evidence document against observed artifact sizes):
+
+| Artifact | Budget |
+|----------|--------|
+| Uncompressed binary (per platform) | ≤ 50 MB |
+| Compressed release archive (per platform) | ≤ 20 MB |
+
+Reference point at declaration (v1.0.0 snapshot builds): binaries 36–40 MB,
+archives 11–13 MB. Exceeding the budget requires a waiver in the Waiver
+Register before release.
+
 ## 9. Revision History
 
 | Version | Revision | Date | Change |
@@ -266,3 +280,4 @@ Reviewed at charter MAJOR bumps, phase boundaries, quarterly minimum, and toolch
 | 1.0.0 | 1 | 2026-07-02 | Initial charter compliance annex filed on branch `charter-compliance`. |
 | 1.0.0 | 2 | 2026-07-02 | Corrected charter pin review dates to source `last_updated` (2026-05-12); renamed §X to §8.1; filed applicability matrix and v0.5.0 release evidence references. Closes audit findings F5, F11. |
 | 1.0.0 | 3 | 2026-07-02 | Re-evaluated Data-Privacy partial applicability; documented coverage gate relocation; user Diátaxis tutorial/explanation paths (audit F7/F18/F20/F23). |
+| 1.1.0 | 4 | 2026-07-06 | §8.2 release artifact size budget declared for v1.0.0 (closes the "no budget filed" gap from Release-Evidence-v0.5.0). |

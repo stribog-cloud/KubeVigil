@@ -1,14 +1,14 @@
 ---
 title: "KubeVigil Threat Model"
 created: 2026-07-02
-updated: 2026-07-02
+updated: 2026-07-06
 type: project/threat-model
 status: governing-reference
 tags: [charter, governance, kubevigil, security, stride]
 project: kubevigil
-version: "1.2.0"
-revision: 3
-last_updated: 2026-07-02
+version: "1.3.0"
+revision: 4
+last_updated: 2026-07-06
 parent_moc: "[[MOC - KubeVigil Governance]]"
 owners: [maintainers (@msambare)]
 ---
@@ -57,7 +57,7 @@ owners: [maintainers (@msambare)]
 | Control | Implementation | Test |
 |---------|----------------|------|
 | Workspace root jail (MCP only) | `KUBEVIGIL_WORKSPACE_ROOT`, `--workspace-root`, `validateManifestPath` | `internal/pathguard/pathguard_test.go`, `internal/mcp/tools_scan_test.go` |
-| TOCTOU symlink swap on read | Attacker replaces validated file or parent directory with symlink before read | Dir-fd `openat2(RESOLVE_NO_SYMLINKS)` / `openat`+`O_NOFOLLOW` walk + read from held fd (`OpenRegularWithinRoot`) | `TestOpenRegularWithinRoot_RejectsTOCTOUSymlinkSwap`, `TestOpenRegularWithinRoot_RejectsParentSymlinkToOutside`, `TestOpenRegularWithinRoot_RejectsConcurrentParentSymlinkSwap` |
+| TOCTOU symlink swap on read | Attacker replaces validated file or parent directory with symlink before read | Platform tiers: Linux `openat2(RESOLVE_NO_SYMLINKS)`; other Unix dir-fd `openat`+`O_NOFOLLOW` walk; Windows best-effort component `Lstat` walk + `SameFile` re-verification (no openat equivalent) — all read from the held handle (`OpenRegularWithinRoot`) | `TestOpenRegularWithinRoot_RejectsTOCTOUSymlinkSwap`, `TestOpenRegularWithinRoot_RejectsParentSymlinkToOutside`, `TestOpenRegularWithinRoot_RejectsConcurrentParentSymlinkSwap` |
 | `..` and absolute-path escape rejection | `pathguard.ResolveWithinRoot` | `TestResolveWithinRoot_RejectsDotDotEscape` |
 | Symlink traversal block | `Lstat` on entry + parent walk | `TestResolveWithinRoot_RejectsSymlinkEscape` |
 | Bounded directory read | `engine.parseDirBounded` | `internal/engine/manifest_parser_bounded_test.go` |
@@ -83,6 +83,7 @@ KubeVigil does not collect or persist PII. Scan and MCP outputs may **transientl
 - Stale kubeconfig with excessive RBAC — **out of scope; operator responsibility**
 - Backup files inherit ambient umask permissions and use predictable `<path>.kubevigil-backup-<timestamp>` names — **residual accepted**; operators should restrict backup directory permissions and treat backups as sensitive; see `internal/fix/backup.go`
 - MCP kubeconfig path is not workspace-jailed (operator supplies cluster credentials by design) — **accepted**; symlink and regular-file validation only
+- Windows confined-open is best-effort (`Lstat` walk + `SameFile` re-verification; no `openat`/`O_NOFOLLOW` equivalent) — **residual accepted**; TOCTOU window is narrowed, not eliminated, on Windows; Linux/macOS tiers are unaffected
 
 ## 6. Maintenance Triggers
 
@@ -95,3 +96,4 @@ Update this model when adding: new MCP tools, network calls, cluster write paths
 | 1.0.0 | 1 | 2026-07-02 | Initial STRIDE threat model for CLI and MCP surfaces. |
 | 1.1.0 | 2 | 2026-07-02 | Added MCP egress STRIDE row, control mapping, backup residual, PII-layer maintenance trigger (audit F7/F8/F24). |
 | 1.2.0 | 3 | 2026-07-02 | MCP-only confinement scope, O_NOFOLLOW TOCTOU control, Data-Privacy §5.1 (audit R1/R3/R12). |
+| 1.3.0 | 4 | 2026-07-06 | Windows best-effort confined-open tier documented (v1.0.0 Windows build fix); platform tiers in TOCTOU control row; Windows residual in §5.1. |
