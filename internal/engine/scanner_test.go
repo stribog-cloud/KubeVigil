@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -242,6 +243,40 @@ func TestRunChecks_ConcurrentNoRace(t *testing.T) {
 
 	assert.Len(t, findings, 10)
 	assert.Equal(t, 0, errCount)
+}
+
+// TestRunChecks_ZeroConcurrencyDoesNotDeadlock guards the errgroup limit floor:
+// a directly-constructed config with Concurrency == 0 must not deadlock
+// runChecks (errgroup.SetLimit(0) makes an unbuffered semaphore). Config
+// loading normalizes this, but Scanner is an importable API.
+func TestRunChecks_ZeroConcurrencyDoesNotDeadlock(t *testing.T) {
+	reg := checker.NewRegistry()
+	for i := 0; i < 5; i++ {
+		reg.MustRegister(&fakeChecker{
+			name:     fmt.Sprintf("zc-%d", i),
+			modes:    []checker.ScanMode{checker.ScanModeManifest},
+			findings: []checker.Finding{{Checker: fmt.Sprintf("zc-%d", i), Message: "test"}},
+		})
+	}
+
+	cfg := config.Default()
+	cfg.Settings.Concurrency = 0 // pathological: would deadlock without the floor guard
+	scanner := NewScanner(reg, cfg)
+	cache := checker.NewResourceCache()
+
+	done := make(chan struct{})
+	var findings []checker.Finding
+	go func() {
+		findings, _ = scanner.runChecks(context.Background(), scanner.enabledChecks(checker.ScanModeManifest), cache)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		assert.Len(t, findings, 5)
+	case <-time.After(5 * time.Second):
+		t.Fatal("runChecks deadlocked with Concurrency == 0")
+	}
 }
 
 func TestRunChecks_ErrorNonFatal(t *testing.T) {

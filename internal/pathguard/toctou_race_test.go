@@ -27,9 +27,7 @@ func TestOpenRegularWithinRoot_RejectsParentSymlinkToOutside(t *testing.T) {
 	if err := os.RemoveAll(subDir); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(outside, subDir); err != nil {
-		t.Fatal(err)
-	}
+	symlinkOrSkip(t, outside, subDir)
 
 	_, err := OpenRegularWithinRoot(root, filepath.Join("sub", "pod.yaml"))
 	if err == nil {

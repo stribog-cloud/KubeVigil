@@ -224,7 +224,15 @@ func (s *Scanner) runChecks(ctx context.Context, checks []checker.Checker, cache
 	var mu sync.Mutex
 
 	g, gctx := errgroup.WithContext(ctx)
-	g.SetLimit(s.config.Settings.Concurrency)
+	// Guard the errgroup limit: SetLimit(0) makes an unbuffered semaphore and
+	// the first g.Go deadlocks. Config loading normalizes this, but Scanner is
+	// an importable API and a caller can construct config.Config{} directly, so
+	// defend the invariant here rather than trust every call path.
+	limit := s.config.Settings.Concurrency
+	if limit < 1 {
+		limit = 1
+	}
+	g.SetLimit(limit)
 
 	for _, c := range checks {
 		g.Go(func() error {

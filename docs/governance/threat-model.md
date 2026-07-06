@@ -6,8 +6,8 @@ type: project/threat-model
 status: governing-reference
 tags: [charter, governance, kubevigil, security, stride]
 project: kubevigil
-version: "1.3.0"
-revision: 4
+version: "1.4.0"
+revision: 5
 last_updated: 2026-07-06
 parent_moc: "[[MOC - KubeVigil Governance]]"
 owners: [maintainers (@msambare)]
@@ -83,7 +83,7 @@ KubeVigil does not collect or persist PII. Scan and MCP outputs may **transientl
 - Stale kubeconfig with excessive RBAC — **out of scope; operator responsibility**
 - Backup files inherit ambient umask permissions and use predictable `<path>.kubevigil-backup-<timestamp>` names — **residual accepted**; operators should restrict backup directory permissions and treat backups as sensitive; see `internal/fix/backup.go`
 - MCP kubeconfig path is not workspace-jailed (operator supplies cluster credentials by design) — **accepted**; symlink and regular-file validation only
-- Windows confined-open is best-effort (`Lstat` walk + `SameFile` re-verification; no `openat`/`O_NOFOLLOW` equivalent) — **residual accepted**; TOCTOU window is narrowed, not eliminated, on Windows; Linux/macOS tiers are unaffected
+- Windows confined-open is best-effort (`Lstat` walk + `SameFile` re-verification; no `openat`/`O_NOFOLLOW` equivalent) — **residual accepted**. Precisely: the *final* path component is re-verified with `SameFile` (narrowing its own swap window to near-zero), but *intermediate/ancestor* directories in a multi-segment path are re-resolved by path at each step and are **not** protected against a concurrent swap — an attacker with write access inside the workspace tree could redirect an ancestor directory via an NTFS junction between steps and escape confinement. Pre-planted symlinks/junctions and reparse points at any level are still correctly rejected. The Linux (`openat2 RESOLVE_NO_SYMLINKS`) and other-Unix (dir-fd `openat`+`O_NOFOLLOW`) tiers fully mitigate the ancestor race; Windows does not. Hardening (a handle-pinned or `NtCreateFile RootDirectory` walk) is tracked as backlog. This surface is reachable only via the MCP server on Windows; CLI `scan -f` is operator-trusted. The Windows implementation now has runtime test coverage in CI (`windows-pathguard` job) — previously it was only cross-compiled, never executed.
 
 ## 6. Maintenance Triggers
 
@@ -97,3 +97,4 @@ Update this model when adding: new MCP tools, network calls, cluster write paths
 | 1.1.0 | 2 | 2026-07-02 | Added MCP egress STRIDE row, control mapping, backup residual, PII-layer maintenance trigger (audit F7/F8/F24). |
 | 1.2.0 | 3 | 2026-07-02 | MCP-only confinement scope, O_NOFOLLOW TOCTOU control, Data-Privacy §5.1 (audit R1/R3/R12). |
 | 1.3.0 | 4 | 2026-07-06 | Windows best-effort confined-open tier documented (v1.0.0 Windows build fix); platform tiers in TOCTOU control row; Windows residual in §5.1. |
+| 1.4.0 | 5 | 2026-07-06 | Precise Windows ancestor-directory TOCTOU residual (red-team); noted Windows runtime CI coverage (windows-pathguard job). |

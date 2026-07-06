@@ -85,7 +85,7 @@ Exposes: `format`, `lint`, `vet`, `test`, `coverage`, `secrets`, `vuln`, `build`
 |----------|-------|
 | Coverage floor (Charter §5.4) | 96% |
 | Project-declared floor | 96% |
-| Per-package floor for critical paths | 98% for `internal/fix/`, `internal/mcp/`, `internal/checker/secrets/` |
+| Per-package floor for critical paths | 96% for `internal/fix/`, `internal/mcp/`, `internal/checker/secrets/`, **enforced** in CI via `make coverage` → `scripts/coverage-pkg.sh` |
 | Measurement boundary | `internal/` and `cmd/` production packages |
 | Excluded paths | `test/` (fixtures and harnesses), generated artifacts (none currently) |
 | Coverage gate location | `Makefile` `coverage` target (relocated from inline CI YAML, charter-compliance program) |

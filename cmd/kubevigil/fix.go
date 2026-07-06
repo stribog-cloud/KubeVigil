@@ -257,8 +257,16 @@ func runFix(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Check for partial failure.
+	// Check for partial failure. Exit early with code 5, but first tell the
+	// user that any requested --git-pr / --verify follow-up is being skipped —
+	// otherwise the skip is silent and looks like the flag was ignored.
 	if summary.FilesFailed > 0 && summary.FilesModified > 0 {
+		if flagFixGitPR {
+			fmt.Fprintln(os.Stderr, "Warning: skipping --git-pr because some files failed (partial success, exit 5)")
+		}
+		if fixCfg.Verify {
+			fmt.Fprintln(os.Stderr, "Warning: skipping --verify because some files failed (partial success, exit 5)")
+		}
 		return &exitError{code: fix.ExitFixPartialSuccess, err: fmt.Errorf("%d files failed", summary.FilesFailed)}
 	}
 
