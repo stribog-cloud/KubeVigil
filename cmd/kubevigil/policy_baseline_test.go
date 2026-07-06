@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stribog-cloud/kubevigil/internal/checker"
 )
 
 const validPolicyYAML = `version: v1
@@ -92,6 +94,30 @@ func TestRunScan_WithPolicyFile(t *testing.T) {
 		var ee *exitError
 		require.ErrorAs(t, err, &ee)
 		assert.Equal(t, 1, ee.code)
+	}
+}
+
+func TestRunScan_PolicyFileRepeatedScansDoNotCollide(t *testing.T) {
+	// Regression: custom policies must never be registered into the shared
+	// DefaultRegistry singleton — a second in-process scan with the same
+	// policy file used to fail with a duplicate-registration error.
+	saveAndRestoreScanFlags(t)
+	flagFile = writeTemp(t, "deploy.yaml", validDeploymentYAML)
+	flagPolicyFile = writeTemp(t, "pol.yaml", validPolicyYAML)
+	flagOutput = "json"
+
+	for i := 0; i < 2; i++ {
+		scanCmd.SetContext(context.Background())
+		err := runScan(scanCmd, nil)
+		if err != nil {
+			var ee *exitError
+			require.ErrorAs(t, err, &ee, "scan %d", i)
+			require.Equal(t, 1, ee.code, "scan %d must not fail with a policy registration error", i)
+		}
+	}
+	// And the shared registry must not have absorbed the custom policy.
+	for _, c := range checker.DefaultRegistry().All() {
+		require.NotEqual(t, "require-team-label", c.Name(), "custom policy leaked into DefaultRegistry")
 	}
 }
 

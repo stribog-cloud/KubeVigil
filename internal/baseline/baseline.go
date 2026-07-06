@@ -49,6 +49,11 @@ type Baseline struct {
 // fingerprint iff they are the same check on the same resource+container — the
 // logical "same problem" across scans. FieldPath is deliberately excluded
 // because array indices in a path can shift between otherwise-identical scans.
+//
+// This is intentionally a DIFFERENT identity from fix.FindingFingerprint
+// (which includes FieldPath and omits Container): the fix engine needs
+// per-field targeting, while a baseline needs cross-scan stability. The two
+// must not be unified — changing either changes user-visible behavior.
 func Fingerprint(f *checker.Finding) string {
 	// Pipe-join identity fields; the fields themselves never contain a newline,
 	// and a null separator disambiguates empty components from each other.

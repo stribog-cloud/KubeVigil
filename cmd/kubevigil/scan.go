@@ -118,10 +118,15 @@ func runScan(cmd *cobra.Command, _ []string) error {
 		cfg.Settings.NoAggregate = true
 	}
 
-	// Build the checker registry, adding any user-defined CEL policies from the
-	// config's customPolicies block and/or the --policy-file so they run through
-	// the same pipeline as built-in checks.
-	registry := checker.DefaultRegistry()
+	// Build the checker registry for THIS scan: a fresh registry seeded from the
+	// built-in checks, plus any user-defined CEL policies from the config's
+	// customPolicies block and/or --policy-file. Customs are never registered
+	// into the shared DefaultRegistry singleton — that would leak state across
+	// in-process scans and into `list checks`.
+	registry := checker.NewRegistry()
+	for _, c := range checker.DefaultRegistry().All() {
+		registry.MustRegister(c)
+	}
 	if regErr := registerCustomPolicies(registry, cfg); regErr != nil {
 		fmt.Fprintf(os.Stderr, "Policy error: %v\n", regErr)
 		return &exitError{code: 3, err: regErr}
