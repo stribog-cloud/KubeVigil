@@ -55,6 +55,26 @@ jobs:
       - name: Add Go bin to PATH
         run: echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
+      - name: Install bats-core
+        run: sudo npm install -g bats@1.13.0
+
+      - name: Build kubevigil binary
+        run: make build
+
+      # The Bats suite is mock-based: it fakes kind/kubectl via a MOCK_DIR on
+      # PATH and asserts the "tool missing" branches by unmocking. ubuntu-latest
+      # ships a real kubectl in /usr/bin, which the isolation tests include in
+      # PATH — so the missing-kubectl assertion cannot hold unless the
+      # preinstalled binaries are removed first. Do that, then install the real
+      # kind/kubectl afterward for the live-cluster phase.
+      - name: Remove preinstalled kind/kubectl (mock-suite isolation)
+        run: sudo rm -f "$(command -v kubectl || true)" "$(command -v kind || true)"
+
+      - name: Run Bats E2E test suite (93 tests)
+        run: |
+          set -o pipefail
+          bats --verbose-run --recursive test/e2e/scripts/tests/ 2>&1 | tee bats-output.log
+
       - name: Install kind
         run: go install sigs.k8s.io/kind@v0.32.0
 
@@ -63,9 +83,6 @@ jobs:
         with:
           version: 'v1.32.0'
 
-      - name: Install bats-core
-        run: sudo npm install -g bats@1.13.0
-
       - name: Verify prerequisites
         run: |
           go version
@@ -73,14 +90,6 @@ jobs:
           kubectl version --client
           bats --version
           docker version --format 'Docker server: {{.Server.Version}}'
-
-      - name: Build kubevigil binary
-        run: make build
-
-      - name: Run Bats E2E test suite (93 tests)
-        run: |
-          set -o pipefail
-          bats --verbose-run --recursive test/e2e/scripts/tests/ 2>&1 | tee bats-output.log
 
       - name: Run live Kind cluster E2E (${{ env.TOPOLOGY }} topology)
         run: |
