@@ -7,6 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-07-06
+
+Correctness & security release. A post-v1.3 adversarial red-team (empirical
+binary testing, not just code review) surfaced a pre-existing security bug and a
+set of checker false-negatives where a check silently failed to detect what it
+claimed. All confirmed defects are fixed here; no check was removed and the
+catalogue stays at 150.
+
+### Security
+
+- **CSV formula injection (CWE-1236)** in the CSV report. Resource, container,
+  and message fields were written verbatim, so a hostile manifest with a name
+  like `=cmd|'/c calc'!A0` produced a CSV that executes as a formula when a
+  reviewer opens it. Cells beginning with `= + - @` (or tab/CR) are now
+  neutralized with a leading quote (OWASP guidance). Affected all prior versions.
+
+### Fixed — checker false negatives
+
+- **RBAC subresource wildcards** (`rbac-node-proxy-access`, `rbac-csr-approval`,
+  `rbac-token-request`): keyed on a non-syntactic `nodes/*` and missed the real
+  `*/proxy`, `*/approval`, `*/token`, and `*` grants. Now use correct Kubernetes
+  RBAC matching. `rbac-deletecollection-broad` broadened to workload controllers
+  and RBAC objects.
+- **Admission webhooks** (`validatingwebhook-failure-policy-ignore`,
+  `mutatingwebhook-wildcard-scope`, `webhook-external-url`): reported only the
+  first offending webhook in a multi-webhook config. Now report every one.
+  `mutatingwebhook-wildcard-scope` no longer treats the universal
+  `kubernetes.io/metadata.name Exists` selector as scoping, and matches any rule
+  list containing `*`.
+- **`crd-preserve-unknown-fields`**: only checked the deprecated top-level field
+  (rejected as `true` on real v1 CRDs); now also detects the modern per-version
+  `x-kubernetes-preserve-unknown-fields`.
+- **`metadata-service-egress-unblocked`**: returned nothing unless a `Namespace`
+  object was in scope; now scopes to namespaces derived from workloads.
+- **`network-policy-empty-namespace-selector`**: now catches `{matchLabels: {}}`
+  and `{matchExpressions: []}`, not just the bare `{}`.
+- **Encryption checks** (`volumesnapshotclass-no-encryption`,
+  `pvc-no-encryption`): a dead-code clause treated `encrypted: "false"` as
+  encrypted; fixed, with correct handling of value-bearing vs boolean params and
+  YAML-bool values.
+- **`priority-class-excessive-value`**: parses a quoted string `value`.
+- **`hostaliases-injection`**: adds cloud metadata hostnames and is now
+  case-insensitive.
+- **`secrets-tls-weak-key`**: reads `stringData` (not just `data`) and tiers
+  severity (RSA < 1024 bits is High).
+- **`serviceaccount-token-manual-volume-mount`**: lower-confidence fallback when
+  the token Secret is managed out-of-band. **`poststart-hook-network-call`**:
+  broadened indicators (documented as a best-effort heuristic).
+
+### Changed
+
+- Framework mappings corrected: `webhook-external-url` → MITRE T1567,
+  `priority-class-excessive-value` → T1489, `windows-hostprocess` → NSA 1.3.
+  Removed fabricated CIS 5.7.x citations from four older checkers' remediation
+  prose (corrected to real 5.6.x controls where one exists).
+- Added MITRE and NSA control-ID validity tests (the CIS analogue the framework
+  lacked), which also permanently lock the display-name backfill.
+- Engine hardening: a panic in any single checker is now recovered and counted
+  as an error instead of crashing the whole scan.
+
 ## [1.4.0] - 2026-07-06
 
 Vulnerability awareness: KubeVigil now reports known CVEs in an image's software

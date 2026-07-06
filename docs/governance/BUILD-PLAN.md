@@ -35,6 +35,29 @@ supply-chain-verified artifacts and a semver-stable public surface.
 | 7 | v1.2.0 runtime: validating admission webhook | Complete (v1.2.0) |
 | 8 | v1.3.0 detection breadth: 40 new checks (110 → 150) | Complete (v1.3.0) |
 | 9 | v1.4.0 image vulnerability layer (OSV.dev CVE fusion) | Complete (v1.4.0) |
+| 10 | v1.5.0 correctness & security fixes (post-v1.3 red-team) | Complete (v1.5.0) |
+
+## Phase 10 — v1.5.0 Correctness & Security (post-v1.3 red-team)
+
+A post-v1.3 adversarial red-team pass — empirical binary testing across all 40
+new checks and all 8 output formats — surfaced defects the inline code-reading
+review missed. All confirmed correctness/security defects are fixed; the
+catalogue stays at 150.
+
+- [x] Security: CSV formula injection (CWE-1236) neutralized in the CSV reporter
+      (affected all prior versions).
+- [x] ~13 checker false-negatives fixed with empirical repro + regression tests:
+      RBAC subresource-wildcard matching (`*/proxy` etc.), multi-webhook
+      reporting (3 checkers), modern CRD preserve-unknown-fields, metadata-egress
+      namespace scoping, empty-namespace-selector spellings, the encryption
+      dead-code inversion (volumesnapshotclass + pvc), string-typed PriorityClass
+      value, hostAliases IMDS hostnames + case, TLS `stringData` + severity
+      tiering, SA-token out-of-band fallback, poststart heuristic breadth.
+- [x] Framework-mapping corrections (webhook-external-url → T1567,
+      priority-class → T1489, windows-hostprocess → NSA 1.3); fabricated CIS
+      5.7.x prose citations removed; MITRE + NSA control-ID validity tests added.
+- [x] Engine hardening: per-checker panic recovery so one bad checker can't
+      crash the scan.
 
 ## Phase 9 — v1.4.0 Image Vulnerability Layer (OSV.dev CVE fusion)
 
@@ -177,3 +200,4 @@ None blocking — documentation and gate wiring only; code changes limited to co
 | 1.3.0 | 4 | 2026-07-06 | Phase 7 (v1.2.0 admission webhook) recorded complete. |
 | 1.4.0 | 5 | 2026-07-06 | Phase 8 (v1.3.0 detection breadth — 40 new checks, 110 → 150) recorded complete. |
 | 1.5.0 | 6 | 2026-07-06 | Phase 9 (v1.4.0 image vulnerability layer — OSV.dev CVE fusion) recorded complete. |
+| 1.6.0 | 7 | 2026-07-06 | Phase 10 (v1.5.0 correctness & security fixes from the post-v1.3 red-team) recorded complete. |
