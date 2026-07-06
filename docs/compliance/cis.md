@@ -70,13 +70,13 @@ kubevigil scan --framework cis -o report.html
 | CIS Control ID | Control Title | KubeVigil Check(s) |
 |-----------------|---------------|---------------------|
 | 5.3.1 | Ensure that the CNI in use supports Network Policies | `dns-security` |
-| 5.3.2 | Ensure that all Namespaces have Network Policies defined | `network-policy-missing`, `network-policy-default-deny`, `network-policy-overly-permissive`, `network-policy-egress-unrestricted`, `ingress-no-tls`, `ingress-wildcard-host`, `ingress-class-missing`, `service-type-loadbalancer`, `service-type-nodeport`, `external-ips`, `service-mesh-mtls` |
+| 5.3.2 | Ensure that all Namespaces have Network Policies defined | `network-policy-missing`, `network-policy-default-deny`, `network-policy-overly-permissive`, `network-policy-egress-unrestricted`, `ingress-no-tls`, `ingress-wildcard-host`, `ingress-class-missing`, `service-type-loadbalancer`, `service-type-nodeport`, `external-ips`, `service-mesh-mtls`, `network-policy-empty-namespace-selector` |
 
 ### Section 5.4 -- Secrets Management
 
 | CIS Control ID | Control Title | KubeVigil Check(s) |
 |-----------------|---------------|---------------------|
-| 5.4.1 | Prefer using secrets as files over secrets as environment variables | `secrets-in-env`, `secrets-in-configmap`, `secrets-default-type`, `secrets-hardcoded-manifests`, `projected-volume-security`, `cert-manager-expiry`, `cert-manager-insecure` |
+| 5.4.1 | Prefer using secrets as files over secrets as environment variables | `secrets-in-env`, `secrets-in-configmap`, `secrets-default-type`, `secrets-hardcoded-manifests`, `projected-volume-security`, `cert-manager-expiry`, `cert-manager-insecure`, `secrets-envfrom-bulk`, `secrets-tls-weak-key`, `secrets-in-annotations` |
 | 5.4.2 | Consider external secret storage | `secrets-in-env`, `secrets-stale`, `external-secrets-sync`, `pvc-no-encryption` |
 
 ### Section 5.5 -- Extensible Admission Control

@@ -1,6 +1,6 @@
 # Workload Security Checks
 
-KubeVigil includes 25 checks that inspect container and pod security contexts, host isolation boundaries, and resource management. These checks apply to Deployments, StatefulSets, DaemonSets, Jobs, CronJobs, and bare Pods.
+KubeVigil includes 31 checks that inspect container and pod security contexts, host isolation boundaries, resource management, and pod lifecycle hardening. These checks apply to Deployments, StatefulSets, DaemonSets, Jobs, CronJobs, and bare Pods.
 
 All workload checks support both **Live** and **Manifest** scan modes.
 
@@ -256,6 +256,41 @@ spec:
 
 ---
 
+### `host-users-not-isolated`
+**Severity:** Low · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects pods that do not set `hostUsers: false`, meaning the pod shares the host's user namespace rather than getting its own isolated UID/GID mapping. If an attacker escapes the container (e.g., via a kernel vulnerability), they land on the host with the same privilege level rather than an unprivileged, remapped UID. User namespace isolation is a Kubernetes 1.25+ opt-in feature, stable in 1.30.
+
+**Remediation:**
+```yaml
+spec:
+  hostUsers: false
+```
+
+Verify your container runtime and kernel support user namespaces (containerd 2.0+/CRI-O with a recent kernel). Some workloads that rely on specific host UID mappings (e.g., NFS with UID-based permissions) may need adjustment.
+
+**Frameworks:** MITRE T1611
+
+---
+
+### `windows-hostprocess`
+**Severity:** Critical · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects containers or pods with `securityContext.windowsOptions.hostProcess: true` -- the Windows-node analog of Linux `privileged: true`. A HostProcess container runs directly on the Windows host rather than inside an isolated container boundary, with full access to the host's filesystem, registry, and other processes. This is not covered by the `privileged` check, which only inspects the Linux `securityContext.privileged` field.
+
+**Remediation:**
+```yaml
+securityContext:
+  windowsOptions:
+    hostProcess: false
+```
+
+HostProcess containers should only be used for known, audited Windows system components (e.g., CNI plugins, node-level agents) that genuinely require host access, and should run in a dedicated, tightly scoped namespace.
+
+**Frameworks:** MITRE T1611, NSA/CISA 1.1
+
+---
+
 ## Host Isolation
 
 ### `host-pid`
@@ -339,6 +374,67 @@ volumes:
 
 ---
 
+## Pod Lifecycle & Trust Boundaries
+
+### `termination-grace-period-zero`
+**Severity:** Low · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects pods with `terminationGracePeriodSeconds: 0`, which forces the kubelet to send SIGKILL immediately, skipping preStop hooks entirely and giving the application no chance to flush logs, close connections gracefully, or complete in-flight requests. Beyond the reliability impact, this is also a documented pattern for suppressing shutdown-time audit or logging hooks before they can run.
+
+**Remediation:**
+```yaml
+spec:
+  terminationGracePeriodSeconds: 30
+```
+
+Remove the override entirely to fall back to the 30-second default, or set an explicit positive value that gives your application enough time to shut down cleanly.
+
+---
+
+### `hostaliases-injection`
+**Severity:** Medium · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects pods with `hostAliases` entries overriding well-known internal or control-plane hostnames (`kubernetes.default`, `kubernetes.default.svc`, or any `*.cluster.local` suffix). hostAliases entries are injected verbatim into the pod's `/etc/hosts` file, taking precedence over normal cluster DNS resolution -- an entry overriding one of these hostnames can silently redirect the workload's calls to the Kubernetes API server (or another trusted internal service) to an attacker-controlled IP.
+
+**Remediation:**
+```yaml
+spec:
+  hostAliases: []  # remove entries targeting kubernetes.default or *.cluster.local
+```
+
+If local DNS overrides are genuinely needed for testing, scope them to hostnames that are not part of the cluster's trusted internal namespace.
+
+**Frameworks:** MITRE T1584.001
+
+---
+
+### `serviceaccount-token-manual-volume-mount`
+**Severity:** Medium · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects pods that manually mount a `Secret` volume whose referenced Secret is of type `kubernetes.io/service-account-token` (the legacy long-lived token pattern), instead of relying on the automatic projected-volume token (bound, expiring, audience-scoped). Distinct from `automount-token` (RBAC -- whether any token auto-mounts) and `token-projection-config` (RBAC -- whether the auto-mounted token has expiry/audience configured): this flags an explicit, separate manual volume mount of a legacy token Secret.
+
+**Remediation:**
+```yaml
+spec:
+  containers:
+    - name: app
+      volumeMounts:
+        - name: kube-api-access
+          mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          readOnly: true
+  volumes:
+    - name: kube-api-access
+      projected:
+        sources:
+          - serviceAccountToken:
+              expirationSeconds: 3600
+              path: token
+```
+
+**Frameworks:** MITRE T1528, NSA/CISA 3.1
+
+---
+
 ## Resource Management
 
 ### `resource-limits-missing`
@@ -408,3 +504,21 @@ resources:
   requests:
     ephemeral-storage: 500Mi
 ```
+
+---
+
+### `ephemeral-storage-requests-missing`
+**Severity:** Low · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects containers missing an ephemeral-storage **request** (as opposed to `ephemeral-storage-limits`, which only checks for a limit). Without a request, the scheduler treats the pod as needing zero ephemeral storage and may pack too many pods onto a single node, leading to disk pressure and unpredictable eviction behavior even when a limit is set. This mirrors the established `resource-limits-missing`/`resource-requests-missing` split already applied to CPU and memory.
+
+**Remediation:**
+```yaml
+resources:
+  requests:
+    ephemeral-storage: 500Mi
+  limits:
+    ephemeral-storage: 1Gi
+```
+
+Estimate the request from your application's steady-state disk usage (logs, temp files, cache data).

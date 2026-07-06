@@ -49,7 +49,7 @@ Package `github.com/stribog-cloud/kubevigil/internal/checker`:
 - `Checker` interface (`Name`, `Description`, `Categories`, `SupportedModes`, `RequiredResources`, `Run`)
 - `Finding`, `FixHint`, `Registry`, `ResourceCache`
 
-**110** registered checks as of v1.0.0.
+**150** registered checks as of v1.3.0.
 
 ## Report formats
 

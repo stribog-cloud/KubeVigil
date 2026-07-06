@@ -1,6 +1,6 @@
 # Secrets Management Checks
 
-KubeVigil includes 7 checks that inspect how secrets are stored, referenced, rotated, and managed across your cluster. These checks examine Secrets, ConfigMaps, workload pod specs, and ExternalSecret custom resources.
+KubeVigil includes 12 checks that inspect how secrets are stored, referenced, rotated, and managed across your cluster. These checks examine Secrets, ConfigMaps, workload pod specs (including annotations/labels and `envFrom`), and ExternalSecret custom resources.
 
 Most secrets checks support both Live and Manifest modes, with a few mode-specific exceptions noted below.
 
@@ -26,6 +26,37 @@ volumes:
 ```
 
 **Frameworks:** CIS 5.4.1, NSA/CISA
+
+---
+
+### `secrets-envfrom-bulk`
+**Severity:** High · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects containers using `envFrom[].secretRef` to bulk-inject **every** key in a Secret as environment variables. Strictly worse than the per-key `secrets-in-env` case: a single misconfiguration here exposes the Secret's entire contents to process listings (`/proc/*/environ`), crash dumps, log output, and any child process the container spawns, not just one key.
+
+**Remediation:**
+```yaml
+volumeMounts:
+  - name: secret-vol
+    mountPath: /etc/secrets
+    readOnly: true
+volumes:
+  - name: secret-vol
+    secret:
+      secretName: db-credentials
+```
+
+If environment variables are required, reference individual keys explicitly instead of the whole Secret:
+```yaml
+env:
+  - name: DB_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: db-credentials
+        key: password
+```
+
+**Frameworks:** CIS 5.4.1
 
 ---
 
@@ -77,6 +108,28 @@ Rotate any credential that was previously committed. Consider Sealed Secrets, SO
 
 ---
 
+### `secrets-in-annotations`
+**Severity:** High · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects workload resources (Deployments, Pods, and other workload kinds) with secret-looking values -- API keys, tokens, high-entropy strings -- embedded directly in `metadata.annotations` or `metadata.labels`. Annotations and labels are readable by anyone with `get`/`list` RBAC on the resource type, typically far broader than the RBAC applied to the `secrets` resource -- a credential here is exposed to every user, CI job, or controller that can read Deployments, entirely bypassing tighter Secret-specific access controls. Uses the same entropy-analysis and known-pattern-matching technique already proven by `secrets-in-configmap`.
+
+**Remediation:**
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-secret
+type: Opaque
+stringData:
+  api-key: "<managed-externally>"
+```
+
+Rotate any credential that was previously committed to an annotation or label, since it may already be cached by API clients, audit logs, or GitOps tooling that snapshots object metadata.
+
+**Frameworks:** CIS 5.4.1, MITRE T1552
+
+---
+
 ## Secret Storage
 
 ### `secrets-unencrypted`
@@ -119,6 +172,68 @@ type: kubernetes.io/tls    # Use the specific type
 ```
 
 Kubernetes will validate that the required data keys are present for the chosen type.
+
+---
+
+### `secrets-immutable-missing`
+**Severity:** Low · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects Secret resources without `immutable: true`. Without it, a Secret's data can be modified in place by anyone with update access, whether accidentally or maliciously. Mutable Secrets also increase load on the API server, since every kubelet watching the Secret must be notified and re-sync on every change.
+
+**Remediation:**
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-secret
+immutable: true
+type: Opaque
+data:
+  password: <base64-value>
+```
+
+Immutable Secrets must be deleted and recreated (or replaced under a new name) to rotate their contents, which pairs naturally with GitOps and templated Secret names.
+
+---
+
+### `serviceaccount-token-secret-legacy`
+**Severity:** Medium · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects Secret resources of type `kubernetes.io/service-account-token`. Since Kubernetes 1.24, these are no longer auto-created per ServiceAccount; their presence indicates a legacy, manually created, non-expiring token -- unlike the bound, audience-scoped, auto-rotating tokens issued via the TokenRequest API and projected volumes. A leaked legacy token remains valid indefinitely until manually revoked. Distinct from `secrets-stale` (rotation staleness of any Secret) and `token-projection-config` (RBAC, live pod-level configuration): this flags the legacy Secret **object's existence** itself.
+
+**Remediation:**
+```yaml
+spec:
+  serviceAccountName: my-app
+  automountServiceAccountToken: true  # default projected volume token
+```
+
+Once no workload depends on the legacy Secret, delete it. Verify no controller reads it directly before removal -- deleting a token still in use will break authentication for anything relying on it.
+
+**Frameworks:** MITRE T1528, NSA/CISA 3.1
+
+---
+
+### `secrets-tls-weak-key`
+**Severity:** Medium · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects raw `kubernetes.io/tls` Secrets -- not managed by cert-manager -- whose certificate uses a weak key: RSA smaller than 2048 bits, or an ECDSA curve weaker than P-256. Weak keys can be factored or attacked with modern hardware, allowing an adversary to forge certificates and intercept or impersonate encrypted TLS connections. Applies the same key-strength logic already established by `cert-manager-insecure`, but to statically-created TLS Secrets that cert-manager never touches.
+
+**Remediation:**
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-tls-secret
+type: kubernetes.io/tls
+data:
+  tls.crt: <base64 cert, RSA >= 2048 or ECDSA P-256+>
+  tls.key: <base64 key>
+```
+
+Consider adopting cert-manager to automate issuance and renewal with a compliant key configuration going forward.
+
+**Frameworks:** CIS 5.4.1
 
 ---
 

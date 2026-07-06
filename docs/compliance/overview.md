@@ -1,13 +1,13 @@
 # Compliance Framework Mappings
 
-KubeVigil maps all 110 security checks to three industry-standard compliance frameworks. This allows you to filter scan results by framework, generate framework-specific reports, and demonstrate compliance coverage during audits.
+KubeVigil maps all 150 security checks to three industry-standard compliance frameworks. This allows you to filter scan results by framework, generate framework-specific reports, and demonstrate compliance coverage during audits.
 
 ## Supported Frameworks
 
 | Framework | Version | Controls Mapped | Description |
 |-----------|---------|-----------------|-------------|
 | [CIS Kubernetes Benchmark](cis.md) | v1.8 | 35 | Industry-standard hardening guide from the Center for Internet Security |
-| [MITRE ATT&CK for Containers](mitre.md) | v14 | 29 | Adversarial tactics and techniques for container environments |
+| [MITRE ATT&CK for Containers](mitre.md) | v14 | 34 | Adversarial tactics and techniques for container environments |
 | [NSA/CISA Kubernetes Hardening Guide](nsa.md) | v1.2 | 15 | US government hardening guidance for Kubernetes deployments |
 
 ## Filtering by Framework

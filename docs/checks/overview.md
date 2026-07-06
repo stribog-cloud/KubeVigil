@@ -1,23 +1,23 @@
 # Security Checks Overview
 
-KubeVigil includes 110 security checks across 12 categories that inspect your Kubernetes resources for misconfigurations, excessive permissions, and policy violations. Each check runs in live mode (against a running cluster) or manifest mode (against YAML files), or both.
+KubeVigil includes 150 security checks across 12 categories that inspect your Kubernetes resources for misconfigurations, excessive permissions, and policy violations. Each check runs in live mode (against a running cluster) or manifest mode (against YAML files), or both.
 
 ## Categories
 
 | Category | Checks | Description | Details |
 |----------|--------|-------------|---------|
-| Workload Security | 25 | Container and pod security context, host isolation, resource management | [workload.md](workload.md) |
+| Workload Security | 31 | Container and pod security context, host isolation, resource management | [workload.md](workload.md) |
 | Image Security | 9 | Image tagging, digest pinning, registry policies, supply chain | [image.md](image.md) |
-| Identity & Access (RBAC) | 15 | Service accounts, token management, role permissions, bindings | [rbac.md](rbac.md) |
-| Secrets Management | 7 | Secret storage, rotation, encryption, external secrets | [secrets.md](secrets.md) |
-| Network Security | 12 | NetworkPolicies, Ingress TLS, service exposure, DNS, service mesh | [network.md](network.md) |
+| Identity & Access (RBAC) | 22 | Service accounts, token management, role permissions, bindings, RBAC escalation vectors | [rbac.md](rbac.md) |
+| Secrets Management | 12 | Secret storage, rotation, encryption, external secrets | [secrets.md](secrets.md) |
+| Network Security | 18 | NetworkPolicies, Ingress TLS, service exposure, DNS, service mesh, Gateway API | [network.md](network.md) |
 | Pod Security Standards | 6 | PSA labels, Baseline/Restricted compliance, PSP migration | [psa.md](psa.md) |
-| Scheduling & Availability | 8 | Tolerations, PriorityClass, PDB, topology spread, HPA | [scheduling.md](scheduling.md) |
-| Storage Security | 5 | PVC encryption, reclaim policies, CSI drivers, emptyDir limits | [storage.md](storage.md) |
-| Cluster Configuration | 10 | API server, etcd encryption, kubelet, admission controllers | [cluster.md](cluster.md) |
-| Supply Chain & Lifecycle | 5 | Runtime sockets, health probes, image age, lifecycle hooks | [supply-chain.md](supply-chain.md) |
+| Scheduling & Availability | 11 | Tolerations, PriorityClass, PDB, topology spread, HPA, Job/CronJob hygiene | [scheduling.md](scheduling.md) |
+| Storage Security | 9 | PVC encryption, reclaim policies, CSI drivers, emptyDir limits, snapshot encryption | [storage.md](storage.md) |
+| Cluster Configuration | 15 | API server, etcd encryption, kubelet, admission controllers, admission webhooks | [cluster.md](cluster.md) |
+| Supply Chain & Lifecycle | 6 | Runtime sockets, health probes, image age, lifecycle hooks | [supply-chain.md](supply-chain.md) |
 | Cloud Provider | 4 | EKS IMDS, GKE metadata, AKS pod identity (all live-only) | [cloud.md](cloud.md) |
-| CRD Security | 4 | CRD validation, conversion webhooks, cert-manager | [crd.md](crd.md) |
+| CRD Security | 7 | CRD validation, conversion webhooks, cert-manager, schema/subresource hardening | [crd.md](crd.md) |
 
 ## How Checks Work
 
@@ -41,7 +41,7 @@ Each check inspects specific fields on Kubernetes resources. For example, the `p
 
 ## Auto-Fixable Checks
 
-20 of the 110 checks support automatic remediation via `kubevigil fix`. Each auto-fixable check has a safety classification that determines when it can be applied:
+20 of the 150 checks support automatic remediation via `kubevigil fix`. Each auto-fixable check has a safety classification that determines when it can be applied:
 
 | Classification | Count | Applied with | Risk |
 |----------------|-------|-------------|------|
@@ -55,7 +55,7 @@ Each check inspects specific fields on Kubernetes resources. For example, the `p
 
 **Potentially Breaking (4):** `resource-limits-missing`, `resource-requests-missing`, `ephemeral-storage-limits`, `host-ports`
 
-The remaining 90 checks provide remediation guidance but require manual intervention. See [Auto-Fix Risk Levels](../auto-fix/risk-levels.md) for details on the fix safety model.
+The remaining 130 checks provide remediation guidance but require manual intervention. This includes all 40 checks added in v1.3.0 -- several (e.g. `windows-hostprocess`, `host-users-not-isolated`, `validatingwebhook-failure-policy-ignore`, `cronjob-concurrency-unbounded`) carry fix metadata in their finding output (visible in JSON/SARIF as a candidate safety classification) but are not yet wired into the `kubevigil fix` registry -- that is planned for a future release. See [Auto-Fix Risk Levels](../auto-fix/risk-levels.md) for details on the fix safety model.
 
 ## Scan Modes
 

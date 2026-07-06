@@ -1,6 +1,6 @@
 # Storage Security Checks
 
-KubeVigil includes 5 checks that detect storage-related misconfigurations, covering PVC encryption, reclaim policy risks, CSI driver security, emptyDir volume limits, and projected volume permissions.
+KubeVigil includes 9 checks that detect storage-related misconfigurations, covering PVC encryption, reclaim policy risks, CSI driver security, emptyDir volume limits, projected volume permissions, subPath symlink risk, inline/generic ephemeral volumes, and VolumeSnapshotClass encryption.
 
 ## Checks
 
@@ -118,3 +118,92 @@ spec:
           - serviceAccountToken:
               path: token
 ```
+
+---
+
+### `subpath-symlink-risk`
+**Severity:** Low · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects `volumeMounts[].subPath`/`subPathExpr` usage. Older kubelet versions (fixed in CVE-2021-25741) and some third-party CSI drivers resolve the subPath after the container starts, creating a race window where a malicious container can swap the subPath target for a symlink pointing at the host filesystem, escaping the volume boundary. This is a defense-in-depth flag; most modern, patched clusters are not vulnerable, but the risk surface remains for older kubelets and less-maintained CSI drivers.
+
+**Remediation:**
+```yaml
+volumeMounts:
+  - name: data
+    mountPath: /app/conf           # Mount the whole volume
+# Instead of:
+#  - name: data
+#    mountPath: /app/conf/conf.yaml
+#    subPath: conf.yaml
+```
+
+If subPath is unavoidable, ensure kubelet and the CSI driver are patched against CVE-2021-25741 and restrict which images can be scheduled with subPath mounts via admission control.
+
+**Frameworks:** MITRE T1611
+
+---
+
+### `csi-inline-ephemeral-volume`
+**Severity:** Medium · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects Pods using CSI ephemeral inline volumes (`spec.volumes[].csi` set directly on the pod), which bypass PVC/StorageClass admission entirely. Depending on the driver, inline volumes can expose node-level resources or secrets (e.g. the Secrets Store CSI driver) directly to the pod without the review a StorageClass-based PVC would typically receive.
+
+**Remediation:**
+```yaml
+# Instead of an inline CSI volume:
+# volumes:
+#   - name: v
+#     csi:
+#       driver: csi.example.com/secrets-store
+volumes:
+  - name: v
+    persistentVolumeClaim:
+      claimName: reviewed-pvc
+```
+
+If inline CSI volumes are required, restrict which drivers may be used via an admission policy (OPA Gatekeeper/Kyverno) and track approved drivers explicitly.
+
+**Frameworks:** NSA/CISA 1.3
+
+---
+
+### `generic-ephemeral-volume-no-limits`
+**Severity:** Low · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects Pods using a generic ephemeral volume (`spec.volumes[].ephemeral.volumeClaimTemplate`) whose claim template has no `resources.requests.storage`. Without a declared upper bound, a single pod's ephemeral volume can consume unbounded storage -- the same risk `resource-limits-missing` addresses for CPU/memory, applied to per-pod dynamically-provisioned storage.
+
+**Remediation:**
+```yaml
+volumes:
+  - name: scratch
+    ephemeral:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 5Gi           # Set to expected max usage
+```
+
+Size conservatively based on expected workload usage and monitor actual consumption to tune the request.
+
+---
+
+### `volumesnapshotclass-no-encryption`
+**Severity:** Medium · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects `VolumeSnapshotClass` resources without an encryption parameter set. Not every CSI driver automatically encrypts a VolumeSnapshot just because the source volume was encrypted -- snapshot data, which contains a full point-in-time copy of the volume's contents, may be stored unencrypted in the underlying snapshot storage. Mirrors the same at-rest encryption rationale already applied to PVCs by `pvc-no-encryption`.
+
+**Remediation:**
+```yaml
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: encrypted-snapshots
+driver: ebs.csi.aws.com
+deletionPolicy: Delete
+parameters:
+  encrypted: "true"          # Or your CSI driver's equivalent key
+```
+
+Each cloud provider's CSI driver has its own parameter name for snapshot encryption -- consult its documentation.

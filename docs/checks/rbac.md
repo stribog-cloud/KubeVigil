@@ -1,6 +1,6 @@
 # Identity & Access (RBAC) Checks
 
-KubeVigil includes 15 checks that inspect service account configuration, token management, role permissions, and role bindings. These checks examine Deployments, StatefulSets, DaemonSets, Jobs, CronJobs, bare Pods, Roles, ClusterRoles, RoleBindings, ClusterRoleBindings, and ServiceAccounts.
+KubeVigil includes 22 checks that inspect service account configuration, token management, role permissions, role bindings, and RBAC-based privilege escalation vectors. These checks examine Deployments, StatefulSets, DaemonSets, Jobs, CronJobs, bare Pods, Roles, ClusterRoles, RoleBindings, ClusterRoleBindings, and ServiceAccounts.
 
 All RBAC checks support both **Live** and **Manifest** scan modes.
 
@@ -237,6 +237,135 @@ Configure applications to avoid logging sensitive data. Use structured logging l
 
 ---
 
+### `rbac-node-proxy-access`
+**Severity:** Critical · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects Roles and ClusterRoles that grant `get`/`create` access to the `nodes/proxy` subresource. The `nodes/proxy` subresource lets a subject send requests directly to a node's kubelet API, which can execute arbitrary commands in any pod on that node, retrieve logs and metrics, and read container filesystem contents -- effectively giving remote code execution across every workload scheduled on the node.
+
+**Remediation:**
+```yaml
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]              # nodes only, no proxy subresource
+    verbs: ["get", "list"]
+  # Do NOT include:
+  # resources: ["nodes/proxy"]
+```
+
+If node diagnostics are required, use the Kubernetes metrics API or a dedicated monitoring ServiceAccount with tightly scoped, audited access instead of granting nodes/proxy broadly.
+
+**Frameworks:** MITRE T1611, NSA/CISA 3.1
+
+---
+
+### `rbac-csr-approval`
+**Severity:** Critical · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects Roles and ClusterRoles that grant `update`/`approve` on `certificatesigningrequests/approval` or `signers`. Approving a CertificateSigningRequest mints a signed client certificate for whatever identity the CSR requests -- including `system:masters` or any other cluster identity. A subject that can both submit and approve CSRs (or approve any signer) can escalate to full cluster-admin without ever holding that privilege directly.
+
+**Remediation:**
+```yaml
+rules:
+  - apiGroups: ["certificates.k8s.io"]
+    resources: ["certificatesigningrequests"]
+    verbs: ["get", "list", "watch"]  # No approval
+  # Do NOT include:
+  # resources: ["certificatesigningrequests/approval", "signers"]
+  #   verbs: ["update", "approve"]
+```
+
+Restrict CSR approval to a small, audited set of cluster administrators, and require manual review of every signer-scoped approval grant.
+
+**Frameworks:** MITRE T1078, NSA/CISA 3.1
+
+---
+
+### `rbac-webhook-tampering`
+**Severity:** High · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects Roles and ClusterRoles that grant `update`/`patch`/`delete` access to `ValidatingWebhookConfiguration` or `MutatingWebhookConfiguration` objects. These objects enforce cluster-wide admission control (e.g., OPA Gatekeeper, Kyverno, custom policy engines). A subject that can modify or delete them can silently disable or weaken every security policy they enforce, opening the door to otherwise-blocked malicious workloads.
+
+**Remediation:**
+```yaml
+rules:
+  - apiGroups: ["admissionregistration.k8s.io"]
+    resources: ["validatingwebhookconfigurations", "mutatingwebhookconfigurations"]
+    verbs: ["get", "list", "watch"]  # Read-only
+```
+
+Only cluster administrators and the controllers that own a given webhook should be able to modify it. Alert on any change to these objects via audit logging.
+
+**Frameworks:** MITRE T1562, NSA/CISA 2.1
+
+---
+
+### `rbac-token-request`
+**Severity:** Critical · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects Roles and ClusterRoles that grant unrestricted `create` access to `serviceaccounts/token`. The TokenRequest API mints a fresh, valid, bound token for a named ServiceAccount on demand. A subject with unrestricted access to this subresource can impersonate any ServiceAccount in the namespace -- including highly privileged ones -- without ever needing direct access to that ServiceAccount's Secret or RBAC bindings. Distinct from `automount-token`, which governs whether a token is auto-mounted, not who can mint one.
+
+**Remediation:**
+```yaml
+rules:
+  - apiGroups: [""]
+    resources: ["serviceaccounts/token"]
+    resourceNames: ["my-app-sa"]     # Pin to one owned ServiceAccount
+    verbs: ["create"]
+```
+
+Avoid granting this permission cluster-wide or namespace-wide; treat it with the same care as granting direct access to Secrets.
+
+**Frameworks:** MITRE T1078, NSA/CISA 3.1
+
+---
+
+### `rbac-deletecollection-broad`
+**Severity:** High · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects Roles and ClusterRoles that grant the `deletecollection` verb on broad resources (`pods`, `secrets`, `*`, or with no `resourceNames` restriction). The `deletecollection` verb deletes every object matching a list call in a single request -- granted broadly, a single API call can destroy every matching object in a namespace or cluster.
+
+**Remediation:**
+```yaml
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "delete"]  # Single-object delete only
+  # Do NOT include:
+  # verbs: ["deletecollection"]
+```
+
+If bulk cleanup is genuinely required, scope it to a narrow set of `resourceNames` or a dedicated, audited maintenance ServiceAccount.
+
+**Frameworks:** MITRE T1485, NSA/CISA 3.1
+
+---
+
+### `rbac-aggregation-label-injection`
+**Severity:** High · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects custom ClusterRoles labeled with a built-in aggregation selector (`rbac.authorization.k8s.io/aggregate-to-{admin,edit,view}: "true"`). The built-in `admin`, `edit`, and `view` ClusterRoles are aggregated: Kubernetes automatically merges the rules of any ClusterRole carrying this label into them. A subject who can only create ClusterRole objects -- not modify `admin`/`edit`/`view` directly -- can still inject arbitrary rules into those aggregated roles simply by applying this label to their own ClusterRole, a documented Kubernetes RBAC privilege-escalation technique.
+
+**Remediation:**
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: my-custom-role
+  # Remove aggregation labels unless intentional:
+  # labels:
+  #   rbac.authorization.k8s.io/aggregate-to-admin: "true"
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+```
+
+Restrict `create`/`update` on ClusterRole objects to trusted cluster administrators, and audit any ClusterRole carrying an `aggregate-to-*` label as part of regular RBAC hygiene.
+
+**Frameworks:** MITRE T1068, NSA/CISA 3.1
+
+---
+
 ## Bindings
 
 ### `rbac-cluster-admin`
@@ -305,6 +434,30 @@ subjects:
 If individual user bindings are necessary, implement an automated process to reconcile RBAC bindings against your identity provider directory.
 
 **Frameworks:** CIS 5.1
+
+---
+
+### `rbac-crossnamespace-serviceaccount`
+**Severity:** Medium · **Modes:** Live, Manifest · **Auto-fix:** No
+
+Detects RoleBindings whose `subjects` reference a ServiceAccount in a different namespace than the RoleBinding itself. A RoleBinding's `subjects[].namespace` field silently overrides the binding's own namespace for ServiceAccount subjects -- an unusual cross-namespace trust grant that is frequently accidental (a copy-pasted manifest that forgot to update the subject namespace) but can also be used deliberately to extend trust across a namespace boundary without review. Distinct from `rbac-subject-external` (User subjects) and `rbac-group-bindings` (Group subjects): this specifically targets ServiceAccount subject hygiene.
+
+**Remediation:**
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: app-binding
+  namespace: ns-a
+subjects:
+  - kind: ServiceAccount
+    name: app-sa
+    namespace: ns-a    # Matches the binding's own namespace
+```
+
+If cross-namespace access is genuinely required, document it explicitly and review it as part of your regular RBAC audit process.
+
+**Frameworks:** NSA/CISA 3.1
 
 ---
 
