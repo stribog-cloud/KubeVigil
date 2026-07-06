@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `AGENTS.md` and root `CONTRIBUTING.md` for agent and contributor onboarding
 - Documentation gates: `make doc-gate`, `make doc-drift-gate`, `make doc-samples-test`, `make doc-a11y`
 - User support escalation map (`docs/user/support.md`) and user-facing release notes index
+- First-party GitHub Action (`action.yml`) for manifest scanning in CI: downloads and checksum-verifies a release binary, scans, and writes a report (SARIF by default); see `docs/integrations/github-action.md`
 
 ### Changed
 

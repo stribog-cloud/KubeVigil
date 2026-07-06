@@ -202,6 +202,21 @@ Write to file: `kubevigil scan -o report.html` (format inferred from extension).
 
 See [Exit Codes](docs/reference/exit-codes.md) for CI/CD usage examples.
 
+## GitHub Action
+
+Run KubeVigil manifest scans in CI without a manual install step:
+
+```yaml
+- uses: stribog-cloud/KubeVigil@main # pin to a release tag once available
+  with:
+    files: ./k8s/
+    fail-on: critical
+```
+
+Downloads and checksum-verifies the release binary, scans, and writes a
+SARIF report by default. See [GitHub Action](docs/integrations/github-action.md)
+for inputs, outputs, and a Code Scanning upload example.
+
 ## Roadmap
 
 - [x] **Phase 1** — Core engine, 25 workload checks, text/JSON output, CLI
@@ -210,7 +225,7 @@ See [Exit Codes](docs/reference/exit-codes.md) for CI/CD usage examples.
 - [x] **Phase 4a** — Distribution (GoReleaser, GitHub Releases, Homebrew, Krew, Docker, install script)
 - [x] **Phase 4b** — MCP Server (AI assistant integration — scan, query, remediate via Claude/Cursor/Copilot)
 - [ ] **Phase 5** — Feedback, hardening & polish (real-world testing, severity calibration, MCP polish, bug fixes)
-- [ ] **Phase 6** — CI/CD integration (GitHub Action, baseline management, PR decoration)
+- [ ] **Phase 6** — CI/CD integration ([x] GitHub Action; baseline management, PR decoration pending)
 - [ ] **Phase 7** — Runtime (admission webhooks, operator mode, Prometheus metrics)
 - [ ] **Phase 8** — Enterprise (multi-cluster, trend analysis, Rego policies)
 - [ ] **Phase 9** — Ecosystem (SDK, plugin system, Helm chart)
