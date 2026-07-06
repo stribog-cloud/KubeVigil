@@ -15,9 +15,15 @@ import (
 // redirect a workload's calls to the Kubernetes API (or another trusted
 // internal service) to an attacker-controlled IP.
 var protectedHostnames = []string{
+	// Kubernetes control-plane service.
 	"kubernetes.default",
 	"kubernetes.default.svc",
 	"kubernetes.default.svc.cluster.local",
+	// Cloud instance-metadata endpoints reachable by hostname. Redirecting these
+	// via hostAliases is the same credential-theft/AitM vector as overriding the
+	// API service (AWS/Azure IMDS is an IP, but GCP resolves by name).
+	"metadata.google.internal",
+	"metadata",
 }
 
 // HostAliasesInjectionChecker detects pods whose hostAliases override
@@ -106,12 +112,15 @@ func (c *HostAliasesInjectionChecker) Run(ctx context.Context, resources *checke
 // ".cluster.local".
 func matchedProtectedHostname(hostnames []string) string {
 	for _, h := range hostnames {
+		// DNS names are case-insensitive, so compare case-folded — otherwise
+		// `Kubernetes.Default` would bypass the check.
+		lower := strings.ToLower(strings.TrimSpace(h))
 		for _, protected := range protectedHostnames {
-			if h == protected {
+			if lower == protected {
 				return h
 			}
 		}
-		if strings.HasSuffix(h, ".cluster.local") {
+		if strings.HasSuffix(lower, ".cluster.local") {
 			return h
 		}
 	}

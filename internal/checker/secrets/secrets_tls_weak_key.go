@@ -102,25 +102,12 @@ func (c *TLSWeakKeyChecker) Run(ctx context.Context, cache *checker.ResourceCach
 // unparsable certificate), since a checker must never fail a scan over a
 // single malformed resource.
 func parseTLSLeafCertificate(obj *unstructured.Unstructured) (*x509.Certificate, bool) {
-	dataRaw, found := obj.Object["data"]
-	if !found {
-		return nil, false
-	}
-	dataMap, ok := dataRaw.(map[string]interface{})
+	pemBytes, ok := tlsCertPEM(obj)
 	if !ok {
 		return nil, false
 	}
-	encoded, ok := dataMap["tls.crt"].(string)
-	if !ok || encoded == "" {
-		return nil, false
-	}
 
-	decoded, err := base64.StdEncoding.DecodeString(encoded)
-	if err != nil {
-		return nil, false
-	}
-
-	block, _ := pem.Decode(decoded)
+	block, _ := pem.Decode(pemBytes)
 	if block == nil {
 		return nil, false
 	}
@@ -131,6 +118,26 @@ func parseTLSLeafCertificate(obj *unstructured.Unstructured) (*x509.Certificate,
 	}
 
 	return cert, true
+}
+
+// tlsCertPEM returns the PEM bytes of the Secret's tls.crt from either the
+// base64-encoded `data` field (how the API server stores it) or the plaintext
+// `stringData` field (how hand-authored manifests commonly write it). Reading
+// only `data` missed the stringData form entirely in manifest mode.
+func tlsCertPEM(obj *unstructured.Unstructured) ([]byte, bool) {
+	if dataMap, ok := obj.Object["data"].(map[string]interface{}); ok {
+		if encoded, ok := dataMap["tls.crt"].(string); ok && encoded != "" {
+			if decoded, err := base64.StdEncoding.DecodeString(encoded); err == nil {
+				return decoded, true
+			}
+		}
+	}
+	if sdMap, ok := obj.Object["stringData"].(map[string]interface{}); ok {
+		if plain, ok := sdMap["tls.crt"].(string); ok && plain != "" {
+			return []byte(plain), true
+		}
+	}
+	return nil, false
 }
 
 // evaluateTLSKeyStrength inspects the certificate's public key and returns a
@@ -148,9 +155,16 @@ func evaluateTLSKeyStrength(cert *x509.Certificate, obj *unstructured.Unstructur
 		if bits >= minTLSRSAKeyBits {
 			return checker.Finding{}, false
 		}
+		// Tier severity by actual weakness: an RSA key under 1024 bits is
+		// factorable with commodity hardware today, so it is High rather than
+		// the Medium a 1024–2047-bit key warrants.
+		severity := checker.SeverityMedium
+		if bits < 1024 {
+			severity = checker.SeverityHigh
+		}
 		return checker.Finding{
 			Checker:   "secrets-tls-weak-key",
-			Severity:  checker.SeverityMedium,
+			Severity:  severity,
 			Resource:  name,
 			Namespace: namespace,
 			Kind:      kind,
