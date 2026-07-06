@@ -245,6 +245,57 @@ Total: 4 policies
 
 ---
 
+### `kubevigil webhook`
+
+Run KubeVigil as a Kubernetes `ValidatingAdmissionWebhook`. Scans each admitted object with the same built-in checks and custom CEL policies as `scan`, denying admission for findings at or above `--fail-on` severity and surfacing the rest as admission warnings. See [Admission Webhook](../integrations/admission-webhook.md) for the full guide and `deploy/webhook/` for the deployment manifests.
+
+```bash
+kubevigil webhook [flags]
+```
+
+Requires a TLS serving certificate -- the Kubernetes API server only calls webhooks over HTTPS. The command blocks, serving until it receives `SIGINT`/`SIGTERM`, at which point it shuts down gracefully.
+
+#### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--addr` | `:8443` | Listen address |
+| `--tls-cert` | | Path to the PEM TLS serving certificate (required) |
+| `--tls-key` | | Path to the PEM TLS private key (required) |
+| `--path` | `/validate` | URL path for admission requests |
+| `--fail-on` | `high` | Minimum severity that denies admission (`info`, `low`, `medium`, `high`, `critical`) |
+| `--scan-timeout` | `5s` | Per-object scan timeout |
+
+`--config` from the [global flags](#global-flags) is also honored, so the webhook can load the same `.kubevigil.yaml` (including `customPolicies:`) used by `scan` and `fix`. Unlike `scan`, there is no `--policy-file` flag -- custom policies must come from the loaded config file.
+
+A `/healthz` endpoint (unauthenticated `GET`, returns `200 ok`) is always served alongside `--path` on the same listener; it is not configurable.
+
+#### Examples
+
+```bash
+# Serve on the default address and path, denying High and Critical findings
+kubevigil webhook --tls-cert=/tls/tls.crt --tls-key=/tls/tls.key
+
+# Deny only Critical findings while rolling out
+kubevigil webhook --tls-cert=/tls/tls.crt --tls-key=/tls/tls.key --fail-on=critical
+
+# Custom listen address, path, and a longer per-object scan budget
+kubevigil webhook --addr=:9443 --path=/admit --scan-timeout=10s \
+  --tls-cert=/tls/tls.crt --tls-key=/tls/tls.key
+```
+
+#### Exit Codes
+
+Unlike `scan` and `fix`, `webhook` is a long-running server, so its exit codes reflect startup and shutdown rather than findings:
+
+| Code | Meaning |
+|------|---------|
+| `0` | Graceful shutdown after `SIGINT`/`SIGTERM` |
+| `2` | Server error (e.g. the underlying HTTPS listener failed for a reason other than a graceful shutdown) |
+| `3` | Configuration error: invalid `--fail-on`, a config or custom-policy load failure, or missing/unreadable `--tls-cert`/`--tls-key` |
+
+---
+
 ### `kubevigil mcp-server`
 
 Launch the KubeVigil Model Context Protocol (MCP) server over stdin/stdout, so AI assistants (Claude Desktop, Cursor, VS Code, Claude Code) can scan clusters, query findings, and get remediation guidance through natural conversation.

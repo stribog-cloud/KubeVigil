@@ -6,8 +6,8 @@ type: project/master-reference
 status: governing-reference
 tags: [charter, governance, kubevigil, k8s, security]
 project: kubevigil
-version: "1.2.0"
-revision: 3
+version: "1.3.0"
+revision: 4
 last_updated: 2026-07-06
 parent_moc: "[[MOC - KubeVigil Governance]]"
 ---
@@ -25,7 +25,7 @@ parent_moc: "[[MOC - KubeVigil Governance]]"
 | Source of truth | This document + `docs/governance/`; code implements contracts |
 | Language | Go 1.25+ |
 | Delivery | Tagged releases (GoReleaser), Homebrew, Krew, container |
-| Current phase | Phase 6 complete — v1.1.0 (CEL custom policies, baseline/drift) |
+| Current phase | Phase 7 complete — v1.2.0 (validating admission webhook) |
 | Pinned charter | See `docs/governance/Charter-Compliance-Annex.md` |
 
 KubeVigil scans live clusters or static YAML manifests, maps findings to CIS/MITRE/NSA frameworks, and optionally patches manifests with comment-preserving YAML edits. It never mutates live cluster state.
