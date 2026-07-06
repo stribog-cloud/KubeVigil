@@ -1,0 +1,138 @@
+name: E2E
+
+# Runs the test/e2e/ suite: 93 Bats tests covering the E2E automation
+# scripts (setup-clusters, deploy-scenarios, run-scan, teardown-clusters,
+# full-suite, cross-validate, fix) plus a real Kind cluster smoke run of
+# full-suite.sh against the scenario manifests. This is intentionally kept
+# off the pull_request/push triggers used by ci.yml — Kind cluster
+# provisioning plus a live scan is too slow and too flaky (Docker-in-Docker
+# on shared runners) to gate every PR. It runs nightly and on demand instead.
+#
+# See test/e2e/README.md for the full suite documentation.
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    # 01:17 UTC nightly. Off-the-hour minute to avoid the top-of-hour
+    # GitHub Actions scheduler stampede.
+    - cron: '17 1 * * *'
+  workflow_dispatch:
+    inputs:
+      topology:
+        description: 'Kind cluster topology for the live-cluster phase'
+        required: false
+        default: single
+        type: choice
+        options:
+          - single
+          - multi
+          - ha
+
+concurrency:
+  group: e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: E2E (Bats + Kind)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      TOPOLOGY: ${{ github.event.inputs.topology || 'single' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.25.11'
+
+      - name: Add Go bin to PATH
+        run: echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Install kind
+        run: go install sigs.k8s.io/kind@v0.32.0
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+        with:
+          version: 'v1.32.0'
+
+      - name: Install bats-core
+        run: npm install -g bats@1.13.0
+
+      - name: Verify prerequisites
+        run: |
+          go version
+          kind version
+          kubectl version --client
+          bats --version
+          docker version --format 'Docker server: {{.Server.Version}}'
+
+      - name: Build kubevigil binary
+        run: make build
+
+      - name: Run Bats E2E test suite (93 tests)
+        run: |
+          set -o pipefail
+          bats --verbose-run --recursive test/e2e/scripts/tests/ 2>&1 | tee bats-output.log
+
+      - name: Run live Kind cluster E2E (${{ env.TOPOLOGY }} topology)
+        run: |
+          set +e
+          ./test/e2e/scripts/full-suite.sh --topology "${TOPOLOGY}" --skip-cross-validate --yes
+          code=$?
+          set -e
+          echo "full-suite.sh exited with code ${code}"
+          # 0 = clean scan, 1 = critical findings detected. Both are expected:
+          # the scenario manifests are intentionally vulnerable, so finding
+          # criticals is the suite working correctly, not a failure. Any
+          # other code means cluster setup/deploy/teardown itself broke.
+          if [ "${code}" -ne 0 ] && [ "${code}" -ne 1 ]; then
+            echo "::error::full-suite.sh failed with unexpected exit code ${code} (expected 0 or 1)"
+            exit 1
+          fi
+
+      - name: Verify live scan produced findings
+        run: |
+          json_file="test/e2e/results/scan-results.json"
+          if [ ! -f "${json_file}" ]; then
+            echo "::error::Expected scan results file not found: ${json_file}"
+            exit 1
+          fi
+          count=$(jq '.scan_result.findings | length' "${json_file}")
+          echo "Live-cluster findings: ${count}"
+          if [ "${count}" -lt 1 ]; then
+            echo "::error::Expected at least 1 finding from the intentionally vulnerable scenarios, got ${count}"
+            exit 1
+          fi
+
+      - name: Collect diagnostics on failure
+        if: failure()
+        run: |
+          mkdir -p diagnostics
+          cp -r test/e2e/results diagnostics/scan-results 2>/dev/null || true
+          cp bats-output.log diagnostics/ 2>/dev/null || true
+          context="kind-kubevigil-e2e-${TOPOLOGY}"
+          kubectl --context "${context}" get all --all-namespaces > diagnostics/kubectl-get-all.txt 2>&1 || true
+          kubectl --context "${context}" get events --all-namespaces > diagnostics/kubectl-events.txt 2>&1 || true
+          kubectl --context "${context}" describe nodes > diagnostics/kubectl-describe-nodes.txt 2>&1 || true
+          kind export logs diagnostics/kind-logs --name "kubevigil-e2e-${TOPOLOGY}" 2>&1 || true
+
+      - name: Upload diagnostics artifact
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: diagnostics
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Teardown Kind clusters (safety net)
+        if: always()
+        run: ./test/e2e/scripts/teardown-clusters.sh --all --yes
