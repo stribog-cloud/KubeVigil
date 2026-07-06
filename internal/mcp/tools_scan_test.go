@@ -2,6 +2,9 @@ package mcp
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +13,18 @@ import (
 	"github.com/stribog-cloud/kubevigil/internal/checker"
 	"github.com/stribog-cloud/kubevigil/internal/config"
 )
+
+// writeTestKubeconfig writes a minimal kubeconfig pointing at the given
+// server URL, mirroring the pattern used by internal/k8s's client tests.
+func writeTestKubeconfig(t *testing.T, dir, server string) string {
+	t.Helper()
+	content := fmt.Sprintf("apiVersion: v1\nkind: Config\nclusters:\n- cluster:\n    server: %s\n    insecure-skip-tls-verify: true\n  name: test-cluster\ncontexts:\n- context:\n    cluster: test-cluster\n    user: test-user\n  name: test-context\ncurrent-context: test-context\nusers:\n- name: test-user\n  user:\n    token: fake-token\n", server)
+	path := filepath.Join(dir, "config")
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatalf("writing kubeconfig: %v", err)
+	}
+	return path
+}
 
 func TestBuildSummary(t *testing.T) {
 	findings := sampleFindings()
@@ -510,5 +525,106 @@ func TestHandleScanClusterKubeconfigSymlink(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "symlink") {
 		t.Errorf("error should mention symlink, got: %v", err)
+	}
+}
+
+func TestHandleScanCluster_ConnectingError(t *testing.T) {
+	kv := testKVEmpty()
+	dir := t.TempDir()
+	badPath := filepath.Join(dir, "bad-config")
+	if err := os.WriteFile(badPath, []byte("not valid{{{"), 0o600); err != nil {
+		t.Fatalf("writing bad kubeconfig: %v", err)
+	}
+
+	_, _, err := kv.handleScanCluster(context.Background(), nil, ScanClusterInput{
+		Kubeconfig: badPath,
+	})
+	if err == nil {
+		t.Fatal("expected error connecting to cluster")
+	}
+	if !strings.Contains(err.Error(), "scan_cluster: connecting to cluster") {
+		t.Errorf("error should mention connecting to cluster, got: %v", err)
+	}
+}
+
+func TestHandleScanCluster_Success(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/version" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"gitVersion":"v1.30.2","major":"1","minor":"30"}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	kubeconfigPath := writeTestKubeconfig(t, dir, srv.URL)
+
+	kv := testKVEmpty()
+	_, summary, err := kv.handleScanCluster(context.Background(), nil, ScanClusterInput{
+		Kubeconfig: kubeconfigPath,
+	})
+	if err != nil {
+		t.Fatalf("handleScanCluster: %v", err)
+	}
+	if summary.ServerVersion != "v1.30.2" {
+		t.Errorf("ServerVersion = %q, want v1.30.2", summary.ServerVersion)
+	}
+	if kv.LastResult() == nil {
+		t.Error("expected lastResult to be populated after a successful scan")
+	}
+}
+
+func TestHandleScanCluster_SeverityAndFrameworkFilterApplied(t *testing.T) {
+	// Namespace filtering happens post-scan via applyFilters; verify that
+	// a scan_cluster call with overrides does not error and still
+	// returns a summary (namespace filtering is exercised more directly
+	// in TestApplyFiltersNamespace).
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/version" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"gitVersion":"v1.31.0"}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	kubeconfigPath := writeTestKubeconfig(t, dir, srv.URL)
+
+	kv := testKVEmpty()
+	_, summary, err := kv.handleScanCluster(context.Background(), nil, ScanClusterInput{
+		Kubeconfig: kubeconfigPath,
+		Namespace:  "payments",
+		Severity:   "high",
+		Framework:  "cis",
+	})
+	if err != nil {
+		t.Fatalf("handleScanCluster: %v", err)
+	}
+	if summary.ServerVersion != "v1.31.0" {
+		t.Errorf("ServerVersion = %q, want v1.31.0", summary.ServerVersion)
+	}
+}
+
+func TestHandleScanManifests_ScanError(t *testing.T) {
+	root := t.TempDir()
+	badFile := filepath.Join(root, "malformed.yaml")
+	content := "this is not valid yaml: [\n  unclosed bracket\n"
+	if err := os.WriteFile(badFile, []byte(content), 0o644); err != nil {
+		t.Fatalf("writing malformed manifest: %v", err)
+	}
+
+	kv := testKVWithRoot(root)
+	_, _, err := kv.handleScanManifests(context.Background(), nil, ScanManifestsInput{
+		Path: badFile,
+	})
+	if err == nil {
+		t.Fatal("expected error for malformed manifest")
+	}
+	if !strings.Contains(err.Error(), "scan_manifests: scanning path") {
+		t.Errorf("error should mention scanning path, got: %v", err)
 	}
 }

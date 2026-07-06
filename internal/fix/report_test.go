@@ -497,6 +497,51 @@ func TestReportSkipReasonLabel_AllCases(t *testing.T) {
 	}
 }
 
+func TestGenerateFixReport_SkippedSection_ExcludesManualOnly(t *testing.T) {
+	// When skipReasons contains both "manual_only" and another reason, the
+	// Skipped Findings section must render (due to the non-manual reason),
+	// but the loop that builds per-reason subsections must skip the
+	// "manual_only" key entirely — that finding surfaces only in the
+	// separate Manual Remediation section.
+	plan := &Plan{
+		Files: map[string]*FilePlan{
+			"/app/deploy.yaml": {Path: "/app/deploy.yaml"},
+		},
+		Diffs: map[string]string{},
+		Summary: Summary{
+			FilesScanned:  1,
+			TotalFindings: 2,
+			Skipped:       2,
+			ByRisk:        map[checker.FixSafety]int{},
+			SkipReasons:   map[string]int{"risk_level": 1, "manual_only": 1},
+			Results: []Result{
+				{FilePath: "/app/deploy.yaml", Resource: "web-app", Namespace: "default", Kind: "Deployment", CheckID: "resource-limits-missing", Safety: checker.FixPotentiallyBreaking, Description: "Adds resource limits.", Applied: false, SkipReason: "risk_level"},
+				{FilePath: "/app/deploy.yaml", Resource: "web-app", Namespace: "default", Kind: "Deployment", CheckID: "rbac-wildcard", Safety: checker.FixManualOnly, Description: "Restructure RBAC bindings.", Applied: false, SkipReason: "manual_only"},
+			},
+		},
+	}
+	opts := ReportOptions{
+		Timestamp: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		RiskLevel: RiskLevelSafe,
+	}
+
+	report, err := GenerateFixReport(plan, &opts)
+	require.NoError(t, err)
+	content := string(report)
+
+	// Skipped Findings section appears (driven by risk_level).
+	assert.Contains(t, content, "## Skipped Findings")
+	assert.Contains(t, content, "Risk level exceeded")
+
+	// manual_only must not get its own "### Manual only" subsection under
+	// Skipped Findings — it's filtered out of that loop entirely.
+	assert.NotContains(t, content, "### Manual only")
+
+	// The manual_only finding still surfaces via Manual Remediation instead.
+	assert.Contains(t, content, "## Manual Remediation")
+	assert.Contains(t, content, "rbac-wildcard")
+}
+
 func TestWriteFixReport_InvalidPath(t *testing.T) {
 	plan := testPlan()
 	opts := ReportOptions{

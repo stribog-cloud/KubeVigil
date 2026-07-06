@@ -417,6 +417,28 @@ func TestWriteHelmValues(t *testing.T) {
 	}
 }
 
+func TestWriteHelmValues_NilPlan(t *testing.T) {
+	// GenerateHelmValues(nil, ...) returns an error ("plan must not be nil"),
+	// which WriteHelmValues must wrap and return before ever touching the
+	// filesystem.
+	opts := DefaultHelmValuesOptions()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "security-values.yaml")
+
+	err := WriteHelmValues(nil, opts, path)
+	if err == nil {
+		t.Fatal("WriteHelmValues(nil, ...) should return error")
+	}
+	if !strings.Contains(err.Error(), "generating helm values") {
+		t.Errorf("expected 'generating helm values' error, got: %v", err)
+	}
+
+	// No file should have been written.
+	if _, statErr := os.Stat(path); !os.IsNotExist(statErr) {
+		t.Error("no file should be written when GenerateHelmValues fails")
+	}
+}
+
 func TestWriteHelmValues_InvalidPath(t *testing.T) {
 	plan := helmTestPlan("privileged")
 	opts := DefaultHelmValuesOptions()

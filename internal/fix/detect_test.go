@@ -453,6 +453,26 @@ metadata:
 			want: false,
 		},
 		{
+			name: "labels present but not a mapping (scalar)",
+			yaml: `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels: not-a-mapping
+`,
+			want: false,
+		},
+		{
+			name: "labels present but not a mapping (sequence)",
+			yaml: `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    - app
+    - web
+`,
+			want: false,
+		},
+		{
 			name: "managed-by Helm case insensitive",
 			yaml: `apiVersion: apps/v1
 kind: Deployment
@@ -521,5 +541,36 @@ func TestDetectHelmManaged_NilFilePlan(t *testing.T) {
 	result := DetectHelmManaged(plan)
 	if len(result) != 0 {
 		t.Fatalf("expected 0 Helm-managed files for nil FilePlan, got %d", len(result))
+	}
+}
+
+func TestHasHelmLabels_NilDocumentInSlice(t *testing.T) {
+	// A nil *Document mixed with a real, Helm-labeled document should be
+	// skipped without panicking, and detection should still succeed on the
+	// subsequent valid document.
+	validYAML := []byte(`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: Helm
+`)
+	validDocs, err := ParseDocuments(validYAML)
+	if err != nil {
+		t.Fatalf("ParseDocuments() error = %v", err)
+	}
+
+	docs := []*Document{nil, validDocs[0]}
+	got := hasHelmLabels(docs)
+	if !got {
+		t.Error("expected true when a valid Helm-labeled document follows a nil document")
+	}
+}
+
+func TestHasHelmLabels_DocumentWithNilNode(t *testing.T) {
+	// A *Document whose Node field is nil should be skipped without panicking.
+	docs := []*Document{{Node: nil}}
+	got := hasHelmLabels(docs)
+	if got {
+		t.Error("expected false for a document with nil Node")
 	}
 }
