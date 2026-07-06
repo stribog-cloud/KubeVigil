@@ -28,7 +28,7 @@ go install github.com/stribog-cloud/kubevigil/cmd/kubevigil@latest
 kubevigil version
 ```
 
-You should see a version string (for example `0.5.0`).
+You should see a version string (for example `1.0.0`).
 
 ## Step 2 — Pick a manifest
 

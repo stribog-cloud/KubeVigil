@@ -224,7 +224,7 @@ for inputs, outputs, and a Code Scanning upload example.
 - [x] **Phase 3** — Auto-remediation, 20 fixable checks, YAML round-trip, safety model
 - [x] **Phase 4a** — Distribution (GoReleaser, GitHub Releases, Homebrew, Krew, Docker, install script)
 - [x] **Phase 4b** — MCP Server (AI assistant integration — scan, query, remediate via Claude/Cursor/Copilot)
-- [ ] **Phase 5** — Feedback, hardening & polish (real-world testing, severity calibration, MCP polish, bug fixes)
+- [x] **Phase 5** — v1.0.0 hardening & release engineering (Windows fix, SBOM/signing/provenance, e2e in CI; severity calibration ongoing)
 - [ ] **Phase 6** — CI/CD integration ([x] GitHub Action; baseline management, PR decoration pending)
 - [ ] **Phase 7** — Runtime (admission webhooks, operator mode, Prometheus metrics)
 - [ ] **Phase 8** — Enterprise (multi-cluster, trend analysis, Rego policies)
