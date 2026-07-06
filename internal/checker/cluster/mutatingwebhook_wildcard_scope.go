@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -88,7 +89,6 @@ func (c *MutatingWebhookWildcardScopeChecker) Run(ctx context.Context, resources
 					"for scoping admission webhooks with namespaceSelector and rule-level resource restrictions.",
 				FieldPath: fmt.Sprintf(".webhooks[%d].rules[%d]", whIdx, ruleIdx),
 			})
-			break // one finding per webhook configuration
 		}
 	}
 
@@ -107,7 +107,22 @@ func hasScopedNamespaceSelector(webhook map[string]interface{}) bool {
 		return true
 	}
 	exprs, _, _ := unstructured.NestedSlice(sel, "matchExpressions")
-	return len(exprs) > 0
+	for _, e := range exprs {
+		em, ok := e.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		key, _, _ := unstructured.NestedString(em, "key")
+		op, _, _ := unstructured.NestedString(em, "operator")
+		// Every namespace carries the kubernetes.io/metadata.name label (since
+		// K8s 1.21), so an "Exists" match on it selects ALL namespaces and does
+		// not actually scope the webhook — treat it as no scoping.
+		if key == "kubernetes.io/metadata.name" && op == "Exists" {
+			continue
+		}
+		return true
+	}
+	return false
 }
 
 // findWildcardRule returns the index of the first rule in the webhook that
@@ -129,7 +144,9 @@ func findWildcardRule(webhook map[string]interface{}) (int, bool) {
 	return 0, false
 }
 
-// isOnlyWildcard returns true if the slice contains exactly one element: "*".
+// isOnlyWildcard reports whether a rule value list effectively grants the
+// wildcard. A list that contains "*" is equivalent to `["*"]` regardless of any
+// additional entries, so `["*", "pods"]` is just as broad as `["*"]`.
 func isOnlyWildcard(vals []string) bool {
-	return len(vals) == 1 && vals[0] == "*"
+	return slices.Contains(vals, "*")
 }

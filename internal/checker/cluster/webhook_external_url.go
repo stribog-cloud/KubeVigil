@@ -88,7 +88,6 @@ func (c *WebhookExternalURLChecker) Run(ctx context.Context, resources *checker.
 					FieldPath:    fmt.Sprintf(".webhooks[%d].clientConfig.url", idx),
 					CurrentValue: url,
 				})
-				break // one finding per webhook configuration
 			}
 		}
 	}
