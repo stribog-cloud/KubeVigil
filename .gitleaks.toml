@@ -10,5 +10,10 @@ title = "KubeVigil gitleaks config"
     '''test/fixtures/.*''',
     '''test/e2e/.*''',
     '''test/benchdata/.*''',
-    '''internal/checker/secrets/helpers_test\.go''',
+    # All *_test.go files in internal/checker/secrets/ (helpers_test.go,
+    # secrets_hardcoded_manifests_test.go, secrets_in_configmap_test.go, etc.)
+    # contain dummy secret/PEM literals used to exercise the secrets checkers.
+    # Scoped to test files only -- production code in this package is never
+    # allowlisted.
+    '''internal/checker/secrets/.*_test\.go''',
   ]

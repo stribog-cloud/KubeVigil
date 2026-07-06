@@ -8,8 +8,8 @@ KubeVigil uses distinct exit codes for the `scan` and `fix` commands to communic
 |------|---------|
 | `0` | Clean -- no findings at or above the `--fail-on` threshold |
 | `1` | Findings exist at or above the `--fail-on` severity |
-| `2` | Scan error (invalid path, cluster unreachable, API error) |
-| `3` | Configuration error (invalid config file, bad flag values) |
+| `2` | Scan error -- invalid path, cluster unreachable, API error, or invalid flag values (e.g. bad `--severity`/`--output`) |
+| `3` | Configuration error -- the config file failed to load (invalid or malformed `.kubevigil.yaml`) |
 
 ## Fix Exit Codes
 

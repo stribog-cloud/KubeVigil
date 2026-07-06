@@ -85,6 +85,7 @@ kubevigil scan --framework mitre -o report.html
 
 | Technique ID | Technique Name | KubeVigil Check(s) |
 |-------------|----------------|---------------------|
+| T1006 | Direct Volume Access | `host-path-volumes` |
 | T1530 | Data from Cloud Storage | `rbac-log-access`, `pvc-no-encryption`, `pvc-reclaim-retain` |
 
 ### Exfiltration
