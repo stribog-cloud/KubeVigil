@@ -260,6 +260,20 @@ var knownGVRs = map[string]schema.GroupVersionResource{
 
 	// Deprecated (Phase 2 — detect lingering resources)
 	"policy/v1beta1/PodSecurityPolicy": {Group: "policy", Version: "v1beta1", Resource: "podsecuritypolicies"},
+
+	// Gateway API (v1.3.0 — Batch 2 Network)
+	"gateway.networking.k8s.io/v1/Gateway":   {Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gateways"},
+	"gateway.networking.k8s.io/v1/HTTPRoute": {Group: "gateway.networking.k8s.io", Version: "v1", Resource: "httproutes"},
+
+	// Admission control + API aggregation (v1.3.0 — Batch 3 ClusterConfig)
+	"admissionregistration.k8s.io/v1/ValidatingWebhookConfiguration":   {Group: "admissionregistration.k8s.io", Version: "v1", Resource: "validatingwebhookconfigurations"},
+	"admissionregistration.k8s.io/v1/MutatingWebhookConfiguration":     {Group: "admissionregistration.k8s.io", Version: "v1", Resource: "mutatingwebhookconfigurations"},
+	"admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy":        {Group: "admissionregistration.k8s.io", Version: "v1", Resource: "validatingadmissionpolicies"},
+	"admissionregistration.k8s.io/v1/ValidatingAdmissionPolicyBinding": {Group: "admissionregistration.k8s.io", Version: "v1", Resource: "validatingadmissionpolicybindings"},
+	"apiregistration.k8s.io/v1/APIService":                             {Group: "apiregistration.k8s.io", Version: "v1", Resource: "apiservices"},
+
+	// Volume snapshots (v1.3.0 — Batch 5 Storage)
+	"snapshot.storage.k8s.io/v1/VolumeSnapshotClass": {Group: "snapshot.storage.k8s.io", Version: "v1", Resource: "volumesnapshotclasses"},
 }
 
 // AllKnownGVRs returns every GroupVersionResource KubeVigil recognizes,
