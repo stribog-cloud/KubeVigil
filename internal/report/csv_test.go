@@ -210,9 +210,9 @@ func TestCSVSafe_FormulaInjection(t *testing.T) {
 		{"@SUM(A1:A9)", "'@SUM(A1:A9)"},
 		{"\tinjected", "'\tinjected"},
 		{"\rinjected", "'\rinjected"},
-		{"default", "default"},       // normal value untouched
+		{"default", "default"}, // normal value untouched
 		{"nginx:latest", "nginx:latest"},
-		{"", ""},                      // empty untouched
+		{"", ""}, // empty untouched
 	}
 	for _, tc := range cases {
 		if got := csvSafe(tc.in); got != tc.want {
