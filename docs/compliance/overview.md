@@ -6,9 +6,9 @@ KubeVigil maps all 110 security checks to three industry-standard compliance fra
 
 | Framework | Version | Controls Mapped | Description |
 |-----------|---------|-----------------|-------------|
-| [CIS Kubernetes Benchmark](cis.md) | v1.8 | 27 | Industry-standard hardening guide from the Center for Internet Security |
-| [MITRE ATT&CK for Containers](mitre.md) | v14 | 30 | Adversarial tactics and techniques for container environments |
-| [NSA/CISA Kubernetes Hardening Guide](nsa.md) | v1.2 | 16 | US government hardening guidance for Kubernetes deployments |
+| [CIS Kubernetes Benchmark](cis.md) | v1.8 | 35 | Industry-standard hardening guide from the Center for Internet Security |
+| [MITRE ATT&CK for Containers](mitre.md) | v14 | 29 | Adversarial tactics and techniques for container environments |
+| [NSA/CISA Kubernetes Hardening Guide](nsa.md) | v1.2 | 15 | US government hardening guidance for Kubernetes deployments |
 
 ## Filtering by Framework
 

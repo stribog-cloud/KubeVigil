@@ -119,7 +119,7 @@ type Config struct {
 	// DryRun forces dry-run mode even if Apply is true. This is redundant with
 	// the default behavior but allows explicit opt-in for clarity.
 	DryRun bool `json:"dry_run"`
-	// Verify re-scans files after applying fixes to confirm zero findings.
+	// Verify re-scans files after applying fixes to confirm zero fixable findings remain.
 	Verify bool `json:"verify"`
 	// Yes bypasses interactive confirmation prompts.
 	Yes bool `json:"yes"`

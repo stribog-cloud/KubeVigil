@@ -193,6 +193,42 @@ Output includes:
 
 ---
 
+### `kubevigil mcp-server`
+
+Launch the KubeVigil Model Context Protocol (MCP) server over stdin/stdout, so AI assistants (Claude Desktop, Cursor, VS Code, Claude Code) can scan clusters, query findings, and get remediation guidance through natural conversation.
+
+```bash
+kubevigil mcp-server [flags]
+```
+
+#### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--transport` | `stdio` | Transport type (currently only `stdio` is supported) |
+| `--workspace-root` | | Root directory for manifest scans (default: `KUBEVIGIL_WORKSPACE_ROOT` env var or the process working directory) |
+
+`--config` from the [global flags](#global-flags) is also honored, so the MCP server can load the same `.kubevigil.yaml` used by `scan` and `fix`.
+
+If neither `--workspace-root` nor `KUBEVIGIL_WORKSPACE_ROOT` is set, the server falls back to its current working directory and logs a warning — set one of them explicitly for narrow path confinement of manifest scans.
+
+#### Examples
+
+```bash
+# Start the MCP server with defaults (stdio transport, cwd as workspace root)
+kubevigil mcp-server
+
+# Confine manifest scans to a specific workspace directory
+kubevigil mcp-server --workspace-root /path/to/manifests
+
+# Use a custom configuration file
+kubevigil mcp-server --config /path/to/.kubevigil.yaml
+```
+
+See [MCP Setup](../mcp-setup.md) for full AI assistant integration instructions, including Claude Desktop, Cursor, and VS Code configuration.
+
+---
+
 ### `kubevigil version`
 
 Print version information including the version string, git commit hash, and build date.
