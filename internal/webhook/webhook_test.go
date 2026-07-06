@@ -243,3 +243,103 @@ func TestReview_ScanTimeoutBranch(t *testing.T) {
 		t.Fatalf("expected allow+1 warning with timeout set: %+v", resp)
 	}
 }
+
+// slowScanner blocks until its context is cancelled, simulating a runaway scan.
+type slowScanner struct{}
+
+func (slowScanner) ScanObject(ctx context.Context, _ unstructured.Unstructured) (*checker.ScanResult, error) {
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+
+func TestReview_DeniesAmplificationObject(t *testing.T) {
+	// A Pod padded with far more than maxContainers must be DENIED at the source,
+	// before any scan runs — closing the fail-open-on-demand bypass.
+	containers := make([]any, maxContainers+50)
+	for i := range containers {
+		containers[i] = map[string]any{"name": "c", "image": "nginx"}
+	}
+	h := &Handler{Scanner: &fakeScanner{}, FailOn: checker.SeverityHigh}
+	resp := post(t, h, reviewFor(t, map[string]any{
+		"apiVersion": "v1", "kind": "Pod",
+		"metadata": map[string]any{"name": "bomb", "namespace": "default"},
+		"spec":     map[string]any{"containers": containers},
+	}))
+	if resp.Allowed {
+		t.Fatal("amplification-shaped object must be denied, not scanned")
+	}
+	if resp.Result == nil || resp.Result.Code != http.StatusForbidden {
+		t.Errorf("expected 403, got %+v", resp.Result)
+	}
+}
+
+func TestReview_TimeoutFailsOpen(t *testing.T) {
+	// A scan that never returns must not block the handler: it fails open after
+	// ScanTimeout so the API server is not held up.
+	h := &Handler{Scanner: slowScanner{}, FailOn: checker.SeverityHigh, ScanTimeout: 50 * time.Millisecond}
+	resp := post(t, h, reviewFor(t, samplePod))
+	if !resp.Allowed {
+		t.Fatal("a scan timeout must fail open (allow), not block")
+	}
+	if len(resp.Warnings) == 0 {
+		t.Error("timeout should surface a warning")
+	}
+}
+
+func TestReview_CapsReportedFindings(t *testing.T) {
+	// Many denials must be truncated with a summary line, bounding response size.
+	findings := make([]checker.Finding, maxReportedFindings+20)
+	for i := range findings {
+		findings[i] = checker.Finding{Checker: "c", Severity: checker.SeverityHigh, Resource: "web", Message: "m"}
+	}
+	h := &Handler{Scanner: &fakeScanner{findings: findings}, FailOn: checker.SeverityHigh}
+	resp := post(t, h, reviewFor(t, samplePod))
+	if resp.Allowed {
+		t.Fatal("should deny")
+	}
+	// The message lists at most maxReportedFindings + 1 truncation line.
+	lines := bytes.Count([]byte(resp.Result.Message), []byte("\n"))
+	if lines > maxReportedFindings+2 {
+		t.Errorf("denial message not truncated: %d lines", lines)
+	}
+	if !bytes.Contains([]byte(resp.Result.Message), []byte("truncated")) {
+		t.Error("expected a truncation marker")
+	}
+}
+
+func TestContainerCount_WorkloadAndCronJob(t *testing.T) {
+	// Deployment template.
+	dep := map[string]any{"spec": map[string]any{"template": map[string]any{"spec": map[string]any{
+		"containers":     []any{map[string]any{}, map[string]any{}},
+		"initContainers": []any{map[string]any{}},
+	}}}}
+	if got := containerCount(dep); got != 3 {
+		t.Errorf("deployment containerCount = %d, want 3", got)
+	}
+	// CronJob nests deeper.
+	cj := map[string]any{"spec": map[string]any{"jobTemplate": map[string]any{"spec": map[string]any{
+		"template": map[string]any{"spec": map[string]any{"containers": []any{map[string]any{}}}},
+	}}}}
+	if got := containerCount(cj); got != 1 {
+		t.Errorf("cronjob containerCount = %d, want 1", got)
+	}
+	// No spec.
+	if got := containerCount(map[string]any{"kind": "ConfigMap"}); got != 0 {
+		t.Errorf("no-spec containerCount = %d, want 0", got)
+	}
+}
+
+func TestServeHTTP_AcceptsContentTypeWithParams(t *testing.T) {
+	h := &Handler{Scanner: &fakeScanner{}, FailOn: checker.SeverityHigh}
+	body, _ := json.Marshal(map[string]any{
+		"apiVersion": "admission.k8s.io/v1", "kind": "AdmissionReview",
+		"request": map[string]any{"uid": "u", "object": samplePod},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/validate", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Errorf("content-type with charset should be accepted, got %d", rr.Code)
+	}
+}

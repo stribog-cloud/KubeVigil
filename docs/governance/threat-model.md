@@ -6,8 +6,8 @@ type: project/threat-model
 status: governing-reference
 tags: [charter, governance, kubevigil, security, stride]
 project: kubevigil
-version: "1.6.0"
-revision: 7
+version: "1.7.0"
+revision: 8
 last_updated: 2026-07-06
 parent_moc: "[[MOC - KubeVigil Governance]]"
 owners: [maintainers (@msambare)]
@@ -51,7 +51,7 @@ owners: [maintainers (@msambare)]
 | Information disclosure | Secrets in scan output | `.gitignore` scan-results; operator redaction |
 | Information disclosure (MCP egress) | Prompt injection requests `scan_manifests` on `~/.ssh/id_rsa` or repo secrets | **MCP-only** workspace confinement (`pathguard.OpenRegularWithinRoot` with `O_NOFOLLOW`, ADR-003); CLI `scan -f` is operator-trusted by design; kubeconfig symlink rejection; 10 MiB file cap |
 | Denial of service | YAML bomb / huge files | 10 MiB file limit, 10k document cap |
-| Denial of service (webhook) | Flood of admission requests / pathological object slows scans | TLS-only, 3 MiB body cap, per-object `--scan-timeout`, CEL cost limit; **fail-open** so a slow/unavailable webhook never blocks admissions; `failurePolicy: Ignore` default |
+| Denial of service (webhook) | Amplification: a sub-3 MiB object padded with tens of thousands of containers explodes into a huge scan → OOM/timeout → `failurePolicy: Ignore` silently admits it (a fail-open-on-demand bypass) | Container-count cap (`maxContainers=100`) DENIES amplification-shaped objects before scanning (fail-CLOSED, since the object itself is the attack); scan runs in a goroutine so `--scan-timeout` bounds the *handler* response time even against a non-preemptible checker; reported findings capped (`maxReportedFindings=50`) to bound response size; plus 3 MiB body cap, CEL cost limit. Verified: a 20k-container pod is denied in ~40 ms. Tests: `TestReview_DeniesAmplificationObject`, `TestReview_TimeoutFailsOpen`, `TestReview_CapsReportedFindings` |
 | Elevation of privilege | Write outside target dir | Backup path enforcement, no cluster apply |
 | Tampering (webhook bypass) | Attacker unable to admit a bad object tampers with the webhook to allow it | Webhook is read-only (never mutates objects); denial is advisory to the API server, which enforces it; TLS + `caBundle` pins the serving identity |
 
@@ -106,3 +106,4 @@ Update this model when adding: new MCP tools, network calls, cluster write paths
 | 1.4.0 | 5 | 2026-07-06 | Precise Windows ancestor-directory TOCTOU residual (red-team); noted Windows runtime CI coverage (windows-pathguard job). |
 | 1.5.0 | 6 | 2026-07-06 | Custom CEL policy evaluator residual (v1.1.0): side-effect-free, cost-limited, operator-authored — no code-exec/egress surface. |
 | 1.6.0 | 7 | 2026-07-06 | Admission webhook (v1.2.0): API-server trust boundary, DoS/tamper STRIDE rows, fail-open read-only residual, attack-surface entry. |
+| 1.7.0 | 8 | 2026-07-06 | Webhook amplification DoS bypass fixed (red-team blocker): container cap + goroutine-bounded timeout + finding cap. |
