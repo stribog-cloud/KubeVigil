@@ -40,6 +40,7 @@ owners: [maintainers (@msambare)]
 | Project profile (Charter §0.4) | public library / package (CLI binary + MCP server) |
 | Public release profile | See §8.1 below |
 | Project applicability matrix | `docs/governance/Project-Applicability-Matrix.md` |
+| Release evidence (v1.2.0) | `docs/governance/Release-Evidence-v1.2.0.md` |
 | Release evidence (v1.1.0) | `docs/governance/Release-Evidence-v1.1.0.md` |
 | Release evidence (v1.0.0) | `docs/governance/Release-Evidence-v1.0.0.md` |
 | Release evidence (v0.5.0) | `docs/governance/Release-Evidence-v0.5.0.md` |
