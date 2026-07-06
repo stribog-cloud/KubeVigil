@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -198,10 +200,22 @@ func (c *HTTPOSVClient) queryBatches(ctx context.Context, packages []Package) (m
 	return purlToIDs, nil
 }
 
-// fetchRecord retrieves a single advisory record.
+// osvIDPattern constrains an advisory identifier to the characters real OSV ids
+// use (CVE-…, GHSA-…, GO-…, DEBIAN-CVE-…, ALPINE-CVE-…). Because the id comes
+// from OSV's own querybatch response and is then interpolated into the detail
+// URL, validating it here prevents a malicious or malformed response from
+// steering the request to a different path or host (SSRF).
+var osvIDPattern = regexp.MustCompile(`^[A-Za-z0-9._-]{1,128}$`)
+
+// fetchRecord retrieves a single advisory record. The id is validated against a
+// strict allowlist before it is placed in the request path, then percent-escaped
+// as a defense-in-depth measure.
 func (c *HTTPOSVClient) fetchRecord(ctx context.Context, id string) (*osvRecord, error) {
+	if !osvIDPattern.MatchString(id) {
+		return nil, fmt.Errorf("refusing to fetch advisory with unexpected id %q", id)
+	}
 	var rec osvRecord
-	if err := c.getJSON(ctx, "/v1/vulns/"+id, &rec); err != nil {
+	if err := c.getJSON(ctx, "/v1/vulns/"+url.PathEscape(id), &rec); err != nil {
 		return nil, err
 	}
 	return &rec, nil
@@ -297,7 +311,13 @@ func (c *HTTPOSVClient) getJSON(ctx context.Context, path string, out any) error
 
 func (c *HTTPOSVClient) do(req *http.Request, out any) error {
 	req.Header.Set("User-Agent", "kubevigil")
-	resp, err := c.http.Do(req)
+	// gosec G704 (SSRF taint) flags any http.Do whose URL is not a string
+	// literal. Here baseURL is an internal constant (the OSV.dev API root, only
+	// overridden by tests) and the sole external value — an advisory id from the
+	// OSV response — is validated against osvIDPattern and percent-escaped in
+	// fetchRecord before it reaches this call, so there is no attacker-steered
+	// destination.
+	resp, err := c.http.Do(req) //nolint:gosec // URL is the fixed OSV.dev host; advisory id is validated + escaped upstream
 	if err != nil {
 		return fmt.Errorf("querying OSV.dev: %w", err)
 	}

@@ -128,6 +128,23 @@ func TestHTTPOSVClient_ErrorPaths(t *testing.T) {
 		}
 	})
 
+	t.Run("malicious advisory id rejected", func(t *testing.T) {
+		// A hostile querybatch response returns an id with path/URL control
+		// characters; fetchRecord must refuse it rather than steer the request.
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/v1/querybatch" {
+				_, _ = w.Write([]byte(`{"results":[{"vulns":[{"id":"../../etc/passwd"}]}]}`))
+				return
+			}
+			http.Error(w, "should not be reached", http.StatusBadRequest)
+		}))
+		defer srv.Close()
+		_, err := newTestClient(srv).Resolve(context.Background(), []Package{{Purl: "p"}})
+		if err == nil || !strings.Contains(err.Error(), "unexpected id") {
+			t.Errorf("expected id-rejection error, got %v", err)
+		}
+	})
+
 	t.Run("connection refused", func(t *testing.T) {
 		c := &HTTPOSVClient{baseURL: "http://127.0.0.1:1", http: &http.Client{Timeout: time.Second}}
 		_, err := c.Resolve(context.Background(), []Package{{Purl: "p"}})
