@@ -7,7 +7,7 @@ status: governing-reference
 tags: [charter, governance, kubevigil, k8s, stribog]
 project: kubevigil
 version: "1.1.0"
-revision: 4
+revision: 5
 last_updated: 2026-07-06
 parent_moc: "[[MOC - KubeVigil Governance]]"
 owners: [maintainers (@msambare)]
@@ -40,6 +40,7 @@ owners: [maintainers (@msambare)]
 | Project profile (Charter §0.4) | public library / package (CLI binary + MCP server) |
 | Public release profile | See §8.1 below |
 | Project applicability matrix | `docs/governance/Project-Applicability-Matrix.md` |
+| Release evidence (v1.0.0) | `docs/governance/Release-Evidence-v1.0.0.md` |
 | Release evidence (v0.5.0) | `docs/governance/Release-Evidence-v0.5.0.md` |
 
 ## 0.1 Project Posture
@@ -124,7 +125,7 @@ Exposes: `format`, `lint`, `vet`, `test`, `coverage`, `secrets`, `vuln`, `build`
 | Waiver register | `docs/governance/WAIVER-REGISTER.md` |
 | Charter Compliance Annex | `docs/governance/Charter-Compliance-Annex.md` |
 | Project applicability matrix | `docs/governance/Project-Applicability-Matrix.md` |
-| Release evidence | `docs/governance/Release-Evidence-v0.5.0.md` |
+| Release evidence | `docs/governance/Release-Evidence-v1.0.0.md`, `docs/governance/Release-Evidence-v0.5.0.md` |
 
 Internal engineering specs (`docs/internal/`) are **excluded** from the public release profile. Public governing documents must not depend on paths under `docs/internal/`.
 
@@ -281,3 +282,4 @@ Register before release.
 | 1.0.0 | 2 | 2026-07-02 | Corrected charter pin review dates to source `last_updated` (2026-05-12); renamed §X to §8.1; filed applicability matrix and v0.5.0 release evidence references. Closes audit findings F5, F11. |
 | 1.0.0 | 3 | 2026-07-02 | Re-evaluated Data-Privacy partial applicability; documented coverage gate relocation; user Diátaxis tutorial/explanation paths (audit F7/F18/F20/F23). |
 | 1.1.0 | 4 | 2026-07-06 | §8.2 release artifact size budget declared for v1.0.0 (closes the "no budget filed" gap from Release-Evidence-v0.5.0). |
+| 1.1.0 | 5 | 2026-07-06 | Per-package coverage floor corrected to enforced 96% (§1.3); v1.0.0 release evidence linked; release evidence filed. |
