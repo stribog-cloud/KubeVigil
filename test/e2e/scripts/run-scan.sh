@@ -110,7 +110,9 @@ run_kubevigil_scan() {
     fi
 
     log_info "Running: ${cmd} > ${output_file}"
-    eval "${cmd}" > "${output_file}" 2>&1 || true
+    # Keep stderr (slog/diagnostic output) OUT of the structured result file —
+    # merging it corrupts JSON/SARIF/etc. Send it to a sidecar log instead.
+    eval "${cmd}" > "${output_file}" 2>"${output_file}.log" || true
 }
 
 # ---------------------------------------------------------------------------
