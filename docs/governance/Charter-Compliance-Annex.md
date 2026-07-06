@@ -6,8 +6,8 @@ type: project/charter-compliance-annex
 status: governing-reference
 tags: [charter, governance, kubevigil, k8s, stribog]
 project: kubevigil
-version: "1.1.0"
-revision: 5
+version: "1.2.0"
+revision: 6
 last_updated: 2026-07-06
 parent_moc: "[[MOC - KubeVigil Governance]]"
 owners: [maintainers (@msambare)]
@@ -86,7 +86,7 @@ Exposes: `format`, `lint`, `vet`, `test`, `coverage`, `secrets`, `vuln`, `build`
 |----------|-------|
 | Coverage floor (Charter §5.4) | 96% |
 | Project-declared floor | 96% |
-| Per-package floor for critical paths | 96% for `internal/fix/`, `internal/mcp/`, `internal/checker/secrets/`, **enforced** in CI via `make coverage` → `scripts/coverage-pkg.sh` |
+| Per-package floor for critical paths | 96% for `internal/fix/`, `internal/mcp/`, `internal/checker/secrets/`, `internal/policy/`, `internal/baseline/`, **enforced** in CI via `make coverage` → `scripts/coverage-pkg.sh` |
 | Measurement boundary | `internal/` and `cmd/` production packages |
 | Excluded paths | `test/` (fixtures and harnesses), generated artifacts (none currently) |
 | Coverage gate location | `Makefile` `coverage` target (relocated from inline CI YAML, charter-compliance program) |
@@ -283,3 +283,4 @@ Register before release.
 | 1.0.0 | 3 | 2026-07-02 | Re-evaluated Data-Privacy partial applicability; documented coverage gate relocation; user Diátaxis tutorial/explanation paths (audit F7/F18/F20/F23). |
 | 1.1.0 | 4 | 2026-07-06 | §8.2 release artifact size budget declared for v1.0.0 (closes the "no budget filed" gap from Release-Evidence-v0.5.0). |
 | 1.1.0 | 5 | 2026-07-06 | Per-package coverage floor corrected to enforced 96% (§1.3); v1.0.0 release evidence linked; release evidence filed. |
+| 1.2.0 | 6 | 2026-07-06 | v1.1.0 features: internal/policy + internal/baseline added to per-package floor; public surface (policy command) updated. |

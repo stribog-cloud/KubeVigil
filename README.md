@@ -129,6 +129,8 @@ Full documentation lives in [`docs/`](docs/index.md):
 | [Scanning](docs/scanning/live-cluster.md) | Live cluster and manifest scanning |
 | [Output Formats](docs/scanning/output-formats.md) | Text, JSON, HTML, SARIF, and 4 more |
 | [Auto-Remediation](docs/auto-fix/overview.md) | Fix engine, safety model, risk levels |
+| [Custom Policies](docs/policies/custom-policies.md) | User-defined CEL checks |
+| [Baseline & Drift](docs/policies/baseline-drift.md) | Accept findings, gate on new only |
 | [Compliance](docs/compliance/overview.md) | CIS, MITRE ATT&CK, NSA/CISA mappings |
 | [Configuration](docs/configuration/config-file.md) | `.kubevigil.yaml`, exemptions, tuning |
 | [CLI Reference](docs/reference/cli-reference.md) | All commands and flags |
@@ -173,6 +175,41 @@ kubevigil fix ./manifests/ -o kubectl                   # kubectl commands
 
 See [Auto-Fix Overview](docs/auto-fix/overview.md) and
 [Safety Model](docs/auto-fix/safety-model.md) for details.
+
+## Custom Policies (CEL)
+
+Write your own checks as [CEL](https://cel.dev) expressions — no fork required.
+They run through the same pipeline as built-in checks (severity, exemptions,
+frameworks, every output format):
+
+```yaml
+# policies.yaml
+version: v1
+policies:
+  - id: require-team-label
+    name: Workloads must carry a team label
+    severity: medium
+    expression: '!has(object.metadata.labels) || !("team" in object.metadata.labels)'
+    match: { kinds: [Deployment, StatefulSet] }
+```
+
+```bash
+kubevigil policy validate policies.yaml     # compile-check
+kubevigil scan -f ./manifests/ --policy-file policies.yaml
+```
+
+See [Custom Policies](docs/policies/custom-policies.md).
+
+## Baseline & Drift
+
+Accept today's findings as a baseline, then fail CI only on **new** ones:
+
+```bash
+kubevigil scan -f ./manifests/ --save-baseline baseline.json   # accept current state
+kubevigil scan -f ./manifests/ --baseline baseline.json --fail-on-new  # gate on new only
+```
+
+See [Baseline & Drift](docs/policies/baseline-drift.md).
 
 ## Output Formats
 
@@ -225,9 +262,9 @@ for inputs, outputs, and a Code Scanning upload example.
 - [x] **Phase 4a** — Distribution (GoReleaser, GitHub Releases, Homebrew, Krew, Docker, install script)
 - [x] **Phase 4b** — MCP Server (AI assistant integration — scan, query, remediate via Claude/Cursor/Copilot)
 - [x] **Phase 5** — v1.0.0 hardening & release engineering (Windows fix, SBOM/signing/provenance, e2e in CI; severity calibration ongoing)
-- [ ] **Phase 6** — CI/CD integration ([x] GitHub Action; baseline management, PR decoration pending)
+- [x] **Phase 6** — CI/CD integration (GitHub Action; **baseline + drift management** in v1.1.0; PR decoration pending)
 - [ ] **Phase 7** — Runtime (admission webhooks, operator mode, Prometheus metrics)
-- [ ] **Phase 8** — Enterprise (multi-cluster, trend analysis, Rego policies)
+- [ ] **Phase 8** — Enterprise (multi-cluster, trend analysis, **custom CEL policies shipped in v1.1.0**)
 - [ ] **Phase 9** — Ecosystem (SDK, plugin system, Helm chart)
 
 ## Development

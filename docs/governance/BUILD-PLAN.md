@@ -6,8 +6,8 @@ type: project/build-plan
 status: governing-reference
 tags: [charter, governance, kubevigil, build-plan]
 project: kubevigil
-version: "1.1.0"
-revision: 2
+version: "1.2.0"
+revision: 3
 last_updated: 2026-07-06
 parent_moc: "[[MOC - KubeVigil Governance]]"
 owners: [maintainers (@msambare)]
@@ -31,6 +31,24 @@ supply-chain-verified artifacts and a semver-stable public surface.
 | 3 | 110 checks, fix engine, MCP server | Complete (v0.5.0) |
 | 4 | Charter compliance (governance, gates, docs) | Complete |
 | 5 | v1.0.0 hardening + release engineering | Complete (v1.0.0 released 2026-07-06) |
+| 6 | v1.1.0 platform features (CEL custom policies, baseline/drift) | Complete (v1.1.0) |
+
+## Phase 6 — v1.1.0 Platform Features (CEL policies + baseline/drift)
+
+Extends KubeVigil beyond built-in checks toward commercial-KSPM parity, without
+a database or a fork. Both features are opt-in and flow through the existing
+scan pipeline unchanged.
+
+- [x] `internal/policy`: CEL custom policy engine — operator-authored checks
+      compile to `checker.Checker`, run via the same registry/scanner, and
+      inherit severity/exemptions/frameworks/formats. `policy validate|list`
+      commands; `scan --policy-file`; `customPolicies:` config block.
+- [x] `internal/baseline`: portable JSON baseline; `scan --save-baseline`,
+      `--baseline`, `--fail-on-new`; stable finding fingerprint; `Finding.Status`.
+- [x] Both new packages enforced at the 96% per-package coverage floor.
+- [x] CEL findings pass the checker contract test; exemptions verified to apply.
+- [x] Threat model rev 6 (CEL evaluator residual); public-surface.md updated.
+- [x] Comprehensive user docs (`docs/policies/`), e2e Bats coverage.
 
 ## Phase 5 — v1.0.0 Hardening & Release Engineering
 
@@ -90,3 +108,4 @@ None blocking — documentation and gate wiring only; code changes limited to co
 |---------|----------|------|--------|
 | 1.0.0 | 1 | 2026-07-02 | Initial build plan; Phase 4 charter compliance in progress. |
 | 1.1.0 | 2 | 2026-07-06 | Phase 4 marked complete; Phase 5 (v1.0.0 hardening + release engineering) recorded. |
+| 1.2.0 | 3 | 2026-07-06 | Phase 6 (v1.1.0 CEL policies + baseline/drift) recorded complete. |

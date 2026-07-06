@@ -6,8 +6,8 @@ type: project/master-reference
 status: governing-reference
 tags: [charter, governance, kubevigil, k8s, security]
 project: kubevigil
-version: "1.1.0"
-revision: 2
+version: "1.2.0"
+revision: 3
 last_updated: 2026-07-06
 parent_moc: "[[MOC - KubeVigil Governance]]"
 ---
@@ -25,14 +25,14 @@ parent_moc: "[[MOC - KubeVigil Governance]]"
 | Source of truth | This document + `docs/governance/`; code implements contracts |
 | Language | Go 1.25+ |
 | Delivery | Tagged releases (GoReleaser), Homebrew, Krew, container |
-| Current phase | Phase 5 complete — v1.0.0 stable release (hardening + release engineering) |
+| Current phase | Phase 6 complete — v1.1.0 (CEL custom policies, baseline/drift) |
 | Pinned charter | See `docs/governance/Charter-Compliance-Annex.md` |
 
 KubeVigil scans live clusters or static YAML manifests, maps findings to CIS/MITRE/NSA frameworks, and optionally patches manifests with comment-preserving YAML edits. It never mutates live cluster state.
 
 ## 0.1 Current State
 
-- **110 checks** across 12 categories (stable as of v1.0.0)
+- **110 built-in checks** across 12 categories (stable as of v1.0.0) + unlimited **user-defined CEL policies** (v1.1.0)
 - **8 output formats:** text, json, yaml, markdown, html, sarif, junit, csv
 - **Fix engine:** five-ring safety model, dry-run default, mandatory backup on `--apply`
 - **MCP:** `kubevigil mcp-server` — scan, findings, summary tools
@@ -125,3 +125,4 @@ Scan → Filter → Classify → Gate (risk/system/known workload) → Plan → 
 |---------|------|--------|
 | 1.0.0 | 2026-07-02 | Initial master reference for charter compliance |
 | 1.1.0 | 2026-07-06 | v1.0.0 stable release; Phase 5 complete; Windows pathguard residual noted |
+| 1.2.0 | 2026-07-06 | v1.1.0: CEL custom policy engine + baseline/drift; Phase 6 complete. |
