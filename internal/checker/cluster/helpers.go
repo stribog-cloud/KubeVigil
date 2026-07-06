@@ -27,6 +27,31 @@ var (
 	ConfigMapGVR = schema.GroupVersionResource{
 		Group: "", Version: "v1", Resource: "configmaps",
 	}
+	// ValidatingWebhookConfigurationGVR is the GroupVersionResource for
+	// admissionregistration.k8s.io/v1 ValidatingWebhookConfiguration objects.
+	ValidatingWebhookConfigurationGVR = schema.GroupVersionResource{
+		Group: "admissionregistration.k8s.io", Version: "v1", Resource: "validatingwebhookconfigurations",
+	}
+	// MutatingWebhookConfigurationGVR is the GroupVersionResource for
+	// admissionregistration.k8s.io/v1 MutatingWebhookConfiguration objects.
+	MutatingWebhookConfigurationGVR = schema.GroupVersionResource{
+		Group: "admissionregistration.k8s.io", Version: "v1", Resource: "mutatingwebhookconfigurations",
+	}
+	// ValidatingAdmissionPolicyGVR is the GroupVersionResource for
+	// admissionregistration.k8s.io/v1 ValidatingAdmissionPolicy objects.
+	ValidatingAdmissionPolicyGVR = schema.GroupVersionResource{
+		Group: "admissionregistration.k8s.io", Version: "v1", Resource: "validatingadmissionpolicies",
+	}
+	// ValidatingAdmissionPolicyBindingGVR is the GroupVersionResource for
+	// admissionregistration.k8s.io/v1 ValidatingAdmissionPolicyBinding objects.
+	ValidatingAdmissionPolicyBindingGVR = schema.GroupVersionResource{
+		Group: "admissionregistration.k8s.io", Version: "v1", Resource: "validatingadmissionpolicybindings",
+	}
+	// APIServiceGVR is the GroupVersionResource for apiregistration.k8s.io/v1
+	// APIService objects.
+	APIServiceGVR = schema.GroupVersionResource{
+		Group: "apiregistration.k8s.io", Version: "v1", Resource: "apiservices",
+	}
 )
 
 // systemNamespaces is the set of Kubernetes system namespaces excluded from

@@ -37,6 +37,20 @@ func makeCRD(t *testing.T, name string, versions []map[string]interface{}, conve
 	return toUnstructured(t, obj)
 }
 
+// makeCRDWithSpec creates a CRD unstructured object for testing, like makeCRD,
+// but also merges arbitrary additional top-level spec fields (e.g.
+// preserveUnknownFields) into the resulting object.
+func makeCRDWithSpec(t *testing.T, name string, versions []map[string]interface{}, conversion map[string]interface{}, extraSpec map[string]interface{}) unstructured.Unstructured {
+	t.Helper()
+	obj := makeCRD(t, name, versions, conversion)
+	spec, ok := obj.Object["spec"].(map[string]interface{})
+	require.True(t, ok)
+	for k, v := range extraSpec {
+		spec[k] = v
+	}
+	return obj
+}
+
 // makeCertificate creates a cert-manager Certificate unstructured object for testing.
 func makeCertificate(t *testing.T, name, ns string, spec map[string]interface{}, status map[string]interface{}) unstructured.Unstructured {
 	t.Helper()
