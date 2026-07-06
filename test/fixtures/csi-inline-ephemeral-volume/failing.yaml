@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secrets-consumer
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: nginx:1.25
+      volumeMounts:
+        - name: secrets
+          mountPath: /mnt/secrets
+  volumes:
+    - name: secrets
+      csi:
+        driver: secrets-store.csi.k8s.io
+        readOnly: true
+        volumeAttributes:
+          secretProviderClass: "app-secrets"

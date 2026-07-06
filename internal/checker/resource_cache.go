@@ -272,7 +272,8 @@ var knownGVRs = map[string]schema.GroupVersionResource{
 	"admissionregistration.k8s.io/v1/ValidatingAdmissionPolicyBinding": {Group: "admissionregistration.k8s.io", Version: "v1", Resource: "validatingadmissionpolicybindings"},
 	"apiregistration.k8s.io/v1/APIService":                             {Group: "apiregistration.k8s.io", Version: "v1", Resource: "apiservices"},
 
-	// Volume snapshots (v1.3.0 — Batch 5 Storage)
+	// Volume snapshots (v1.3.0 — Batch 5 Storage). The generic pluralization
+	// fallback mishandles "…Class" (→ "…classs"), so this must be explicit.
 	"snapshot.storage.k8s.io/v1/VolumeSnapshotClass": {Group: "snapshot.storage.k8s.io", Version: "v1", Resource: "volumesnapshotclasses"},
 }
 

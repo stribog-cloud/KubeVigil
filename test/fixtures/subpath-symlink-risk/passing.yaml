@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-consumer
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-consumer
+  template:
+    metadata:
+      labels:
+        app: config-consumer
+    spec:
+      containers:
+        - name: app
+          image: nginx:1.25
+          volumeMounts:
+            - name: config
+              mountPath: /app/conf
+      volumes:
+        - name: config
+          configMap:
+            name: app-config
