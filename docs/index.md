@@ -80,6 +80,7 @@ Governance and contributor docs: `docs/governance/`, `docs/dev/`, [Contributing]
 - [SARIF (GitHub/VS Code)](integrations/sarif.md) — Code scanning integration
 - [JUnit (CI/CD)](integrations/junit.md) — Test result integration
 - [IDE Integration](integrations/ide.md) — Editor workflows
+- [Admission Webhook](integrations/admission-webhook.md) — Real-time deny/warn at admission time via `kubevigil webhook`
 
 ### AI Assistant Integration
 
