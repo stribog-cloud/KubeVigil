@@ -77,7 +77,7 @@ func (c *AppArmorProfileChecker) Run(ctx context.Context, resources *checker.Res
 					"create a custom Localhost profile that only allows the specific file and network access your application needs.\n\n" +
 					"## Learn More\n\n" +
 					"AppArmor is available on Debian/Ubuntu-based nodes. RHEL/CentOS nodes use SELinux instead. " +
-					"Both provide MAC enforcement. Refer to CIS Benchmark 5.7.5 and the Kubernetes AppArmor documentation.",
+					"Both provide MAC enforcement. Refer to the Kubernetes AppArmor documentation and the Pod Security Standards.",
 				FieldPath: fieldPath,
 			})
 		})
