@@ -71,6 +71,13 @@ setup() {
     MOCK_DIR="$(mktemp -d)"
     export MOCK_DIR
     export PATH="${MOCK_DIR}:${ORIGINAL_PATH}"
+
+    # Baseline-mock both cluster tools so prerequisite checks pass by default
+    # and no test depends on a real kind/kubectl being installed on the host.
+    # Tests re-mock with specific output as needed (same path, overwritten),
+    # and the "tool missing" tests unmock the specific tool explicitly.
+    mock_command "kind" 0 ""
+    mock_command "kubectl" 0 ""
 }
 
 # teardown runs after each test (pass or fail). Removes temp directories

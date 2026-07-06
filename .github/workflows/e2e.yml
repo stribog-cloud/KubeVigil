@@ -61,16 +61,12 @@ jobs:
       - name: Build kubevigil binary
         run: make build
 
-      # Install real kind BEFORE the mock suite: some mock tests
-      # (deploy-scenarios.bats) mock only kubectl and rely on the real kind
-      # being on PATH for check_prerequisites. kubectl, by contrast, is either
-      # mocked per-test or must be genuinely ABSENT for the "kubectl missing"
-      # isolation tests (helpers.bats) — and ubuntu-latest preinstalls a real
-      # kubectl in /usr/bin. So: keep kind, remove the preinstalled kubectl for
-      # the mock suite, then install kubectl afterward for the live-cluster phase.
-      - name: Install kind (needed by mock suite and live phase)
-        run: go install sigs.k8s.io/kind@v0.32.0
-
+      # The Bats suite is hermetic: test_helper.bash baseline-mocks kind and
+      # kubectl, so no test needs a real binary. The only host dependency is
+      # the helpers.bats "kubectl missing" test, whose restricted PATH still
+      # includes /usr/bin where ubuntu-latest preinstalls a real kubectl —
+      # remove it so that test's unmock actually leaves kubectl absent. Real
+      # kind/kubectl are installed afterward, only for the live-cluster phase.
       - name: Remove preinstalled kubectl (mock-suite isolation)
         run: sudo rm -f "$(command -v kubectl || true)"
 
@@ -78,6 +74,9 @@ jobs:
         run: |
           set -o pipefail
           bats --verbose-run --recursive test/e2e/scripts/tests/ 2>&1 | tee bats-output.log
+
+      - name: Install kind
+        run: go install sigs.k8s.io/kind@v0.32.0
 
       - name: Install kubectl
         uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
