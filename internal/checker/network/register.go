@@ -1,7 +1,8 @@
 // Package network implements network security checks for Kubernetes network policies, ingresses, and services.
 //
-// It covers 12 checks spanning network policy enforcement, ingress TLS configuration,
-// service exposure, DNS security, and service mesh mTLS.
+// It covers 18 checks spanning network policy enforcement, ingress TLS configuration,
+// service exposure, DNS security, service mesh mTLS, Gateway API listener/route hardening,
+// and cloud instance-metadata egress protection.
 // All checkers implement the [checker.Checker] interface and are registered
 // via [Register].
 package network
@@ -21,4 +22,10 @@ func init() {
 	checker.MustRegister(&ExternalIPsChecker{})
 	checker.MustRegister(&ServiceMeshMTLSChecker{})
 	checker.MustRegister(&DNSSecurityChecker{})
+	checker.MustRegister(&GatewayListenerNoTLSChecker{})
+	checker.MustRegister(&GatewayAllowedRoutesAllNamespacesChecker{})
+	checker.MustRegister(&HTTPRouteWildcardHostnameChecker{})
+	checker.MustRegister(&EmptyNamespaceSelectorChecker{})
+	checker.MustRegister(&ServiceExternalNameDanglingChecker{})
+	checker.MustRegister(&MetadataServiceEgressChecker{})
 }

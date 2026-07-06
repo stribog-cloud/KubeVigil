@@ -19,6 +19,10 @@ var (
 	ServiceGVR = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "services"}
 	// NamespaceGVR is the GroupVersionResource for Namespace.
 	NamespaceGVR = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "namespaces"}
+	// GatewayGVR is the GroupVersionResource for the Gateway API Gateway resource.
+	GatewayGVR = schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gateways"}
+	// HTTPRouteGVR is the GroupVersionResource for the Gateway API HTTPRoute resource.
+	HTTPRouteGVR = schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "httproutes"}
 )
 
 // systemNamespaces are Kubernetes system namespaces that are excluded from

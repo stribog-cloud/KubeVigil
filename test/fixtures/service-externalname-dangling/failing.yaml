@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: vendor-api
+  namespace: default
+spec:
+  type: ExternalName
+  externalName: legacy-vendor-api.example-vendor.com
