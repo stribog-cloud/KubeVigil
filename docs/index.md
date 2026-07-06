@@ -71,6 +71,7 @@ Governance and contributor docs: `docs/governance/`, `docs/dev/`, [Contributing]
 
 ### Integrations
 
+- [GitHub Action](integrations/github-action.md) — First-party CI scanning action
 - [SARIF (GitHub/VS Code)](integrations/sarif.md) — Code scanning integration
 - [JUnit (CI/CD)](integrations/junit.md) — Test result integration
 - [IDE Integration](integrations/ide.md) — Editor workflows

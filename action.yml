@@ -1,0 +1,196 @@
+name: 'KubeVigil Scan'
+description: 'Scan Kubernetes manifests for security misconfigurations with KubeVigil (KSPM).'
+author: 'Stribog'
+
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  files:
+    description: 'Path to a manifest file or directory to scan (passed to `kubevigil scan -f`).'
+    required: true
+  version:
+    description: >
+      KubeVigil release to install. Either a release tag (e.g. "v1.0.0") or
+      "latest" to resolve the newest GitHub release at runtime.
+    required: false
+    default: 'latest'
+  format:
+    description: >
+      Report format written to `output-file` (text, json, yaml, markdown,
+      html, sarif, junit, csv).
+    required: false
+    default: 'sarif'
+  output-file:
+    description: 'Path to write the scan report to.'
+    required: false
+    default: 'kubevigil-results.sarif'
+  fail-on:
+    description: >
+      Minimum severity (info, low, medium, high, critical) that fails this
+      step. Left empty (default), the step never fails the build on
+      findings -- it only fails on real scan/configuration errors. Set this
+      to gate the build on findings and the value is passed through as
+      `kubevigil scan --fail-on <value>`.
+    required: false
+    default: ''
+  config:
+    description: 'Path to a .kubevigil.yaml configuration file (passed as --config).'
+    required: false
+    default: ''
+  flags:
+    description: 'Extra raw CLI flags appended verbatim to the `kubevigil scan` command.'
+    required: false
+    default: ''
+
+outputs:
+  exit-code:
+    description: 'Exit code returned by the kubevigil scan command.'
+    value: ${{ steps.scan.outputs.exit-code }}
+  output-file:
+    description: 'Path to the generated report file (same as the output-file input).'
+    value: ${{ steps.scan.outputs.output-file }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Download, verify, and run KubeVigil scan
+      id: scan
+      shell: bash
+      env:
+        KV_FILES: ${{ inputs.files }}
+        KV_VERSION: ${{ inputs.version }}
+        KV_FORMAT: ${{ inputs.format }}
+        KV_OUTPUT_FILE: ${{ inputs.output-file }}
+        KV_FAIL_ON: ${{ inputs.fail-on }}
+        KV_CONFIG: ${{ inputs.config }}
+        KV_FLAGS: ${{ inputs.flags }}
+        KV_GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        set -euo pipefail
+
+        REPO="stribog-cloud/KubeVigil"
+        BINARY="kubevigil"
+
+        # --- OS/arch detection (shared by GitHub-hosted Linux runners and any
+        # other POSIX host running this same logic, e.g. local validation) ---
+        detect_os() {
+          case "$(uname -s)" in
+            Linux*)  echo "linux" ;;
+            Darwin*) echo "darwin" ;;
+            *) echo "::error::Unsupported operating system: $(uname -s)"; exit 3 ;;
+          esac
+        }
+
+        detect_arch() {
+          case "$(uname -m)" in
+            x86_64|amd64)  echo "amd64" ;;
+            aarch64|arm64) echo "arm64" ;;
+            *) echo "::error::Unsupported architecture: $(uname -m)"; exit 3 ;;
+          esac
+        }
+
+        # --- resolve the release tag ("latest" -> query GitHub API) ---
+        resolve_tag() {
+          local requested="$1"
+          if [ -z "$requested" ] || [ "$requested" = "latest" ]; then
+            local auth=()
+            if [ -n "${KV_GITHUB_TOKEN:-}" ]; then
+              auth=(-H "Authorization: Bearer ${KV_GITHUB_TOKEN}")
+            fi
+            local tag
+            tag="$(curl -fsSL "${auth[@]}" "https://api.github.com/repos/${REPO}/releases/latest" \
+              | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"//;s/".*//')"
+            [ -n "$tag" ] || { echo "::error::Could not resolve latest KubeVigil release"; exit 3; }
+            echo "$tag"
+          else
+            case "$requested" in
+              v*) echo "$requested" ;;
+              *)  echo "v${requested}" ;;
+            esac
+          fi
+        }
+
+        OS="$(detect_os)"
+        ARCH="$(detect_arch)"
+        TAG="$(resolve_tag "${KV_VERSION}")"
+        VERSION_NO_V="${TAG#v}"
+
+        echo "Resolved KubeVigil release: ${TAG} (${OS}/${ARCH})"
+
+        ARCHIVE="${BINARY}_${VERSION_NO_V}_${OS}_${ARCH}.tar.gz"
+        BASE_URL="https://github.com/${REPO}/releases/download/${TAG}"
+
+        TMPDIR="$(mktemp -d)"
+        trap 'rm -rf "${TMPDIR}"' EXIT
+
+        echo "Downloading ${ARCHIVE}..."
+        curl -fsSL -o "${TMPDIR}/${ARCHIVE}" "${BASE_URL}/${ARCHIVE}"
+
+        echo "Downloading checksums..."
+        curl -fsSL -o "${TMPDIR}/checksums.txt" "${BASE_URL}/${BINARY}_checksums.txt"
+
+        echo "Verifying SHA256 checksum..."
+        EXPECTED="$(grep " ${ARCHIVE}\$" "${TMPDIR}/checksums.txt" | awk '{print $1}')"
+        [ -n "${EXPECTED}" ] || { echo "::error::Checksum not found for ${ARCHIVE}"; exit 3; }
+
+        if command -v sha256sum > /dev/null 2>&1; then
+          ACTUAL="$(sha256sum "${TMPDIR}/${ARCHIVE}" | awk '{print $1}')"
+        else
+          ACTUAL="$(shasum -a 256 "${TMPDIR}/${ARCHIVE}" | awk '{print $1}')"
+        fi
+
+        if [ "${EXPECTED}" != "${ACTUAL}" ]; then
+          echo "::error::Checksum mismatch for ${ARCHIVE} (expected ${EXPECTED}, got ${ACTUAL})"
+          exit 3
+        fi
+        echo "Checksum verified."
+
+        tar -xzf "${TMPDIR}/${ARCHIVE}" -C "${TMPDIR}"
+        chmod +x "${TMPDIR}/${BINARY}"
+
+        # --- build the scan command ---
+        # --output takes a bare format name (writes to stdout); we redirect
+        # stdout to output-file so `format` and `output-file` stay independent
+        # inputs regardless of the file extension used for output-file.
+        mkdir -p "$(dirname "${KV_OUTPUT_FILE}")"
+
+        CMD=("${TMPDIR}/${BINARY}" scan -f "${KV_FILES}" --output "${KV_FORMAT}")
+        if [ -n "${KV_CONFIG}" ]; then
+          CMD+=(--config "${KV_CONFIG}")
+        fi
+        if [ -n "${KV_FAIL_ON}" ]; then
+          CMD+=(--fail-on "${KV_FAIL_ON}")
+        fi
+        if [ -n "${KV_FLAGS}" ]; then
+          # shellcheck disable=SC2206
+          EXTRA_FLAGS=(${KV_FLAGS})
+          CMD+=("${EXTRA_FLAGS[@]}")
+        fi
+
+        echo "Running: ${CMD[*]} > ${KV_OUTPUT_FILE}"
+        set +e
+        "${CMD[@]}" > "${KV_OUTPUT_FILE}"
+        SCAN_EXIT=$?
+        set -e
+
+        echo "exit-code=${SCAN_EXIT}" >> "${GITHUB_OUTPUT}"
+        echo "output-file=${KV_OUTPUT_FILE}" >> "${GITHUB_OUTPUT}"
+
+        # Exit code contract (docs/reference/exit-codes.md):
+        #   0 = clean, 1 = findings at/above fail-on, 2 = scan error, 3 = config error.
+        if [ "${SCAN_EXIT}" -ge 2 ]; then
+          echo "::error::kubevigil scan failed with exit code ${SCAN_EXIT} (scan/config error)"
+          exit "${SCAN_EXIT}"
+        fi
+
+        if [ "${SCAN_EXIT}" -eq 1 ]; then
+          if [ -n "${KV_FAIL_ON}" ]; then
+            echo "::error::Findings at or above the '${KV_FAIL_ON}' severity threshold were detected"
+            exit 1
+          fi
+          echo "::warning::Findings were detected but 'fail-on' was not set; not failing the build"
+        fi
+
+        exit 0
