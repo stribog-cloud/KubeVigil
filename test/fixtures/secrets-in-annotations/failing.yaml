@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: leaky-metadata-app
+  namespace: default
+  annotations:
+    deploy.example.com/api-key: "this-is-a-fake-non-secret-placeholder-value"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: app
+          image: nginx:1.25
