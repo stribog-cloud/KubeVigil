@@ -8,10 +8,10 @@ Documentation follows the [Diátaxis](https://diataxis.fr/) model:
 
 | Quadrant | Purpose | Sections |
 |----------|---------|----------|
-| Tutorial | Learn by doing | [Quick Start](getting-started/quickstart.md) |
+| Tutorial | Learn by doing | [Quick Start](getting-started/quickstart.md), [Your First Manifest Scan](user/tutorial-first-scan.md) |
 | How-to | Solve specific tasks | [Scanning](scanning/), [Auto-Remediation](auto-fix/), [Configuration](configuration/) |
 | Reference | Facts and contracts | [CLI Reference](reference/), [Checks](checks/) |
-| Explanation | Concepts and context | [Core Concepts](getting-started/concepts.md), [Compliance](compliance/) |
+| Explanation | Concepts and context | [Core Concepts](getting-started/concepts.md), [Compliance](compliance/), [Why Manifest Scanning?](user/explanation-why-manifest-scan.md) |
 
 Governance and contributor docs: `docs/governance/`, `docs/dev/`, [Contributing](contributing/guide.md).
 
@@ -27,6 +27,7 @@ Governance and contributor docs: `docs/governance/`, `docs/dev/`, [Contributing]
 
 - [Installation](getting-started/installation.md) — Install KubeVigil from source or binary
 - [Quick Start](getting-started/quickstart.md) — Your first scan in 5 minutes
+- [Tutorial: Your First Manifest Scan](user/tutorial-first-scan.md) — Install, scan a sample manifest, and read your first finding
 - [Core Concepts](getting-started/concepts.md) — Checks, severity, categories, and scan modes
 
 ### Security Checks
@@ -39,6 +40,7 @@ Governance and contributor docs: `docs/governance/`, `docs/dev/`, [Contributing]
 - [Live Cluster Scanning](scanning/live-cluster.md) — Scan a running cluster
 - [Manifest Scanning](scanning/manifest-scanning.md) — Scan YAML files and directories
 - [Output Formats](scanning/output-formats.md) — Text, JSON, YAML, Markdown, HTML, SARIF, JUnit, CSV
+- [Explanation: Why Manifest Scanning?](user/explanation-why-manifest-scan.md) — Why manifest mode exists and when to prefer it over live scanning
 
 ### Auto-Remediation
 
@@ -76,6 +78,11 @@ Governance and contributor docs: `docs/governance/`, `docs/dev/`, [Contributing]
 ### AI Assistant Integration
 
 - [MCP Setup](mcp-setup.md) — Connect KubeVigil to AI assistants via the Model Context Protocol
+
+### Support & Releases
+
+- [Support and Escalation](user/support.md) — Self-service resources, community channels, and security reporting
+- [User Release Notes](user/releases/README.md) — User-facing changes by version
 
 ### More
 

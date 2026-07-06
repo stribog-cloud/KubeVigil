@@ -294,7 +294,7 @@ go test ./test/integration/ -run TestFix
 
 ### 5. Test the Full Workflow
 
-Run the golden workflow: scan, fix, re-scan, and verify zero findings:
+Run the golden workflow: scan, fix, re-scan, and verify zero fixable findings remain:
 
 ```bash
 kubevigil scan -f test/fixtures/fix/your-fixture.yaml -o json
@@ -302,7 +302,7 @@ kubevigil fix test/fixtures/fix/your-fixture.yaml --apply --risk-level aggressiv
 kubevigil scan -f test/fixtures/fix/your-fixture.yaml -o json
 ```
 
-The re-scan should report zero findings for the check you fixed.
+The re-scan should report zero findings for the check you fixed. Note that "zero findings" here means zero *fixable* findings for that check -- the golden workflow does not guarantee zero findings overall, since not every check is auto-fixable.
 
 ## PR Guidelines
 

@@ -1,7 +1,7 @@
 # Homebrew formula for KubeVigil — reference template.
 # This formula is a standalone reference. The actual tap is managed by
-# GoReleaser (see .goreleaser.yaml brews section, currently commented out
-# until the repository is made public).
+# GoReleaser (see .goreleaser.yaml brews section) and published live to
+# stribog-cloud/homebrew-tap on release, since the repository is public.
 #
 # To test locally with a GoReleaser snapshot:
 #   brew install --formula deploy/homebrew/kubevigil.rb
