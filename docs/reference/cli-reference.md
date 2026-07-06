@@ -1,6 +1,6 @@
 # CLI Reference
 
-KubeVigil provides a command-line interface for scanning Kubernetes clusters and manifests for security misconfigurations, auto-remediating findings, and listing available checks.
+KubeVigil provides a command-line interface for scanning Kubernetes clusters and manifests for security misconfigurations, auto-remediating findings, evaluating custom CEL policies, gating on baseline drift, and listing available checks.
 
 ## Global Flags
 
@@ -41,6 +41,10 @@ kubevigil scan [flags]
 | `--exclude-infra` | | `false` | Exclude infrastructure namespaces |
 | `--no-aggregate` | | `false` | Show every finding individually instead of grouping |
 | `--summary-only` | | `false` | Show only the summary table (text output only) |
+| `--policy-file` | | | Path to a custom CEL policy file or directory, evaluated alongside built-in checks (see [Custom Policies](../policies/custom-policies.md)) |
+| `--baseline` | | | Path to a baseline file; findings are annotated `new`/`existing` against it (see [Baseline & Drift Detection](../policies/baseline-drift.md)) |
+| `--save-baseline` | | | Write a baseline file from this scan's (filtered) findings and exit `0` |
+| `--fail-on-new` | | `false` | Exit `1` only when findings are new relative to `--baseline`, ignoring the `--fail-on` severity threshold. Requires `--baseline`. |
 
 #### Examples
 
@@ -68,6 +72,15 @@ kubevigil scan --kubeconfig ~/.kube/staging --context staging-cluster
 
 # Summary only for quick overview
 kubevigil scan --summary-only
+
+# Evaluate custom CEL policies alongside built-in checks
+kubevigil scan -f manifests/ --policy-file configs/example-policies.yaml
+
+# Save a baseline from the current findings
+kubevigil scan -f manifests/ --save-baseline baseline.json
+
+# Compare against a baseline and gate CI on new findings only
+kubevigil scan -f manifests/ --baseline baseline.json --fail-on-new
 ```
 
 #### Exit Codes
@@ -190,6 +203,45 @@ Output includes:
 - **CATEGORY**: The check category (workload, image, rbac, network, etc.)
 - **MODES**: Supported scan modes (Live, Manifest, or both)
 - **DESCRIPTION**: What the check detects
+
+---
+
+### `kubevigil policy`
+
+Validate and inspect user-defined CEL security policies (see [Custom Policies](../policies/custom-policies.md)).
+
+#### `kubevigil policy validate <file|dir>`
+
+Load, structurally validate, and CEL-compile every policy in the given file or directory. Exits `0` if all policies are valid, `3` otherwise.
+
+```bash
+kubevigil policy validate configs/example-policies.yaml
+kubevigil policy validate policies/
+```
+
+```console
+$ kubevigil policy validate configs/example-policies.yaml
+OK: 4 policies valid in configs/example-policies.yaml
+```
+
+#### `kubevigil policy list <file|dir>`
+
+List the policies defined in a file or directory, with their resolved severity and category.
+
+```bash
+kubevigil policy list configs/example-policies.yaml
+```
+
+```console
+$ kubevigil policy list configs/example-policies.yaml
+ID                           SEVERITY   CATEGORY       NAME
+require-team-label           Low        custom         Workload missing team label
+disallow-latest-tag          Medium     image          Container uses floating :latest tag
+disallow-hostpath-volumes    High       storage        Workload mounts a hostPath volume
+min-replica-count            Low        custom         Deployment has fewer than 2 replicas
+
+Total: 4 policies
+```
 
 ---
 

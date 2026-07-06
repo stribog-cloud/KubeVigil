@@ -274,7 +274,9 @@ func runScan(cmd *cobra.Command, _ []string) error {
 	// independent of the severity threshold. It requires --baseline.
 	if flagFailOnNew {
 		if !baselineApplied {
-			return &exitError{code: 3, err: fmt.Errorf("--fail-on-new requires --baseline")}
+			err := fmt.Errorf("--fail-on-new requires --baseline")
+			fmt.Fprintf(os.Stderr, "Config error: %v\n", err)
+			return &exitError{code: 3, err: err}
 		}
 		if drift.New > 0 {
 			return &exitError{code: 1, err: fmt.Errorf("%d new findings relative to baseline", drift.New)}

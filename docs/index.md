@@ -9,7 +9,7 @@ Documentation follows the [Diátaxis](https://diataxis.fr/) model:
 | Quadrant | Purpose | Sections |
 |----------|---------|----------|
 | Tutorial | Learn by doing | [Quick Start](getting-started/quickstart.md), [Your First Manifest Scan](user/tutorial-first-scan.md) |
-| How-to | Solve specific tasks | [Scanning](scanning/), [Auto-Remediation](auto-fix/), [Configuration](configuration/) |
+| How-to | Solve specific tasks | [Scanning](scanning/), [Auto-Remediation](auto-fix/), [Configuration](configuration/), [Policies & Baselines](policies/) |
 | Reference | Facts and contracts | [CLI Reference](reference/), [Checks](checks/) |
 | Explanation | Concepts and context | [Core Concepts](getting-started/concepts.md), [Compliance](compliance/), [Why Manifest Scanning?](user/explanation-why-manifest-scan.md) |
 
@@ -49,6 +49,11 @@ Governance and contributor docs: `docs/governance/`, `docs/dev/`, [Contributing]
 - [Risk Levels](auto-fix/risk-levels.md) — Safe, moderate, aggressive
 - [Backup & Restore](auto-fix/backup-restore.md) — Mandatory backup system
 - [Output Modes](auto-fix/output-modes.md) — Diff, kubectl, Helm values, Kustomize, GitOps
+
+### Policies & Baselines
+
+- [Custom Policies](policies/custom-policies.md) — Write your own checks as CEL expressions, via `.kubevigil.yaml` or `--policy-file`
+- [Baseline & Drift Detection](policies/baseline-drift.md) — Gate CI on new findings only with `--baseline`, `--save-baseline`, and `--fail-on-new`
 
 ### Compliance
 

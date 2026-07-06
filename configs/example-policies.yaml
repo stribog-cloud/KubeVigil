@@ -1,0 +1,70 @@
+# Example custom CEL policies for KubeVigil.
+#
+# Use standalone with --policy-file, e.g.:
+#   kubevigil scan -f manifests/ --policy-file configs/example-policies.yaml
+#
+# Validate without running a scan:
+#   kubevigil policy validate configs/example-policies.yaml
+#   kubevigil policy list configs/example-policies.yaml
+#
+# Each policy compiles to a CEL expression evaluated against `object` (the
+# resource as a map). The expression must return a bool; TRUE means the
+# resource VIOLATES the policy and a finding is emitted. See
+# docs/policies/custom-policies.md for the full schema and CEL environment
+# reference.
+
+version: "v1"
+
+policies:
+  # Flags Deployments/StatefulSets/DaemonSets that carry no "team" label,
+  # which breaks cost attribution and on-call routing.
+  - id: require-team-label
+    name: "Workload missing team label"
+    description: "Every workload should carry a team label for ownership and on-call routing."
+    severity: low
+    category: custom
+    message: "Workload has no 'team' label."
+    remediation: "Add a 'team: <team-name>' label under metadata.labels."
+    expression: "!has(object.metadata.labels) || !('team' in object.metadata.labels)"
+    match:
+      kinds: ["Deployment", "StatefulSet", "DaemonSet"]
+
+  # Flags Deployments using an unpinned or floating ":latest" image tag,
+  # which makes rollouts non-reproducible and rollbacks unreliable.
+  - id: disallow-latest-tag
+    name: "Container uses floating :latest tag"
+    description: "Images without a tag (implicit latest) or explicitly tagged :latest are not reproducible."
+    severity: medium
+    category: image
+    message: "One or more containers reference an untagged or :latest image."
+    remediation: "Pin images to an immutable tag or digest, e.g. app:1.4.2 or app@sha256:...."
+    expression: "object.spec.template.spec.containers.exists(c, !c.image.contains(':') || c.image.endsWith(':latest'))"
+    match:
+      kinds: ["Deployment"]
+
+  # Flags Deployments/DaemonSets that mount a hostPath volume, which can grant
+  # access to the underlying node's filesystem.
+  - id: disallow-hostpath-volumes
+    name: "Workload mounts a hostPath volume"
+    description: "hostPath volumes expose the node filesystem to the container and can be used for privilege escalation or lateral movement."
+    severity: high
+    category: storage
+    message: "Workload defines a hostPath volume."
+    remediation: "Replace the hostPath volume with a PersistentVolumeClaim, ConfigMap, or Secret; use CSI drivers for node-local storage needs."
+    expression: "has(object.spec.template.spec.volumes) && object.spec.template.spec.volumes.exists(v, has(v.hostPath))"
+    match:
+      kinds: ["Deployment", "DaemonSet"]
+
+  # Flags single-replica Deployments in production-like namespaces, which have
+  # no redundancy during a node drain or pod eviction.
+  - id: min-replica-count
+    name: "Deployment has fewer than 2 replicas"
+    description: "A single replica cannot tolerate a node drain, eviction, or crash without downtime."
+    severity: low
+    category: custom
+    message: "Deployment runs with fewer than 2 replicas."
+    remediation: "Set spec.replicas to 2 or more, or document why a single replica is acceptable (e.g. a singleton batch job)."
+    expression: "has(object.spec.replicas) && object.spec.replicas < 2"
+    match:
+      kinds: ["Deployment"]
+      namespaces: ["production"]
