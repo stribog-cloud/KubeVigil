@@ -61,14 +61,14 @@ jobs:
       - name: Build kubevigil binary
         run: make build
 
-      # The Bats suite is mock-based: it fakes kind/kubectl via a MOCK_DIR on
-      # PATH and asserts the "tool missing" branches by unmocking. ubuntu-latest
-      # ships a real kubectl in /usr/bin, which the isolation tests include in
-      # PATH — so the missing-kubectl assertion cannot hold unless the
-      # preinstalled binaries are removed first. Do that, then install the real
-      # kind/kubectl afterward for the live-cluster phase.
-      - name: Remove preinstalled kind/kubectl (mock-suite isolation)
-        run: sudo rm -f "$(command -v kubectl || true)" "$(command -v kind || true)"
+      # The Bats suite is hermetic: test_helper.bash baseline-mocks kind and
+      # kubectl, so no test needs a real binary. The only host dependency is
+      # the helpers.bats "kubectl missing" test, whose restricted PATH still
+      # includes /usr/bin where ubuntu-latest preinstalls a real kubectl —
+      # remove it so that test's unmock actually leaves kubectl absent. Real
+      # kind/kubectl are installed afterward, only for the live-cluster phase.
+      - name: Remove preinstalled kubectl (mock-suite isolation)
+        run: sudo rm -f "$(command -v kubectl || true)"
 
       - name: Run Bats E2E test suite (93 tests)
         run: |
