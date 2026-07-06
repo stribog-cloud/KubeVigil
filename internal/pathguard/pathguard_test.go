@@ -4,9 +4,24 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
+
+// symlinkOrSkip creates a symlink, skipping the test on Windows runners that
+// lack the symbolic-link privilege (where os.Symlink fails). On Unix a failure
+// is a real error. GitHub's elevated Windows runners can usually create
+// symlinks, so this still exercises the symlink paths there.
+func symlinkOrSkip(t *testing.T, oldname, newname string) {
+	t.Helper()
+	if err := os.Symlink(oldname, newname); err != nil {
+		if runtime.GOOS == "windows" {
+			t.Skipf("symlink creation not permitted on this Windows runner: %v", err)
+		}
+		t.Fatalf("symlink: %v", err)
+	}
+}
 
 func TestResolveWithinRoot_AcceptsFileInsideRoot(t *testing.T) {
 	root := t.TempDir()
@@ -98,9 +113,7 @@ func TestResolveWithinRoot_RejectsSymlinkEscape(t *testing.T) {
 	}
 
 	link := filepath.Join(root, "escape.yaml")
-	if err := os.Symlink(outsideFile, link); err != nil {
-		t.Fatalf("symlink: %v", err)
-	}
+	symlinkOrSkip(t, outsideFile, link)
 
 	_, err := ResolveWithinRoot(root, link)
 	if err == nil {
@@ -114,9 +127,7 @@ func TestResolveWithinRoot_RejectsSymlinkEscape(t *testing.T) {
 func TestResolveWithinRoot_RejectsSymlinkToParent(t *testing.T) {
 	root := t.TempDir()
 	parentLink := filepath.Join(root, "parent")
-	if err := os.Symlink("..", parentLink); err != nil {
-		t.Fatalf("symlink: %v", err)
-	}
+	symlinkOrSkip(t, "..", parentLink)
 
 	_, err := ResolveWithinRoot(root, filepath.Join("parent", "etc", "passwd"))
 	if err == nil {
@@ -192,9 +203,7 @@ func TestResolveWithinRoot_RejectsSymlinkParentDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	link := filepath.Join(root, "via-link")
-	if err := os.Symlink("manifests", link); err != nil {
-		t.Fatalf("symlink: %v", err)
-	}
+	symlinkOrSkip(t, "manifests", link)
 
 	_, err := ResolveWithinRoot(root, filepath.Join("via-link", "pod.yaml"))
 	if err == nil {
@@ -244,9 +253,7 @@ func TestOpenRegularWithinRoot_RejectsTOCTOUSymlinkSwap(t *testing.T) {
 	if err := os.Remove(target); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(secret, target); err != nil {
-		t.Fatal(err)
-	}
+	symlinkOrSkip(t, secret, target)
 
 	_, err := OpenRegularWithinRoot(root, "pod.yaml")
 	if err == nil {

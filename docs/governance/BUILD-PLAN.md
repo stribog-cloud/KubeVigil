@@ -30,22 +30,29 @@ supply-chain-verified artifacts and a semver-stable public surface.
 | 2 | 8 output formats, compliance frameworks, config | Complete |
 | 3 | 110 checks, fix engine, MCP server | Complete (v0.5.0) |
 | 4 | Charter compliance (governance, gates, docs) | Complete |
-| 5 | v1.0.0 hardening + release engineering | Complete (v1.0.0) |
+| 5 | v1.0.0 hardening + release engineering | Engineering complete; release execution in progress |
 
 ## Phase 5 — v1.0.0 Hardening & Release Engineering
 
-### Delivered
+### Engineering deliverables (complete)
 
-- [x] Windows build restored (pathguard best-effort confined-open tier; threat model rev 4)
+- [x] Windows build restored + runtime-tested on a Windows CI runner (`windows-pathguard` job); TOCTOU residual precisely disclosed (threat model rev 5)
 - [x] CI cross-compile gate for all 5 release targets + platform-tagged vet
-- [x] Supply chain: SPDX SBOMs, keyless Cosign signature over checksums, SLSA build provenance, GHCR multi-arch images
+- [x] Supply chain: SPDX SBOMs, keyless Cosign signature over checksums **and container images**, SLSA build provenance for archives **and images**, GHCR multi-arch images
+- [x] Tag protection ruleset (signatures, no delete/force); release gate strengthened (vet + lint + govulncheck before publish)
+- [x] Per-package coverage floor (96%) enforced in CI for `internal/fix`, `internal/mcp`, `internal/checker/secrets`
 - [x] E2E suite (kind + Bats, 93 tests) wired into CI (nightly + on-demand)
 - [x] First-party GitHub Action for CI manifest scanning (Phase 6 pull-forward)
 - [x] Release pipeline pinning: action SHAs, gitleaks 8.30.1 (checksum-verified), GoReleaser 2.16.0
 - [x] Homebrew tap token wiring; prerelease-safe publish guards; krew manifest regeneration script
 - [x] Documentation Gates and Secrets Scan added to required status checks
 - [x] Artifact size budget declared (Annex §8.2)
-- [ ] Release evidence filed at release time (`Release-Evidence-v1.0.0.md`; lands immediately after the tag is cut)
+
+### Release execution (performed at tag time — the phase is not marked fully Complete until these land)
+
+- [ ] `v1.0.0` tag cut, release workflow green, GitHub Release published
+- [ ] GHCR package set public; image pull/run verified
+- [ ] `Release-Evidence-v1.0.0.md` filed against the real published artifacts
 
 ## Phase 4 — Charter Compliance
 

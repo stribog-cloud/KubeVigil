@@ -89,6 +89,26 @@ jobs:
           GOOS=windows go vet ./...
           GOOS=darwin go vet ./...
 
+  # Runtime execution of the Windows-only pathguard implementation. The rest of
+  # CI cross-compiles Windows but never runs it; the security-critical
+  # workspace-confinement walk (open_windows.go) must be exercised on a real
+  # Windows runner, not just built.
+  windows-pathguard:
+    name: Windows pathguard
+    runs-on: windows-latest
+    needs: lint
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.25.11'
+      - name: Build (windows/amd64)
+        run: go build ./...
+      - name: Test pathguard on Windows
+        run: go test -count=1 ./internal/pathguard/...
+
   doc-gates:
     name: Documentation Gates
     runs-on: ubuntu-latest

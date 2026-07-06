@@ -1,14 +1,14 @@
 ---
 title: "KubeVigil Master Reference"
 created: 2026-07-02
-updated: 2026-07-02
+updated: 2026-07-06
 type: project/master-reference
 status: governing-reference
 tags: [charter, governance, kubevigil, k8s, security]
 project: kubevigil
-version: "1.0.0"
-revision: 1
-last_updated: 2026-07-02
+version: "1.1.0"
+revision: 2
+last_updated: 2026-07-06
 parent_moc: "[[MOC - KubeVigil Governance]]"
 ---
 
@@ -25,14 +25,14 @@ parent_moc: "[[MOC - KubeVigil Governance]]"
 | Source of truth | This document + `docs/governance/`; code implements contracts |
 | Language | Go 1.25+ |
 | Delivery | Tagged releases (GoReleaser), Homebrew, Krew, container |
-| Current phase | Phase 4 — charter compliance (v0.5.0 feature-complete) |
+| Current phase | Phase 5 complete — v1.0.0 stable release (hardening + release engineering) |
 | Pinned charter | See `docs/governance/Charter-Compliance-Annex.md` |
 
 KubeVigil scans live clusters or static YAML manifests, maps findings to CIS/MITRE/NSA frameworks, and optionally patches manifests with comment-preserving YAML edits. It never mutates live cluster state.
 
 ## 0.1 Current State
 
-- **110 checks** across 12 categories (v0.5.0)
+- **110 checks** across 12 categories (stable as of v1.0.0)
 - **8 output formats:** text, json, yaml, markdown, html, sarif, junit, csv
 - **Fix engine:** five-ring safety model, dry-run default, mandatory backup on `--apply`
 - **MCP:** `kubevigil mcp-server` — scan, findings, summary tools
@@ -117,10 +117,11 @@ Scan → Filter → Classify → Gate (risk/system/known workload) → Plan → 
 |------|------------|--------|
 | Untrusted YAML bombs | Size/count limits in engine and fix parsers | Mitigated v0.5.0 |
 | Symlink escape on fix paths | `os.Lstat` boundary checks | Mitigated v0.5.0 |
-| MCP path injection | Workspace root confinement (`pathguard`, ADR-003) | Mitigated `charter-compliance` branch |
+| MCP path injection | Workspace root confinement (`pathguard`, ADR-003) | Mitigated v0.5.0; Windows tier best-effort (threat-model §5.1) |
 
 ## 7. Revision History
 
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | 2026-07-02 | Initial master reference for charter compliance |
+| 1.1.0 | 2026-07-06 | v1.0.0 stable release; Phase 5 complete; Windows pathguard residual noted |
