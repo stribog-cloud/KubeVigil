@@ -131,6 +131,7 @@ Full documentation lives in [`docs/`](docs/index.md):
 | [Auto-Remediation](docs/auto-fix/overview.md) | Fix engine, safety model, risk levels |
 | [Custom Policies](docs/policies/custom-policies.md) | User-defined CEL checks |
 | [Baseline & Drift](docs/policies/baseline-drift.md) | Accept findings, gate on new only |
+| [Admission Webhook](docs/integrations/admission-webhook.md) | Real-time deny/warn at admission |
 | [Compliance](docs/compliance/overview.md) | CIS, MITRE ATT&CK, NSA/CISA mappings |
 | [Configuration](docs/configuration/config-file.md) | `.kubevigil.yaml`, exemptions, tuning |
 | [CLI Reference](docs/reference/cli-reference.md) | All commands and flags |
@@ -211,6 +212,21 @@ kubevigil scan -f ./manifests/ --baseline baseline.json --fail-on-new  # gate on
 
 See [Baseline & Drift](docs/policies/baseline-drift.md).
 
+## Admission Webhook
+
+Gate deployments in real time instead of auditing after the fact. `kubevigil
+webhook` serves a Kubernetes `ValidatingAdmissionWebhook` that runs the same
+checks and custom policies against each admitted object — denying findings at or
+above `--fail-on` (with a detailed reason) and warning below. It **fails open**
+so a webhook fault can never block your cluster.
+
+```bash
+kubevigil webhook --tls-cert tls.crt --tls-key tls.key --fail-on high
+```
+
+Deploy manifests are in [`deploy/webhook/`](deploy/webhook/); see the
+[Admission Webhook guide](docs/integrations/admission-webhook.md).
+
 ## Output Formats
 
 | Format | Flag | Use Case |
@@ -263,7 +279,7 @@ for inputs, outputs, and a Code Scanning upload example.
 - [x] **Phase 4b** — MCP Server (AI assistant integration — scan, query, remediate via Claude/Cursor/Copilot)
 - [x] **Phase 5** — v1.0.0 hardening & release engineering (Windows fix, SBOM/signing/provenance, e2e in CI; severity calibration ongoing)
 - [x] **Phase 6** — CI/CD integration (GitHub Action; **baseline + drift management** in v1.1.0; PR decoration pending)
-- [ ] **Phase 7** — Runtime (admission webhooks, operator mode, Prometheus metrics)
+- [x] **Phase 7** — Runtime (**validating admission webhook** in v1.2.0; operator mode, Prometheus metrics pending)
 - [ ] **Phase 8** — Enterprise (multi-cluster, trend analysis, **custom CEL policies shipped in v1.1.0**)
 - [ ] **Phase 9** — Ecosystem (SDK, plugin system, Helm chart)
 

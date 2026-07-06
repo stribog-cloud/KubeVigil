@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-06
+
+Real-time admission control: KubeVigil can now gate deployments, not just audit
+them after the fact.
+
+### Added
+
+- **Validating admission webhook** (`kubevigil webhook`). Serves a Kubernetes
+  `ValidatingAdmissionWebhook` that scans each admitted object with the same 110
+  checks and custom CEL policies and **denies admission** for findings at or
+  above `--fail-on` severity (with a detailed 403 reason), surfacing
+  sub-threshold findings as `kubevigil:`-prefixed admission warnings. Fails
+  **open** on internal errors or undecodable objects so a webhook fault can
+  never take down a cluster's admissions. TLS-served with a `/healthz` endpoint
+  and graceful shutdown. See `docs/integrations/admission-webhook.md` and
+  `deploy/webhook/`.
+- `engine.ScanObject` — scans a single in-memory object through the identical
+  pipeline (severity, exemptions, frameworks) as a manifest scan.
+- `deploy/webhook/` manifests: Deployment (distroless, non-root, read-only
+  rootfs, probes), Service, and a scoped `ValidatingWebhookConfiguration`
+  (fail-open, system-namespace exclusion) with a TLS/cert-manager guide.
+
+### Changed
+
+- `internal/webhook` added to the enforced 96% per-package coverage floor.
+
 ## [1.1.0] - 2026-07-06
 
 Two platform features that extend KubeVigil beyond built-in checks, without a
@@ -199,6 +225,7 @@ covered by semantic-versioning stability guarantees (`docs/dev/public-surface.md
 - Table-driven unit tests with 15+ cases per checker, contract tests for all checkers
 - E2E test suite via Bats framework with Kind cluster validation
 
+[1.2.0]: https://github.com/stribog-cloud/KubeVigil/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/stribog-cloud/KubeVigil/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/stribog-cloud/KubeVigil/compare/v0.5.0...v1.0.0
 [0.5.0]: https://github.com/stribog-cloud/KubeVigil/compare/v0.4.5...v0.5.0

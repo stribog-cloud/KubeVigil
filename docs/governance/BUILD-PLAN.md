@@ -6,8 +6,8 @@ type: project/build-plan
 status: governing-reference
 tags: [charter, governance, kubevigil, build-plan]
 project: kubevigil
-version: "1.2.0"
-revision: 3
+version: "1.3.0"
+revision: 4
 last_updated: 2026-07-06
 parent_moc: "[[MOC - KubeVigil Governance]]"
 owners: [maintainers (@msambare)]
@@ -32,6 +32,23 @@ supply-chain-verified artifacts and a semver-stable public surface.
 | 4 | Charter compliance (governance, gates, docs) | Complete |
 | 5 | v1.0.0 hardening + release engineering | Complete (v1.0.0 released 2026-07-06) |
 | 6 | v1.1.0 platform features (CEL custom policies, baseline/drift) | Complete (v1.1.0) |
+| 7 | v1.2.0 runtime: validating admission webhook | Complete (v1.2.0) |
+
+## Phase 7 — v1.2.0 Runtime (validating admission webhook)
+
+Turns KubeVigil from an auditor into an admission gate. `kubevigil webhook`
+serves a ValidatingAdmissionWebhook that runs the same 110 checks + custom CEL
+policies against each admitted object, denying findings at or above `--fail-on`
+and warning below.
+
+- [x] `engine.ScanObject`: single-object scan through the identical pipeline.
+- [x] `internal/webhook`: AdmissionReview v1 handler (fail-open, read-only,
+      3 MiB cap, per-object timeout), TLS server + /healthz, graceful shutdown;
+      99% coverage incl. an end-to-end HTTPS round-trip and a real-engine
+      integration test.
+- [x] `kubevigil webhook` command; `deploy/webhook/` manifests + TLS guide.
+- [x] `internal/webhook` at the 96% per-package floor; threat model rev 7
+      (API-server trust boundary, DoS/tamper rows, fail-open residual).
 
 ## Phase 6 — v1.1.0 Platform Features (CEL policies + baseline/drift)
 
@@ -108,4 +125,4 @@ None blocking — documentation and gate wiring only; code changes limited to co
 |---------|----------|------|--------|
 | 1.0.0 | 1 | 2026-07-02 | Initial build plan; Phase 4 charter compliance in progress. |
 | 1.1.0 | 2 | 2026-07-06 | Phase 4 marked complete; Phase 5 (v1.0.0 hardening + release engineering) recorded. |
-| 1.2.0 | 3 | 2026-07-06 | Phase 6 (v1.1.0 CEL policies + baseline/drift) recorded complete. |
+| 1.2.0 | 3 | 2026-07-06 | Phase 6 (v1.1.0 CEL policies + baseline/drift) recorded complete. || 1.3.0 | 4 | 2026-07-06 | Phase 7 (v1.2.0 admission webhook) recorded complete. |

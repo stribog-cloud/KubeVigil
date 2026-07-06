@@ -6,8 +6,8 @@ updated: 2026-07-06
 type: project/user-releases
 status: review-draft
 tags: [kubevigil, user, releases, changelog]
-version: "1.2.0"
-revision: 4
+version: "1.3.0"
+revision: 5
 project: kubevigil
 parent_moc: "[[MOC - KubeVigil User Documentation]]"
 owners: [maintainers (@msambare)]
@@ -16,6 +16,20 @@ owners: [maintainers (@msambare)]
 # User Release Notes
 
 User-facing changes by version. Producer changelog: `CHANGELOG.md` at repository root.
+
+## v1.2.0 (2026-07-06)
+
+**Admission webhook.** KubeVigil can now gate deployments in real time, not just
+audit them. `kubevigil webhook` serves a Kubernetes ValidatingAdmissionWebhook
+that scans each admitted object with the same checks and your custom policies,
+**denying** anything with findings at or above `--fail-on` severity (with a clear
+reason) and surfacing the rest as `kubectl` warnings. It fails **open** — a
+webhook fault never blocks your cluster's admissions. Deploy manifests and a
+TLS/cert-manager guide are in `deploy/webhook/`; see the
+[Admission Webhook guide](../../integrations/admission-webhook.md).
+
+**Upgrade:** `brew upgrade kubevigil` or pull the new release. The webhook is
+opt-in — nothing changes unless you deploy it.
 
 ## v1.1.0 (2026-07-06)
 
