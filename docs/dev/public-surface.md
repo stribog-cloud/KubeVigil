@@ -29,6 +29,7 @@ Stable contracts for integrators and contributors. Breaking changes require ADR 
 | `version` | stable | |
 | `mcp-server` | stable | stdio MCP transport |
 | `policy` | stable | Subcommands `validate`, `list` — custom CEL policies (v1.1.0) |
+| `webhook` | stable | Validating admission webhook — real-time deny/warn (v1.2.0) |
 
 ## MCP tools
 

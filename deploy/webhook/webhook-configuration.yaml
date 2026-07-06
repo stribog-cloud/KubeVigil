@@ -1,0 +1,35 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: kubevigil
+  # With cert-manager, let ca-injector fill caBundle automatically:
+  # annotations:
+  #   cert-manager.io/inject-ca-from: kubevigil-system/kubevigil-webhook
+webhooks:
+  - name: validate.kubevigil.stribog.cloud
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    # Start with Ignore so an unavailable webhook never blocks admissions.
+    # Switch to Fail once you trust its availability.
+    failurePolicy: Ignore
+    timeoutSeconds: 10
+    clientConfig:
+      service:
+        name: kubevigil-webhook
+        namespace: kubevigil-system
+        path: /validate
+        port: 443
+      # base64 of the CA that issued the serving cert (see deploy/webhook/README.md).
+      caBundle: REPLACE_WITH_BASE64_CA_BUNDLE
+    rules:
+      - apiGroups: ["", "apps", "batch"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods", "deployments", "statefulsets", "daemonsets", "replicasets", "jobs", "cronjobs"]
+        scope: Namespaced
+    # Scope narrow first, e.g. a single test namespace, before going cluster-wide.
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values: ["kube-system", "kube-public", "kube-node-lease", "kubevigil-system"]
