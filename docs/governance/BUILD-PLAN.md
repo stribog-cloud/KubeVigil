@@ -30,7 +30,7 @@ supply-chain-verified artifacts and a semver-stable public surface.
 | 2 | 8 output formats, compliance frameworks, config | Complete |
 | 3 | 110 checks, fix engine, MCP server | Complete (v0.5.0) |
 | 4 | Charter compliance (governance, gates, docs) | Complete |
-| 5 | v1.0.0 hardening + release engineering | Engineering complete; release execution in progress |
+| 5 | v1.0.0 hardening + release engineering | Complete (v1.0.0 released 2026-07-06) |
 
 ## Phase 5 — v1.0.0 Hardening & Release Engineering
 
@@ -48,11 +48,13 @@ supply-chain-verified artifacts and a semver-stable public surface.
 - [x] Documentation Gates and Secrets Scan added to required status checks
 - [x] Artifact size budget declared (Annex §8.2)
 
-### Release execution (performed at tag time — the phase is not marked fully Complete until these land)
+### Release execution (completed at tag time)
 
-- [ ] `v1.0.0` tag cut, release workflow green, GitHub Release published
-- [ ] GHCR package set public; image pull/run verified
-- [ ] `Release-Evidence-v1.0.0.md` filed against the real published artifacts
+- [x] `v1.0.0` tag cut (signed, commit `c7cde1a`), release workflow green (run 28771164525), GitHub Release published
+- [x] Homebrew tap serves `1.0.0` (stale duplicate formula removed); krew manifest regenerated with v1.0.0 checksums
+- [x] Artifacts verified: Cosign checksums signature "Verified OK", checksum match, 5 SBOMs present, smoke tests pass against the shipped binary
+- [x] `Release-Evidence-v1.0.0.md` filed against the real published artifacts
+- [ ] GHCR package visibility → **public**: one remaining maintainer one-click (Settings → Packages → `kubevigil`). The image, its Cosign signature, and SLSA provenance are already published; only registry visibility is pending. Tracked in the release evidence checklist.
 
 ## Phase 4 — Charter Compliance
 
