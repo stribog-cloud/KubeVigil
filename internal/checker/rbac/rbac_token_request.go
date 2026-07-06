@@ -52,7 +52,7 @@ func (c *TokenRequestChecker) Run(ctx context.Context, resources *checker.Resour
 	for i := range roles {
 		role := &roles[i]
 		for ruleIdx, rule := range role.Rules {
-			if containsString(rule.Resources, "serviceaccounts/token") &&
+			if grantsSubresource(rule.Resources, "serviceaccounts", "token") &&
 				containsAny(rule.Verbs, tokenRequestVerbs...) &&
 				len(rule.ResourceNames) == 0 {
 				findings = append(findings, checker.Finding{

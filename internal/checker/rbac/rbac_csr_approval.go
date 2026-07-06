@@ -9,9 +9,6 @@ import (
 	"github.com/stribog-cloud/kubevigil/internal/checker"
 )
 
-// csrApprovalResources are resource strings that grant CSR approval/signing capability.
-var csrApprovalResources = []string{"certificatesigningrequests/approval", "signers"}
-
 // csrApprovalVerbs are verbs that allow approving a CertificateSigningRequest.
 var csrApprovalVerbs = []string{"update", "approve", "*"}
 
@@ -55,7 +52,7 @@ func (c *CSRApprovalChecker) Run(ctx context.Context, resources *checker.Resourc
 	for i := range roles {
 		role := &roles[i]
 		for ruleIdx, rule := range role.Rules {
-			if containsAny(rule.Resources, csrApprovalResources...) && containsAny(rule.Verbs, csrApprovalVerbs...) {
+			if (grantsSubresource(rule.Resources, "certificatesigningrequests", "approval") || containsString(rule.Resources, "signers")) && containsAny(rule.Verbs, csrApprovalVerbs...) {
 				findings = append(findings, checker.Finding{
 					Checker:   "rbac-csr-approval",
 					Severity:  checker.SeverityCritical,
