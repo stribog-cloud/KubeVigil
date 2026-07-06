@@ -14,7 +14,7 @@ parent_moc: "[[MOC - KubeVigil Governance]]"
 
 # KubeVigil — Master Reference
 
-> Kubernetes Security Posture Management CLI — 150 checks, 8 report formats, manifest-safe auto-fix, MCP integration.
+> Kubernetes Security Posture Management CLI — 150 checks, 8 report formats, manifest-safe auto-fix, image CVE scanning (OSV.dev), MCP integration.
 
 ## 0. TL;DR
 
@@ -25,7 +25,7 @@ parent_moc: "[[MOC - KubeVigil Governance]]"
 | Source of truth | This document + `docs/governance/`; code implements contracts |
 | Language | Go 1.25+ |
 | Delivery | Tagged releases (GoReleaser), Homebrew, Krew, container |
-| Current phase | Phase 7 complete — v1.2.0 (validating admission webhook) |
+| Current phase | Phase 9 complete — v1.4.0 (image vulnerability layer via OSV.dev) |
 | Pinned charter | See `docs/governance/Charter-Compliance-Annex.md` |
 
 KubeVigil scans live clusters or static YAML manifests, maps findings to CIS/MITRE/NSA frameworks, and optionally patches manifests with comment-preserving YAML edits. It never mutates live cluster state.
@@ -33,6 +33,7 @@ KubeVigil scans live clusters or static YAML manifests, maps findings to CIS/MIT
 ## 0.1 Current State
 
 - **150 built-in checks** across 12 categories (stable as of v1.3.0) + unlimited **user-defined CEL policies** (v1.1.0)
+- **Image vulnerability scanning** (v1.4.0): `kubevigil vuln` fuses OSV.dev CVE findings from an SBOM into the same finding model
 - **8 output formats:** text, json, yaml, markdown, html, sarif, junit, csv
 - **Fix engine:** five-ring safety model, dry-run default, mandatory backup on `--apply`
 - **MCP:** `kubevigil mcp-server` — scan, findings, summary tools

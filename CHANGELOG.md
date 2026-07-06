@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-07-06
+
+Vulnerability awareness: KubeVigil now reports known CVEs in an image's software
+inventory alongside its posture findings — misconfiguration and vulnerability in
+one model, one report.
+
+### Added
+
+- **`kubevigil vuln --sbom <file|dir>`.** Parses a container image's SBOM (SPDX
+  or CycloneDX JSON), queries the [OSV.dev](https://osv.dev) vulnerability
+  database for the inventoried packages, and reports known vulnerabilities as
+  `image-vulnerability` findings. Because they are ordinary findings, they flow
+  through the identical pipeline — severity thresholds, `--fail-on`, and all 8
+  report formats (text, JSON, YAML, Markdown, HTML, SARIF, JUnit, CSV) — as a
+  posture scan, so a single report can carry both misconfigurations and CVEs.
+  - Severity is derived from each advisory's CVSS v3.x vector (a from-scratch
+    base-score computation), falling back to the database's text severity when
+    no scorable vector exists.
+  - Findings carry structured CVE metadata (id/aliases, affected package,
+    installed and fixed versions, CVSS score and vector, purl, image) and a
+    remediation that names the fixed version to upgrade to.
+  - Flags: `--image` (attribution), `-o/--output`, `--fail-on`,
+    `--min-severity`, `--timeout`. Exit codes: `0` clean or below `--fail-on`,
+    `1` at/above threshold, `2` scan error, `3` input error.
+- `checker.Finding` gains an optional, backward-compatible `CVE` field
+  (`*CVEInfo`, omitted for posture findings) so vulnerability metadata has a
+  first-class home in the JSON/YAML schema.
+
+### Notes
+
+- The `vuln` command requires network access to `https://api.osv.dev`. The SBOM
+  itself is produced out-of-band (syft, trivy, `docker sbom`) — KubeVigil does
+  not pull or unpack images. `image-vulnerability` is a synthetic finding source,
+  not a registered check, so the built-in check catalogue remains **150**.
+
 ## [1.3.0] - 2026-07-06
 
 Detection breadth: **40 new security checks** raise the built-in catalogue from

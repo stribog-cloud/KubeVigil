@@ -228,6 +228,22 @@ kubevigil webhook --tls-cert tls.crt --tls-key tls.key --fail-on high
 Deploy manifests are in [`deploy/webhook/`](deploy/webhook/); see the
 [Admission Webhook guide](docs/integrations/admission-webhook.md).
 
+## Image Vulnerabilities (CVEs)
+
+Posture is only half the picture — an image can be perfectly configured and still
+ship known-vulnerable software. `kubevigil vuln` scans a container image's SBOM
+(SPDX or CycloneDX) against [OSV.dev](https://osv.dev) and reports known CVEs as
+findings, **fused into the same model and report formats** as a posture scan.
+
+```bash
+syft myapp:1.4.0 -o spdx-json > app.spdx.json
+kubevigil vuln --sbom app.spdx.json --image myapp:1.4.0 --fail-on high
+```
+
+Severity comes from each advisory's CVSS score; findings carry the CVE id,
+affected package, and the fixed version to upgrade to. Needs network access to
+`api.osv.dev`. See the [Vulnerability Scanning guide](docs/scanning/vulnerability-scanning.md).
+
 ## Output Formats
 
 | Format | Flag | Use Case |
@@ -281,6 +297,7 @@ for inputs, outputs, and a Code Scanning upload example.
 - [x] **Phase 5** — v1.0.0 hardening & release engineering (Windows fix, SBOM/signing/provenance, e2e in CI; severity calibration ongoing)
 - [x] **Phase 6** — CI/CD integration (GitHub Action; **baseline + drift management** in v1.1.0; PR decoration pending)
 - [x] **Phase 7** — Runtime (**validating admission webhook** in v1.2.0; operator mode, Prometheus metrics pending)
+- [x] **Detection breadth** — **40 new checks (110 → 150)** in v1.3.0; **image CVE scanning via OSV.dev** in v1.4.0
 - [ ] **Phase 8** — Enterprise (multi-cluster, trend analysis, **custom CEL policies shipped in v1.1.0**)
 - [ ] **Phase 9** — Ecosystem (SDK, plugin system, Helm chart)
 

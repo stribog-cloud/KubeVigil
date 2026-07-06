@@ -7,7 +7,7 @@ status: governing-reference
 tags: [charter, governance, kubevigil, security, stride]
 project: kubevigil
 version: "1.7.0"
-revision: 8
+revision: 9
 last_updated: 2026-07-06
 parent_moc: "[[MOC - KubeVigil Governance]]"
 owners: [maintainers (@msambare)]
@@ -32,6 +32,7 @@ owners: [maintainers (@msambare)]
 - Manifest repositories (may contain secrets; fix `--apply` writes files)
 - Scan/fix reports (may echo resource names and misconfigurations)
 - Local filesystem integrity (fix engine writes patches and backups)
+- SBOM package inventory (the `vuln` command reads an SBOM and sends package URLs to OSV.dev; the inventory reveals what software a workload runs)
 
 ## 2. Trust Boundaries
 
@@ -40,6 +41,7 @@ owners: [maintainers (@msambare)]
 3. **CLI → Filesystem** — manifest read, fix write, backup directories
 4. **MCP host → stdio MCP** — AI harness sends tool arguments (untrusted path input)
 5. **Kubernetes API server → admission webhook** — the API server POSTs AdmissionReview requests over TLS; request bodies carry cluster-submitted objects (v1.2.0)
+6. **CLI → OSV.dev (external network egress)** — the `vuln` command sends SBOM package URLs to `https://api.osv.dev` and consumes the advisory data it returns; OSV.dev is an untrusted-for-integrity external data source reached over TLS (v1.4.0)
 
 ## 3. STRIDE Summary
 
@@ -54,6 +56,9 @@ owners: [maintainers (@msambare)]
 | Denial of service (webhook) | Amplification: a sub-3 MiB object padded with tens of thousands of containers explodes into a huge scan → OOM/timeout → `failurePolicy: Ignore` silently admits it (a fail-open-on-demand bypass) | Container-count cap (`maxContainers=100`) DENIES amplification-shaped objects before scanning (fail-CLOSED, since the object itself is the attack); scan runs in a goroutine so `--scan-timeout` bounds the *handler* response time even against a non-preemptible checker; reported findings capped (`maxReportedFindings=50`) to bound response size; plus 3 MiB body cap, CEL cost limit. Verified: a 20k-container pod is denied in ~40 ms. Tests: `TestReview_DeniesAmplificationObject`, `TestReview_TimeoutFailsOpen`, `TestReview_CapsReportedFindings` |
 | Elevation of privilege | Write outside target dir | Backup path enforcement, no cluster apply |
 | Tampering (webhook bypass) | Attacker unable to admit a bad object tampers with the webhook to allow it | Webhook is read-only (never mutates objects); denial is advisory to the API server, which enforces it; TLS + `caBundle` pins the serving identity |
+| Information disclosure (vuln egress) | The `vuln` command discloses an image's package inventory to a third party (OSV.dev) | Opt-in command, off by default; sends **only** package URLs — never image contents, credentials, kubeconfig, or cluster data; HTTPS to `api.osv.dev`; documented so operators can choose to run OSV locally instead |
+| Tampering / Spoofing (vuln data) | A compromised or MITM'd OSV response hides a real CVE (false negative) or injects a fake one (false positive) | TLS authenticates `api.osv.dev`; the response only produces **advisory findings** — it is never executed, and never mutates files or clusters; residual: KubeVigil trusts OSV.dev's data integrity (external-data-trust boundary, documented) |
+| Denial of service (vuln) | A hostile SBOM with a huge package list, or a hostile OSV response, exhausts time/memory | Batch queries capped at 1000/request; whole-scan time budget capped (`maxVulnScanTime`, 15 min ceiling) with a per-request timeout; findings derived only from parsed JSON |
 
 ### 3.1 MCP data-egress control mapping
 
@@ -74,6 +79,7 @@ owners: [maintainers (@msambare)]
 | `kubevigil fix --apply` | Local/CI | Fix integration, symlink tests |
 | `kubevigil mcp-server` | IDE agents | `internal/mcp/e2e_test.go`, pathguard tests |
 | `kubevigil webhook` | K8s API server (TLS) | `internal/webhook/*_test.go` (handler, TLS server, e2e round-trip), `test/integration/webhook_test.go` |
+| `kubevigil vuln` | Local/CI + OSV.dev egress (TLS) | `internal/vuln/*_test.go` (CVSS scorer, SBOM parser, OSV client via httptest, scanner), `cmd/kubevigil/vuln_test.go`, e2e |
 | Container image | Pull from ghcr.io | Distroless non-root, minimal base |
 
 ## 5. Residual Risks
@@ -93,7 +99,7 @@ KubeVigil does not collect or persist PII. Scan and MCP outputs may **transientl
 
 ## 6. Maintenance Triggers
 
-Update this model when adding: new MCP tools, network calls, cluster write paths, new parsers, or changes to PII/secrets leak prevention layers on `main`. The CEL policy evaluator (v1.1.0) is such a parser: revisit if the CEL environment gains new variables, functions, or any host/network access. Also revisit when the admission webhook gains new endpoints, mutation capability, or a non-fail-open mode.
+Update this model when adding: new MCP tools, network calls, cluster write paths, new parsers, or changes to PII/secrets leak prevention layers on `main`. The CEL policy evaluator (v1.1.0) is such a parser: revisit if the CEL environment gains new variables, functions, or any host/network access. Also revisit when the admission webhook gains new endpoints, mutation capability, or a non-fail-open mode. The `vuln` command (v1.4.0) adds both a new parser (SBOM) and outbound network egress: revisit if it gains a second data source, sends more than package URLs, or begins caching/persisting advisory data.
 
 ## 7. Revision History
 
@@ -107,3 +113,4 @@ Update this model when adding: new MCP tools, network calls, cluster write paths
 | 1.5.0 | 6 | 2026-07-06 | Custom CEL policy evaluator residual (v1.1.0): side-effect-free, cost-limited, operator-authored — no code-exec/egress surface. |
 | 1.6.0 | 7 | 2026-07-06 | Admission webhook (v1.2.0): API-server trust boundary, DoS/tamper STRIDE rows, fail-open read-only residual, attack-surface entry. |
 | 1.7.0 | 8 | 2026-07-06 | Webhook amplification DoS bypass fixed (red-team blocker): container cap + goroutine-bounded timeout + finding cap. |
+| 1.8.0 | 9 | 2026-07-06 | Image vulnerability layer (v1.4.0): OSV.dev network-egress trust boundary, SBOM inventory asset, vuln egress/data-trust/DoS STRIDE rows, `vuln` attack surface, SBOM+egress maintenance trigger. |
