@@ -6,8 +6,8 @@ updated: 2026-07-06
 type: project/user-releases
 status: review-draft
 tags: [kubevigil, user, releases, changelog]
-version: "1.3.0"
-revision: 5
+version: "1.4.0"
+revision: 6
 project: kubevigil
 parent_moc: "[[MOC - KubeVigil User Documentation]]"
 owners: [maintainers (@msambare)]
@@ -16,6 +16,41 @@ owners: [maintainers (@msambare)]
 # User Release Notes
 
 User-facing changes by version. Producer changelog: `CHANGELOG.md` at repository root.
+
+## v1.4.0 (2026-07-06)
+
+**Image vulnerability scanning.** Posture is only half the picture — an image can
+be perfectly configured and still ship known-vulnerable software. The new
+`kubevigil vuln` command scans a container image's SBOM (SPDX or CycloneDX) against
+the [OSV.dev](https://osv.dev) vulnerability database and reports known CVEs as
+findings, **fused into the same report** as a posture scan — same severities,
+same `--fail-on` gating, same eight output formats.
+
+```bash
+syft myapp:1.4.0 -o spdx-json > app.spdx.json
+kubevigil vuln --sbom app.spdx.json --image myapp:1.4.0 --fail-on high
+```
+
+Severity is derived from each advisory's CVSS score, and every finding names the
+affected package and the fixed version to upgrade to. The command needs network
+access to `api.osv.dev`; the SBOM is generated out-of-band by syft, trivy, or
+`docker sbom`. See the [Vulnerability Scanning guide](../../scanning/vulnerability-scanning.md).
+
+**Upgrade:** `brew upgrade kubevigil` or pull the new release. The feature is
+opt-in — existing scans are unchanged.
+
+## v1.3.0 (2026-07-06)
+
+**40 new security checks (110 → 150).** KubeVigil's built-in catalogue grows across
+RBAC escalation paths, the Gateway API, admission-controller configuration, CRD
+hardening, workload isolation, storage, scheduling, and secret hygiene — for
+example wildcard-scoped mutating webhooks, dangling ExternalName services, missing
+CRD conversion webhooks, Windows HostProcess containers, and TLS secrets with weak
+keys. Compliance coverage grew with them (MITRE ATT&CK now maps 34 techniques).
+
+**Upgrade:** `brew upgrade kubevigil`. The new checks run automatically; expect
+more findings on an unchanged cluster. Use `--min-severity` or exemptions to tune
+the signal.
 
 ## v1.2.0 (2026-07-06)
 
