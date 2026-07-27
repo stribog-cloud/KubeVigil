@@ -1514,6 +1514,93 @@ func TestRunFix_GitPRAfterApply(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// captureStdout redirects os.Stdout for the duration of fn and returns what was
+// written. The reader runs in a goroutine: fix output can exceed the OS pipe
+// buffer, and a non-draining reader would deadlock the writer.
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	orig := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	done := make(chan string, 1)
+	go func() {
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, r)
+		done <- buf.String()
+	}()
+
+	defer func() {
+		os.Stdout = orig
+		_ = r.Close()
+	}()
+	fn()
+	_ = w.Close()
+	return <-done
+}
+
+// TestRunFix_PartialFailure_StillRunsVerify locks KubeVigil-kg2.10: on partial
+// apply failure with --verify, verification must still run against the
+// succeeded subset and exit 5 (partial) outranks verify-failed (1).
+func TestRunFix_PartialFailure_StillRunsVerify(t *testing.T) {
+	saveAndRestoreFlags(t)
+	dir := t.TempDir()
+	writeFixture(t, dir, "good.yaml", insecureDeploymentYAML)
+	writeFixture(t, dir, "bad.yaml", "{{invalid yaml")
+
+	flagFixApply = true
+	flagFixYes = true
+	flagFixVerify = true
+	flagNoColor = true
+	flagFixRiskLevel = "safe"
+	flagFixBackupDir = filepath.Join(t.TempDir(), "backup-partial-verify")
+
+	var err error
+	out := captureStdout(t, func() {
+		fixCmd.SetContext(context.Background())
+		err = runFix(fixCmd, []string{dir})
+	})
+
+	// The bug: verify was skipped entirely on partial failure.
+	assert.Contains(t, out, "Verification Results",
+		"--verify must run on the succeeded subset even when some files failed")
+
+	// D2: partial apply is the headline; exit stays 5 even though safe-level
+	// verify leaves likely_safe/potentially_breaking findings.
+	require.Error(t, err)
+	var ee *exitError
+	require.ErrorAs(t, err, &ee)
+	assert.Equal(t, fix.ExitFixPartialSuccess, ee.code)
+}
+
+// TestRunFix_PartialFailure_StillRunsGitPR ensures --git-pr is attempted on
+// partial failure (CLI absence / non-git workdir is logged, not fatal) and
+// exit remains 5.
+func TestRunFix_PartialFailure_StillRunsGitPR(t *testing.T) {
+	saveAndRestoreFlags(t)
+	dir := t.TempDir()
+	writeFixture(t, dir, "good.yaml", insecureDeploymentYAML)
+	writeFixture(t, dir, "bad.yaml", "{{invalid yaml")
+
+	flagFixApply = true
+	flagFixYes = true
+	flagFixGitPR = true
+	flagFixVerify = false
+	flagFixBackupDir = filepath.Join(t.TempDir(), "backup-partial-gitpr")
+
+	fixCmd.SetContext(context.Background())
+	err := runFix(fixCmd, []string{dir})
+
+	// Temp dir is not a git repo — CreateGitOpsPR fails and is logged, not returned.
+	// Exit must still be partial success (5), not a panic or other code.
+	require.Error(t, err)
+	var ee *exitError
+	require.ErrorAs(t, err, &ee)
+	assert.Equal(t, fix.ExitFixPartialSuccess, ee.code,
+		"partial failure with --git-pr must still exit 5 after attempting git-pr on succeeded files")
+}
+
 // --- isInteractive() additional coverage ---
 
 func TestIsInteractive_CI_Value1(t *testing.T) {

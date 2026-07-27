@@ -22,6 +22,8 @@ KubeVigil uses distinct exit codes for the `scan` and `fix` commands to communic
 | `4` | Nothing to fix -- no fixable findings found at the current risk level |
 | `5` | Partial success -- some fixes applied but some files failed |
 
+When a fix is partially applied and `--verify` also reports remaining findings, `5` takes precedence over `1`. Verification still runs and its report is printed — but a partially-applied tree is the more urgent signal, so the exit code reports that. `--git-pr` and `--verify` operate only on the files that applied cleanly.
+
 ## CI/CD Usage Examples
 
 ### GitHub Actions -- Scan

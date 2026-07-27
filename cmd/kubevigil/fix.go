@@ -257,22 +257,35 @@ func runFix(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Check for partial failure. Exit early with code 5, but first tell the
-	// user that any requested --git-pr / --verify follow-up is being skipped —
-	// otherwise the skip is silent and looks like the flag was ignored.
-	if summary.FilesFailed > 0 && summary.FilesModified > 0 {
-		if flagFixGitPR {
-			fmt.Fprintln(os.Stderr, "Warning: skipping --git-pr because some files failed (partial success, exit 5)")
-		}
-		if fixCfg.Verify {
-			fmt.Fprintln(os.Stderr, "Warning: skipping --verify because some files failed (partial success, exit 5)")
-		}
-		return &exitError{code: fix.ExitFixPartialSuccess, err: fmt.Errorf("%d files failed", summary.FilesFailed)}
+	// Partial failure: some files could not be written. Follow-ups still run,
+	// but only against the files that landed cleanly. The partial-apply exit
+	// code is the headline and is returned after the follow-ups complete —
+	// see docs/reference/exit-codes.md (KubeVigil-kg2.10).
+	partial := summary.FilesFailed > 0 && summary.FilesModified > 0
+
+	followUpPlan := plan
+	if partial {
+		followUpPlan = succeededPlan(plan, summary)
+		fmt.Fprintf(os.Stderr,
+			"Warning: %d file(s) failed; --git-pr/--verify run on the %d file(s) that applied cleanly.\n",
+			summary.FilesFailed, len(followUpPlan.Files))
 	}
 
-	// GitOps PR creation.
+	// Nothing landed — running follow-ups would report on an empty set and
+	// print a misleading "all findings resolved".
+	if len(followUpPlan.Files) == 0 {
+		if flagFixGitPR || fixCfg.Verify {
+			fmt.Fprintln(os.Stderr, "Warning: no files applied cleanly; skipping --git-pr/--verify.")
+		}
+		if partial {
+			return &exitError{code: fix.ExitFixPartialSuccess, err: fmt.Errorf("%d files failed", summary.FilesFailed)}
+		}
+		return nil
+	}
+
+	// GitOps PR creation — succeeded subset only.
 	if flagFixGitPR {
-		prCfg := fix.DefaultGitPRConfig(plan, reportContent)
+		prCfg := fix.DefaultGitPRConfig(followUpPlan, reportContent)
 		prCfg.WorkDir = filepath.Dir(args[0])
 		prURL, prErr := fix.CreateGitOpsPR(&prCfg)
 		if prErr != nil {
@@ -282,20 +295,68 @@ func runFix(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Verify if requested.
+	// Verify — succeeded subset only.
+	verifyFailed := false
 	if fixCfg.Verify {
-		verifyResult, verifyErr := fixer.Verify(ctx, plan)
+		verifyResult, verifyErr := fixer.Verify(ctx, followUpPlan)
 		if verifyErr != nil {
 			fmt.Fprintf(os.Stderr, "Verify error: %v\n", verifyErr)
 		} else {
 			printVerifyResult(os.Stdout, verifyResult)
-			if !verifyResult.Clean {
-				return &exitError{code: fix.ExitFixVerifyFailed, err: fmt.Errorf("findings remain after fix")}
-			}
+			verifyFailed = !verifyResult.Clean
 		}
 	}
 
+	// Partial apply outranks verify-failed: a partially-applied tree is the
+	// more urgent operator signal (exit 5 over exit 1).
+	if partial {
+		return &exitError{code: fix.ExitFixPartialSuccess, err: fmt.Errorf("%d files failed", summary.FilesFailed)}
+	}
+	if verifyFailed {
+		return &exitError{code: fix.ExitFixVerifyFailed, err: fmt.Errorf("findings remain after fix")}
+	}
 	return nil
+}
+
+// succeededPlan returns a copy of plan restricted to the files that actually
+// landed on disk — every file in plan.Files whose path does not appear in
+// summary.Errors. Follow-up steps (--git-pr, --verify) must act on this subset
+// only: a file that failed to apply was never changed, so verifying it or
+// committing it would report work that did not happen.
+//
+// Summary is copied by value; its slice/map fields are shared with the original
+// and are never mutated here — only the scalar counts are recomputed so that
+// Verify's TotalBefore/Resolved arithmetic and the git-pr commit message
+// describe the subset rather than the whole plan.
+func succeededPlan(plan *fix.Plan, summary *fix.Summary) *fix.Plan {
+	failed := make(map[string]bool, len(summary.Errors))
+	for i := range summary.Errors {
+		failed[summary.Errors[i].FilePath] = true
+	}
+
+	out := &fix.Plan{
+		Files:   make(map[string]*fix.FilePlan, len(plan.Files)),
+		Diffs:   make(map[string]string, len(plan.Diffs)),
+		Summary: *summary,
+	}
+	applied := 0
+	for path, fp := range plan.Files {
+		if failed[path] {
+			continue
+		}
+		out.Files[path] = fp
+		if d, ok := plan.Diffs[path]; ok {
+			out.Diffs[path] = d
+		}
+		for i := range fp.Fixes {
+			if fp.Fixes[i].Applied {
+				applied++
+			}
+		}
+	}
+	out.Summary.Applied = applied
+	out.Summary.FilesModified = len(out.Files)
+	return out
 }
 
 // buildFixConfig constructs a fix.Config from CLI flags and the config file.

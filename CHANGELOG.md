@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`fix` partial failure skipped `--verify` / `--git-pr`** (KubeVigil-kg2.10). On
+  partial apply (exit 5), follow-ups now run against the files that applied
+  cleanly instead of being skipped. When both partial apply and remaining
+  verify findings apply, exit 5 takes precedence over exit 1.
+
+### Security
+
+- Bump `golang.org/x/text` to v0.39.0 (GO-2026-5970 infinite-loop on invalid
+  input). Unblocks `make vuln` / `make all`.
+
 ## [1.5.0] - 2026-07-06
 
 Correctness & security release. A post-v1.3 adversarial red-team (empirical
