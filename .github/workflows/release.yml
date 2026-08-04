@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: '1.25.11'
+          go-version: '1.25.12'
       - name: Run go vet
         run: go vet ./...
       - name: Run golangci-lint
@@ -47,7 +47,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: '1.25.11'
+          go-version: '1.25.12'
       - name: Set up QEMU (arm64 image builds)
         uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
       - name: Set up Docker Buildx
@@ -103,3 +103,33 @@ jobs:
           subject-name: ghcr.io/stribog-cloud/kubevigil
           subject-digest: ${{ steps.image-digest.outputs.digest }}
           push-to-registry: true
+
+  krew:
+    name: Publish to krew-index
+    runs-on: ubuntu-latest
+    # Only after the release exists: the bot DOWNLOADS each published archive to
+    # compute its sha256, so running it alongside GoReleaser races the upload
+    # and fails on a 404.
+    needs: release
+    # A krew-index PR failing must not fail the release. The binaries, images,
+    # signatures and attestations are already published by this point; the plugin
+    # listing is downstream distribution and can be retried by hand.
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      # Opens a PR against kubernetes-sigs/krew-index from the bot's own fork,
+      # rendering .krew.yaml with this tag and the real asset checksums.
+      #
+      # WHY THIS JOB EXISTS: the krew-index entry sat at v0.5.0 while this repo
+      # shipped v1.5.0 — seven releases and five months stale — because the
+      # manifest was only ever updated by hand, once. Artifact Hub mirrors
+      # krew-index automatically, so the same single stale entry made TWO public
+      # listings advertise a February build, and `kubectl krew install vigil`
+      # served it.
+      #
+      # No token input: the bot is a hosted service that raises the PR from its
+      # own account, so nothing here needs write access to krew-index.
+      - name: Update krew-index
+        uses: rajatjindal/krew-release-bot@c970b8a8f6dbc2f2285a26e3ae160903b87002c3 # v0.0.51

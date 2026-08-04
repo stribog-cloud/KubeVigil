@@ -1,0 +1,73 @@
+apiVersion: krew.googlecontainertools.github.com/v1alpha2
+kind: Plugin
+metadata:
+  # MUST stay "vigil". This is the plugin name already published in
+  # kubernetes-sigs/krew-index, so `kubectl krew install vigil` and every
+  # existing installation key off it. Renaming here does not rename the plugin —
+  # it opens a PR for a NEW one and leaves the old entry frozen forever.
+  name: vigil
+spec:
+  version: {{ .TagName }}
+  homepage: https://github.com/stribog-cloud/KubeVigil
+  shortDescription: Scan clusters for misconfigurations
+  description: |
+    KubeVigil scans Kubernetes clusters and YAML manifests for security
+    misconfigurations. It runs 150 security checks across 12 categories,
+    maps findings to compliance frameworks (CIS, MITRE ATT&CK, NSA/CISA),
+    and outputs reports in 8 formats. Includes auto-remediation with a
+    five-ring safety model.
+  caveats: |
+    Scanning a live cluster uses your current kubeconfig context. Run
+    `kubectl vigil scan --help` for manifest-only (offline) usage.
+  platforms:
+  # NOTE ON THE URL SHAPE, because it is the one thing that silently breaks:
+  # the release TAG carries a leading "v" (v1.5.0) but GoReleaser's archive
+  # name_template interpolates its Version field, which strips the v
+  # (kubevigil_1.5.0_...). So the directory segment needs the tag and the FILE
+  # name needs the tag without its leading character.
+  #
+  # krew-release-bot's template FuncMap provides only `indent` and
+  # `addURIAndSha` — no sprig, so `trimPrefix` does not exist here. Go's
+  # built-in `slice` does work on strings, so slicing the tag from index 1
+  # drops the leading "v". Verified by rendering this file with the bot's own
+  # `krew-release-bot template --tag v1.5.0` before commit.
+  #
+  # KEEP TEMPLATE DELIMITERS OUT OF THESE COMMENTS. Go's text/template parses
+  # the whole file and has no idea "#" starts a YAML comment, so a field name
+  # written between braces in prose is EXECUTED. Mentioning GoReleaser's
+  # Version field that way is what made the first render of this file abort
+  # with "can't evaluate field Version in type source.ReleaseRequest".
+  #
+  # The 4-space indent on the addURIAndSha lines is not stylistic: the function
+  # emits "uri: ...\n    sha256: ..." with a hardcoded four-space indent for the
+  # second line, so the call must sit at that indent for the YAML to parse.
+  - selector:
+      matchLabels:
+        os: linux
+        arch: amd64
+    {{addURIAndSha "https://github.com/stribog-cloud/KubeVigil/releases/download/{{ .TagName }}/kubevigil_{{ slice .TagName 1 }}_linux_amd64.tar.gz" .TagName }}
+    bin: kubevigil
+  - selector:
+      matchLabels:
+        os: linux
+        arch: arm64
+    {{addURIAndSha "https://github.com/stribog-cloud/KubeVigil/releases/download/{{ .TagName }}/kubevigil_{{ slice .TagName 1 }}_linux_arm64.tar.gz" .TagName }}
+    bin: kubevigil
+  - selector:
+      matchLabels:
+        os: darwin
+        arch: amd64
+    {{addURIAndSha "https://github.com/stribog-cloud/KubeVigil/releases/download/{{ .TagName }}/kubevigil_{{ slice .TagName 1 }}_darwin_amd64.tar.gz" .TagName }}
+    bin: kubevigil
+  - selector:
+      matchLabels:
+        os: darwin
+        arch: arm64
+    {{addURIAndSha "https://github.com/stribog-cloud/KubeVigil/releases/download/{{ .TagName }}/kubevigil_{{ slice .TagName 1 }}_darwin_arm64.tar.gz" .TagName }}
+    bin: kubevigil
+  - selector:
+      matchLabels:
+        os: windows
+        arch: amd64
+    {{addURIAndSha "https://github.com/stribog-cloud/KubeVigil/releases/download/{{ .TagName }}/kubevigil_{{ slice .TagName 1 }}_windows_amd64.zip" .TagName }}
+    bin: kubevigil.exe
