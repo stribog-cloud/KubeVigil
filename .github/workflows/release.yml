@@ -122,6 +122,30 @@ jobs:
       # Opens a PR against kubernetes-sigs/krew-index from the bot's own fork,
       # rendering .krew.yaml with this tag and the real asset checksums.
       #
+      # HOW .krew.yaml WORKS, kept HERE rather than in that file: the bot
+      # renders the template and publishes the RESULT verbatim into krew-index,
+      # comments and all. Explanatory comments in .krew.yaml are therefore not
+      # free — they get committed to a Kubernetes SIG repo on every release and
+      # bury the real diff. That file stays bare; this is where the notes live.
+      #
+      #   * The tag carries a leading "v" (v1.5.0) but the archives do not
+      #     (kubevigil_1.5.0_...), because GoReleaser's name_template uses its
+      #     Version field. So the URL's directory segment takes the tag and the
+      #     filename slices it from index 1.
+      #   * The bot's FuncMap has only `indent` and `addURIAndSha` — no sprig,
+      #     so no trimPrefix. Go's built-in `slice` works on strings and is what
+      #     does the stripping.
+      #   * text/template does not know "#" starts a YAML comment. A field name
+      #     written between braces in prose is EXECUTED — that is what made the
+      #     first render abort with "can't evaluate field Version".
+      #   * `addURIAndSha` emits its sha256 line with a hardcoded four-space
+      #     indent, so the call must sit at exactly that indent.
+      #
+      # Test a change before tagging, rather than finding out at release:
+      #   docker run --rm -v "$PWD/.krew.yaml:/tmp/t.yaml" \
+      #     ghcr.io/rajatjindal/krew-release-bot:v0.0.50 \
+      #     krew-release-bot template --tag v1.5.0 --template-file /tmp/t.yaml
+      #
       # WHY THIS JOB EXISTS: the krew-index entry sat at v0.5.0 while this repo
       # shipped v1.5.0 — seven releases and five months stale — because the
       # manifest was only ever updated by hand, once. Artifact Hub mirrors
